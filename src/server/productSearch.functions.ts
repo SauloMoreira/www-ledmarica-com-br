@@ -128,7 +128,7 @@ export const searchProducts = createServerFn({ method: "POST" })
     // Grade/vitrine: esconder produtos-filho (variações) para não duplicar cards.
     // Buscas por texto continuam retornando variações normalmente.
     let visibleProducts = products;
-    if (terms.length === 0 && products.length > 0) {
+    if ((terms?.length ?? 0) === 0 && products.length > 0) {
       const { data: childRows } = await supabaseAdmin
         .from("products")
         .select("id")
@@ -159,7 +159,7 @@ export const searchProducts = createServerFn({ method: "POST" })
       }
     }
 
-    return { products, total, page, pageSize };
+    return { products: visibleProducts, total, page, pageSize };
   });
 
 // ----------------------------------------------------------------
