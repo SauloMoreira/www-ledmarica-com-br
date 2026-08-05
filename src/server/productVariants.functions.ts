@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { slugify } from "@/lib/productImport";
+import { variantUrl } from "@/lib/productImages";
 
 /**
  * Variações de Produto (ex.: Cor = Vermelho / Branco / Azul).
@@ -92,17 +93,16 @@ async function primaryImages(productIds: string[]): Promise<Map<string, string>>
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin
     .from("product_images")
-    .select("product_id, original_url, thumb_url, is_primary, sort_order")
+    .select("product_id, original_url, is_primary, sort_order")
     .in("product_id", productIds)
     .order("is_primary", { ascending: false })
     .order("sort_order", { ascending: true });
-  for (const row of (data ?? []) as Array<{
+  for (const row of (data ?? []) as unknown as Array<{
     product_id: string;
     original_url: string | null;
-    thumb_url: string | null;
   }>) {
     if (map.has(row.product_id)) continue;
-    const url = row.thumb_url ?? row.original_url;
+    const url = variantUrl(row.original_url, "thumb") ?? row.original_url;
     if (url) map.set(row.product_id, url);
   }
   return map;
