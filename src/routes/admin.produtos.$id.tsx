@@ -732,7 +732,13 @@ function ProductForm() {
 
           {!isNew && <ProductAttributesSection productId={id} />}
 
-          {!isNew && <ProductVariantsSection productId={id} />}
+          {!isNew && (
+            <ProductVariantsSection
+              productId={id}
+              brand={form.brand}
+              category={cats.find((c) => c.id === form.category_id)?.name}
+            />
+          )}
 
           {!isNew && <ProductRelationsSection productId={id} />}
         </div>

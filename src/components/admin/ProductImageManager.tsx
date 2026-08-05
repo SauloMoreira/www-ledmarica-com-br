@@ -27,6 +27,8 @@ interface Props {
   productName: string;
   brand?: string | null;
   category?: string | null;
+  /** Chamado sempre que as imagens do produto são salvas/alteradas. */
+  onImagesChanged?: () => void;
 }
 
 export interface ProductImageManagerHandle {
