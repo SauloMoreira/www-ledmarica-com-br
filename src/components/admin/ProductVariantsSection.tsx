@@ -19,7 +19,7 @@ import {
 
 type Props = { productId: string; brand?: string | null; category?: string | null };
 
-export function ProductVariantsSection({ productId }: Props) {
+export function ProductVariantsSection({ productId, brand, category }: Props) {
   const qc = useQueryClient();
   const optionKey = ["admin-variant-option", productId];
   const listKey = ["admin-variant-family", productId];
@@ -43,6 +43,7 @@ export function ProductVariantsSection({ productId }: Props) {
   const [price, setPrice] = useState("");
   const [costPrice, setCostPrice] = useState("");
   const [stockQty, setStockQty] = useState("0");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: optionKey });
