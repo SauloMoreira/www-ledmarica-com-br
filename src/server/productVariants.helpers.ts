@@ -1,4 +1,3 @@
-import "@tanstack/react-start/server-only";
 import { slugify } from "@/lib/productImport";
 import { variantUrl } from "@/lib/productImages";
 import type { VariantOption } from "./productVariants.types";

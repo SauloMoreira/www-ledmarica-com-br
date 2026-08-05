@@ -8,7 +8,7 @@ import {
   resolveParentId,
   toVariantAttributes,
   uniqueSlug,
-} from "./productVariants.server";
+} from "./productVariants.helpers";
 import type { FamilyMember, ProductFamily, VariantOption } from "./productVariants.types";
 
 export type { FamilyMember, ProductFamily, VariantOption } from "./productVariants.types";
