@@ -75,7 +75,7 @@ export function ProductVariantsSection({ productId, brand, category }: Props) {
       }),
     onSuccess: (created) => {
       toast.success("Variação criada", {
-        description: "Complete o cadastro com imagens, descrição e SEO.",
+        description: "Adicione as imagens abaixo. Descrição e SEO no cadastro completo.",
         action: {
           label: "Completar cadastro",
           onClick: () => {
@@ -88,6 +88,7 @@ export function ProductVariantsSection({ productId, brand, category }: Props) {
       setPrice("");
       setCostPrice("");
       setStockQty("0");
+      setExpandedId(created.id);
       invalidate();
     },
     onError: (err: Error) => {
