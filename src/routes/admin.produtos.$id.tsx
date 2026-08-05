@@ -23,6 +23,7 @@ import {
   ProductImageManager,
   type ProductImageManagerHandle,
 } from "@/components/admin/ProductImageManager";
+import { ProductVariantsSection } from "@/components/admin/ProductVariantsSection";
 import { ProductRelationsSection } from "@/components/admin/ProductRelationsSection";
 import { ProductAttributesSection } from "@/components/admin/ProductAttributesSection";
 import { ProductAiAssistantDialog, type ProductCopyApply } from "@/components/admin/ProductAiAssistantDialog";
@@ -730,6 +731,8 @@ function ProductForm() {
           />
 
           {!isNew && <ProductAttributesSection productId={id} />}
+
+          {!isNew && <ProductVariantsSection productId={id} />}
 
           {!isNew && <ProductRelationsSection productId={id} />}
         </div>
