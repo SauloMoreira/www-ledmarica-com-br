@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Loader2, Plus, Layers, Unlink, ExternalLink } from "lucide-react";
+import { Loader2, Plus, Layers, Unlink, ExternalLink, Images } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { formatBRL } from "@/lib/domain";
+import { ProductImageManager } from "@/components/admin/ProductImageManager";
 import {
   adminCreateVariant,
   adminGetVariantOption,
@@ -16,7 +17,7 @@ import {
   adminUpsertVariantOption,
 } from "@/server/productVariants.functions";
 
-type Props = { productId: string };
+type Props = { productId: string; brand?: string | null; category?: string | null };
 
 export function ProductVariantsSection({ productId }: Props) {
   const qc = useQueryClient();
