@@ -27,6 +27,8 @@ interface Props {
   productName: string;
   brand?: string | null;
   category?: string | null;
+  /** Chamado sempre que as imagens do produto são salvas/alteradas. */
+  onImagesChanged?: () => void;
 }
 
 export interface ProductImageManagerHandle {
@@ -60,7 +62,7 @@ async function fetchProductImages(productId: string) {
 }
 
 export const ProductImageManager = forwardRef<ProductImageManagerHandle, Props>(
-  function ProductImageManager({ productId, productName, brand, category }, ref) {
+  function ProductImageManager({ productId, productName, brand, category, onImagesChanged }, ref) {
     const queryClient = useQueryClient();
     const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
     const [uploading, setUploading] = useState(false);
@@ -84,6 +86,7 @@ export const ProductImageManager = forwardRef<ProductImageManagerHandle, Props>(
       queryClient.invalidateQueries({ queryKey: ["product-images", productId] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["product"] });
+      onImagesChanged?.();
     };
 
     const invalidate = () => refreshProductCaches();
