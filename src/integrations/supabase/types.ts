@@ -3273,6 +3273,44 @@ export type Database = {
           },
         ]
       }
+      product_variant_options: {
+        Row: {
+          created_at: string
+          display_type: string
+          id: string
+          option_title: string
+          product_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_type?: string
+          id?: string
+          option_title: string
+          product_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_type?: string
+          id?: string
+          option_title?: string
+          product_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variant_options_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           active: boolean | null
@@ -3312,6 +3350,7 @@ export type Database = {
           name: string
           ncm: string | null
           net_weight: number | null
+          parent_product_id: string | null
           price: number
           product_origin: number | null
           review_count: number
@@ -3329,6 +3368,7 @@ export type Database = {
           tax_category: string | null
           tributary_unit: string | null
           updated_at: string | null
+          variant_attributes: Json
           weight_kg: number | null
           width_cm: number | null
         }
@@ -3370,6 +3410,7 @@ export type Database = {
           name: string
           ncm?: string | null
           net_weight?: number | null
+          parent_product_id?: string | null
           price: number
           product_origin?: number | null
           review_count?: number
@@ -3387,6 +3428,7 @@ export type Database = {
           tax_category?: string | null
           tributary_unit?: string | null
           updated_at?: string | null
+          variant_attributes?: Json
           weight_kg?: number | null
           width_cm?: number | null
         }
@@ -3428,6 +3470,7 @@ export type Database = {
           name?: string
           ncm?: string | null
           net_weight?: number | null
+          parent_product_id?: string | null
           price?: number
           product_origin?: number | null
           review_count?: number
@@ -3445,6 +3488,7 @@ export type Database = {
           tax_category?: string | null
           tributary_unit?: string | null
           updated_at?: string | null
+          variant_attributes?: Json
           weight_kg?: number | null
           width_cm?: number | null
         }
@@ -3454,6 +3498,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -3725,6 +3776,7 @@ export type Database = {
           name: string
           ncm: string | null
           net_weight: number | null
+          parent_product_id: string | null
           price: number
           product_origin: number | null
           review_count: number
@@ -3742,6 +3794,7 @@ export type Database = {
           tax_category: string | null
           tributary_unit: string | null
           updated_at: string | null
+          variant_attributes: Json
           weight_kg: number | null
           width_cm: number | null
         }
@@ -3792,6 +3845,7 @@ export type Database = {
           name: string
           ncm: string | null
           net_weight: number | null
+          parent_product_id: string | null
           price: number
           product_origin: number | null
           review_count: number
@@ -3809,6 +3863,7 @@ export type Database = {
           tax_category: string | null
           tributary_unit: string | null
           updated_at: string | null
+          variant_attributes: Json
           weight_kg: number | null
           width_cm: number | null
         }[]

@@ -192,6 +192,7 @@ function HomePage() {
         .from("products")
         .select(PRODUCT_LIST_COLS)
         .eq("active", true)
+        .is("parent_product_id", null)
         .eq("featured", true)
         .limit(8);
       if (error) throw error;
@@ -208,6 +209,7 @@ function HomePage() {
         .from("products")
         .select(PRODUCT_LIST_COLS)
         .eq("active", true)
+        .is("parent_product_id", null)
         .gt("stock_qty", 0)
         .not("sale_price", "is", null)
         .order("updated_at", { ascending: false })
@@ -286,6 +288,7 @@ function HomePage() {
             .from("products")
             .select(PRODUCT_LIST_COLS, { count: "exact" })
             .eq("active", true)
+            .is("parent_product_id", null)
             .order("featured", { ascending: false })
             .order("created_at", { ascending: false })
             .range(0, 23);

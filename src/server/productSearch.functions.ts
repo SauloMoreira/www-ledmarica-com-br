@@ -125,6 +125,26 @@ export const searchProducts = createServerFn({ method: "POST" })
       b2b_valid_until: r.b2b_valid_until ?? null,
     }));
 
+    // Grade/vitrine: esconder produtos-filho (variações) para não duplicar cards.
+    // Buscas por texto continuam retornando variações normalmente.
+    let visibleProducts = products;
+    if ((terms?.length ?? 0) === 0 && products.length > 0) {
+      const { data: childRows } = await supabaseAdmin
+        .from("products")
+        .select("id")
+        .in(
+          "id",
+          products.map((p: { id: string }) => p.id),
+        )
+        .not("parent_product_id", "is", null);
+      const childIds = new Set((childRows ?? []).map((r: { id: string }) => r.id));
+      if (childIds.size > 0) {
+        visibleProducts = products.filter((p: { id: string }) => !childIds.has(p.id));
+      }
+    }
+
+
+
     // Log de buscas sem resultado (best-effort, não bloqueia)
     if (data.q && data.q.trim().length >= 2 && total === 0) {
       try {
@@ -139,7 +159,7 @@ export const searchProducts = createServerFn({ method: "POST" })
       }
     }
 
-    return { products, total, page, pageSize };
+    return { products: visibleProducts, total, page, pageSize };
   });
 
 // ----------------------------------------------------------------

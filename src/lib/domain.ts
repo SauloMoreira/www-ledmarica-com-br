@@ -26,6 +26,8 @@ export type Product = {
   b2b_min_qty?: number | null;
   b2b_qty_multiple?: number | null;
   b2b_show_in_vitrine?: boolean;
+  parent_product_id?: string | null;
+  variant_attributes?: Record<string, string>;
 };
 
 export type Category = {
