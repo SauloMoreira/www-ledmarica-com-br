@@ -1,128 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { slugify } from "@/lib/productImport";
-import { variantUrl } from "@/lib/productImages";
+import {
+  DISPLAY_TYPES,
+  getAdminIdentity,
+  primaryImages,
+  requireAdmin,
+  resolveParentId,
+  toVariantAttributes,
+  uniqueSlug,
+} from "./productVariants.server";
+import type { FamilyMember, ProductFamily, VariantOption } from "./productVariants.types";
 
-/**
- * Variações de Produto (ex.: Cor = Vermelho / Branco / Azul).
- *
- * Modelo: cada variação É um produto completo em `products`, ligado ao
- * produto-pai por `parent_product_id`, com os valores em `variant_attributes`.
- * A "opção" da família (título + tipo de exibição) fica em
- * `product_variant_options`, sempre apontando para o produto-pai.
- *
- * Nada de checkout, B2B, estoque auditado ou combos é alterado aqui.
- */
-
-export type VariantOption = {
-  id: string;
-  product_id: string;
-  option_title: string;
-  display_type: "text_chip" | "swatch_color" | "swatch_image";
-  sort_order: number;
-};
-
-export type FamilyMember = {
-  id: string;
-  name: string;
-  slug: string;
-  sku: string | null;
-  price: number;
-  sale_price: number | null;
-  stock_qty: number;
-  active: boolean;
-  variant_attributes: Record<string, string>;
-  image: string | null;
-  is_parent: boolean;
-};
-
-export type ProductFamily = {
-  parentId: string;
-  option: Pick<VariantOption, "option_title" | "display_type"> | null;
-  members: FamilyMember[];
-};
-
-const DISPLAY_TYPES = ["text_chip", "swatch_color", "swatch_image"] as const;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-async function requireAdmin(): Promise<string> {
-  const { assertAdminAal2FromBearer } = await import(
-    "@/integrations/supabase/admin-assertions.server"
-  );
-  return assertAdminAal2FromBearer();
-}
-
-async function getAdminIdentity(userId: string): Promise<{ id: string; email: string | null }> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("profiles")
-    .select("id, email")
-    .eq("id", userId)
-    .maybeSingle();
-  return { id: userId, email: (data?.email as string | null) ?? null };
-}
-
-/** Resolve sempre para o id do produto-pai da família. */
-async function resolveParentId(productId: string): Promise<string> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("products")
-    .select("id, parent_product_id")
-    .eq("id", productId)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) throw new Error("produto_nao_encontrado");
-  return (data.parent_product_id as string | null) ?? (data.id as string);
-}
-
-function toVariantAttributes(value: unknown): Record<string, string> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-    if (typeof v === "string") out[k] = v;
-  }
-  return out;
-}
-
-async function primaryImages(productIds: string[]): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
-  if (productIds.length === 0) return map;
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("product_images")
-    .select("product_id, original_url, is_primary, sort_order")
-    .in("product_id", productIds)
-    .order("is_primary", { ascending: false })
-    .order("sort_order", { ascending: true });
-  for (const row of (data ?? []) as unknown as Array<{
-    product_id: string;
-    original_url: string | null;
-  }>) {
-    if (map.has(row.product_id)) continue;
-    const url = variantUrl(row.original_url, "thumb") ?? row.original_url;
-    if (url) map.set(row.product_id, url);
-  }
-  return map;
-}
-
-async function uniqueSlug(base: string): Promise<string> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const root = slugify(base) || "produto";
-  let candidate = root;
-  for (let i = 2; i < 50; i++) {
-    const { data } = await supabaseAdmin
-      .from("products")
-      .select("id")
-      .eq("slug", candidate)
-      .maybeSingle();
-    if (!data) return candidate;
-    candidate = `${root}-${i}`;
-  }
-  return `${root}-${Date.now()}`;
-}
+export type { FamilyMember, ProductFamily, VariantOption } from "./productVariants.types";
 
 // ---------------------------------------------------------------------------
 // Opção da família
