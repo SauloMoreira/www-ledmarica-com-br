@@ -17,6 +17,7 @@ import { BuyTogetherBlock } from "@/components/store/BuyTogetherBlock";
 import { ProductInBundlesBlock } from "@/components/store/ProductInBundlesBlock";
 import { ProductSpecsBlock } from "@/components/store/ProductSpecsBlock";
 import { ProductReviews } from "@/components/store/ProductReviews";
+import { ProductVariantSelector } from "@/components/store/ProductVariantSelector";
 
 type FaqItem = { question: string; answer: string };
 type ProductWithSeo = Product & {
@@ -47,7 +48,22 @@ function buildProductJsonLd(
   baseDesc: string,
   allImageUrls: string[],
 ) {
+  const parentId = (p as { parent_product_id?: string | null }).parent_product_id ?? null;
+  const variantAttrs = (p as { variant_attributes?: Record<string, string> | null })
+    .variant_attributes;
+  const isVariantOf = parentId
+    ? {
+        isVariantOf: {
+          "@type": "ProductGroup",
+          productGroupID: parentId,
+          ...(variantAttrs && Object.keys(variantAttrs).some((k) => k.toLowerCase() === "cor")
+            ? { variesBy: ["https://schema.org/color"] }
+            : {}),
+        },
+      }
+    : {};
   return {
+    ...isVariantOf,
     "@context": "https://schema.org",
     "@type": "Product",
     name: p.name,
@@ -101,7 +117,7 @@ const productQueryOptions = (slug: string) => ({
       .select(
         // Colunas sensíveis (cost_price, b2b_price, fiscal_*, stock_min_alert, stock_alert_enabled etc.)
         // não são retornadas ao público — a leitura das mesmas foi restrita via GRANT no banco.
-        "id, name, slug, description, specs, price, sale_price, stock_qty, sku, ncm, brand, weight_kg, height_cm, width_cm, length_cm, category_id, images, tags, active, featured, created_at, updated_at, seo_title, seo_description, seo_keywords, free_shipping_eligible, b2b_enabled, b2b_show_in_vitrine, b2b_commercial_note, allow_out_of_stock_sales, avg_rating, review_count",
+        "id, name, slug, description, specs, price, sale_price, stock_qty, sku, ncm, brand, weight_kg, height_cm, width_cm, length_cm, category_id, images, tags, active, featured, created_at, updated_at, seo_title, seo_description, seo_keywords, free_shipping_eligible, b2b_enabled, b2b_show_in_vitrine, b2b_commercial_note, allow_out_of_stock_sales, avg_rating, review_count, parent_product_id, variant_attributes",
       )
       .eq("slug", slug)
       .eq("active", true)
@@ -347,6 +363,12 @@ function ProductPage() {
                 </span>
               ))}
             </div>
+
+            <ProductVariantSelector
+              productId={product.id}
+              currentSlug={product.slug}
+              onChange={() => setQty(1)}
+            />
 
             {product.stock_qty > 0 && (
               <div className="flex items-center gap-2.5">
