@@ -250,66 +250,96 @@ export function ProductVariantsSection({ productId, brand, category }: Props) {
 
       {hasOption && members.length > 1 && (
         <ul className="grid gap-2 sm:grid-cols-2">
-          {members.map((m) => (
-            <li
-              key={m.id}
-              className={`flex items-center gap-3 rounded border p-2 ${m.id === productId ? "border-primary bg-primary/5" : "bg-background"}`}
-            >
-              {m.image ? (
-                <img
-                  src={m.image}
-                  alt={m.name}
-                  className="w-10 h-10 rounded object-cover border"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded bg-muted border border-dashed" />
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium truncate">{m.name}</div>
-                <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2">
-                  <span>
-                    {title}: {Object.values(m.variant_attributes)[0] ?? (m.is_parent ? "—" : "?")}
-                  </span>
-                  <span>{formatBRL(m.sale_price ?? m.price)}</span>
-                  <span>Estoque: {m.stock_qty}</span>
+          {members.map((m) => {
+            const expanded = expandedId === m.id;
+            return (
+              <li
+                key={m.id}
+                className={`rounded border p-2 ${m.id === productId ? "border-primary bg-primary/5" : "bg-background"} ${expanded ? "sm:col-span-2" : ""}`}
+              >
+                <div className="flex items-center gap-3">
+                  {m.image ? (
+                    <img
+                      src={m.image}
+                      alt={m.name}
+                      className="w-10 h-10 rounded object-cover border"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded bg-muted border border-dashed" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate">{m.name}</div>
+                    <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2">
+                      <span>
+                        {title}:{" "}
+                        {Object.values(m.variant_attributes)[0] ?? (m.is_parent ? "—" : "?")}
+                      </span>
+                      <span>{formatBRL(m.sale_price ?? m.price)}</span>
+                      <span>Estoque: {m.stock_qty}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Badge variant={m.active ? "default" : "secondary"} className="text-[10px]">
+                      {m.active ? "Ativo" : "Inativo"}
+                    </Badge>
+                    {m.is_parent && (
+                      <Badge variant="outline" className="text-[10px]">
+                        Principal
+                      </Badge>
+                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={expanded ? "secondary" : "ghost"}
+                      className="h-8 px-2 text-xs"
+                      aria-expanded={expanded}
+                      title="Gerenciar imagens desta variação"
+                      onClick={() => setExpandedId(expanded ? null : m.id)}
+                    >
+                      <Images className="h-4 w-4 sm:mr-1.5" />
+                      <span className="hidden sm:inline">Imagens</span>
+                    </Button>
+                    {m.id !== productId && (
+                      <Button asChild size="icon" variant="ghost" title="Abrir cadastro">
+                        <Link to="/admin/produtos/$id" params={{ id: m.id }}>
+                          <ExternalLink className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    )}
+                    {!m.is_parent && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        title="Desvincular variação"
+                        disabled={unlinkMut.isPending}
+                        onClick={() => {
+                          if (confirm(`Desvincular "${m.name}" da família de variações?`)) {
+                            unlinkMut.mutate(m.id);
+                          }
+                        }}
+                      >
+                        <Unlink className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <Badge variant={m.active ? "default" : "secondary"} className="text-[10px]">
-                  {m.active ? "Ativo" : "Inativo"}
-                </Badge>
-                {m.is_parent && (
-                  <Badge variant="outline" className="text-[10px]">
-                    Principal
-                  </Badge>
+
+                {expanded && (
+                  <div className="mt-3 border-t pt-3">
+                    <ProductImageManager
+                      productId={m.id}
+                      productName={m.name}
+                      brand={brand}
+                      category={category}
+                      onImagesChanged={() => qc.invalidateQueries({ queryKey: listKey })}
+                    />
+                  </div>
                 )}
-                {m.id !== productId && (
-                  <Button asChild size="icon" variant="ghost" title="Abrir cadastro">
-                    <Link to="/admin/produtos/$id" params={{ id: m.id }}>
-                      <ExternalLink className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                )}
-                {!m.is_parent && (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    title="Desvincular variação"
-                    disabled={unlinkMut.isPending}
-                    onClick={() => {
-                      if (confirm(`Desvincular "${m.name}" da família de variações?`)) {
-                        unlinkMut.mutate(m.id);
-                      }
-                    }}
-                  >
-                    <Unlink className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
