@@ -140,9 +140,9 @@ function CategoriasPage() {
   const save = async (e: FormEvent) => {
     e.preventDefault();
     const payload = {
-      name: form.name,
-      slug: form.slug || slugify(form.name),
-      description: form.description || null,
+      name: form.name.trim(),
+      slug: slugify(form.slug.trim() || form.name),
+      description: form.description.trim() || null,
       sort_order: Number(form.sort_order),
       active: form.active,
     };

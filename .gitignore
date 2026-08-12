@@ -20,6 +20,10 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Env local — Lovable Cloud injeta por ambiente; nunca deve ser commitado manualmente
+.env
+.env.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

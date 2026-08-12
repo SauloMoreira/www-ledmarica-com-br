@@ -460,8 +460,8 @@ export const validateImportRows = createServerFn({ method: "POST" })
     const categoryByKey = new Map<string, { id: string; name: string; slug: string }>();
     const categoryKeyCount = new Map<string, number>();
     for (const c of existingCategories ?? []) {
-      const slugKey = c.slug.toLowerCase();
-      const nameKey = c.name.toLowerCase();
+      const slugKey = c.slug.trim().toLowerCase();
+      const nameKey = c.name.trim().toLowerCase();
       categoryByKey.set(slugKey, c);
       categoryByKey.set(nameKey, c);
       categoryKeyCount.set(slugKey, (categoryKeyCount.get(slugKey) ?? 0) + 1);
