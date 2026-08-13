@@ -417,6 +417,8 @@ function CheckoutPage() {
             saveAddress: isPickup ? false : saveAddress,
           },
           couponCode,
+          intendedPaymentMethod: paymentChoice,
+
           notes: notes || null,
           tracking: (await import("@/lib/leadTracking")).getLeadTrackingPayload(),
         },
