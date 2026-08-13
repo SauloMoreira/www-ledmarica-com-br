@@ -192,7 +192,25 @@ export const createMercadoPagoPreference = createServerFn({ method: "POST" })
       notification_url: `${siteUrl}/api/public/mercadopago/webhook`,
       statement_descriptor: "LED MARICA",
       metadata: { order_id: order.id, order_number: order.order_number },
+      // Quando o cliente escolheu Pix no checkout (e por isso pode ter recebido
+      // o desconto automático), restringimos a preference a Pix/saldo MP —
+      // evita ganhar o desconto e pagar no cartão.
+      ...(order.intended_payment_method === "pix"
+        ? {
+            payment_methods: {
+              excluded_payment_types: [
+                { id: "credit_card" },
+                { id: "debit_card" },
+                { id: "prepaid_card" },
+                { id: "ticket" },
+                { id: "atm" },
+              ],
+              installments: 1,
+            },
+          }
+        : {}),
     };
+
 
     // 4) Criar preference
     console.log("[MP] criando preference", {
