@@ -57,6 +57,32 @@ interface Coupon {
   used_count: number | null;
   expires_at: string | null;
   active: boolean | null;
+  auto_apply?: boolean | null;
+  condition_type?: string | null;
+  condition_value?: string | null;
+}
+
+/**
+ * Condições disponíveis para aplicação automática.
+ * Estruturado como lista para crescer com novas condições
+ * (ex.: primeira compra, categoria, faixa de valor) sem mexer na UI.
+ */
+const AUTO_CONDITIONS = [
+  {
+    key: "payment_method:pix",
+    label: "Forma de pagamento: Pix",
+    conditionType: "payment_method",
+    conditionValue: "pix",
+  },
+] as const;
+
+function conditionKey(type?: string | null, value?: string | null) {
+  return type && value ? `${type}:${value}` : "";
+}
+
+function conditionLabel(type?: string | null, value?: string | null) {
+  const k = conditionKey(type, value);
+  return AUTO_CONDITIONS.find((c) => c.key === k)?.label ?? k;
 }
 
 function CuponsPage() {
@@ -72,7 +98,10 @@ function CuponsPage() {
     max_uses: "",
     expires_at: "",
     active: true,
+    auto_apply: false,
+    condition_key: AUTO_CONDITIONS[0].key as string,
   });
+
 
   const sp = Route.useSearch();
   const { page, pageSize, q, sort, setPage, setPageSize, setQ, setSort, setFilter, clearAll } =
