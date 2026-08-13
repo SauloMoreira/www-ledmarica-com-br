@@ -107,6 +107,13 @@ function CheckoutPage() {
   const [couponCode, setCouponCode] = useState<string | null>(null);
   const [discount, setDiscount] = useState(0);
   const [couponLoading, setCouponLoading] = useState(false);
+  // true quando o cupom aplicado veio da regra automática (ex.: Pix), não digitado
+  const [couponIsAuto, setCouponIsAuto] = useState(false);
+
+  // Forma de pagamento pretendida (obrigatória para finalizar)
+  const [paymentChoice, setPaymentChoice] = useState<"pix" | "other" | null>(null);
+  const [paymentChoiceLoading, setPaymentChoiceLoading] = useState(false);
+
 
   const [notes, setNotes] = useState("");
 
