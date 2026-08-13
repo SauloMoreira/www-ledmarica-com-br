@@ -27,6 +27,8 @@ import {
   calculateShipping,
   applyCoupon,
   createOrder,
+  getAutoCouponCode,
+
   lookupLocalDeliveryZone,
 } from "@/server/checkout.functions";
 import { getCartBundlePreview } from "@/server/cartBundlePreview.functions";
