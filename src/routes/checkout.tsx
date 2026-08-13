@@ -9,6 +9,8 @@ import {
   MapPin,
   Truck,
   CreditCard,
+  QrCode,
+
   ShoppingBag,
   Store,
   Building2,
