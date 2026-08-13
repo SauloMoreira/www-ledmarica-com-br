@@ -8,6 +8,31 @@ e versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.6] — 2026-08-13
+
+**Tipo:** hotfix crítico de configuração de produção
+**ChangeControl:** CC-2026-010
+**Classificação:** Crítica (configuração do build publicado e autenticação)
+
+### Corrigido
+- Restaurada a injeção, em tempo de build de produção, das variáveis públicas `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` e `VITE_SUPABASE_PROJECT_ID` por meio de `.env.production`.
+- Mantidos `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` e `SUPABASE_SERVICE_ROLE_KEY` exclusivamente como bindings gerenciados no runtime server-side; nenhuma chave privilegiada foi adicionada ao código ou a arquivos versionados.
+
+### Diagnóstico
+- O endpoint publicado `/api/public/health` respondeu `200` e acessou o banco, comprovando que os bindings server-side estavam presentes no Worker.
+- A falha ocorria no bundle do navegador (`main-*.js`): após a remoção do `.env` versionado, o processo de publish não recebia as variáveis `VITE_*` em build-time, enquanto o preview continuava recebendo-as do ambiente do editor.
+
+### Segurança
+- Apenas URL, identificador e chave publicável foram incluídos no artefato frontend, conforme o modelo de segurança do backend com RLS.
+- `SUPABASE_SERVICE_ROLE_KEY` permanece somente no runtime server-side.
+
+### Notas de rollback
+- Versão anterior: commit `44756dc3`.
+- Rollback: restaurar o commit anterior e republicar; não há alteração de banco, dados, RLS, checkout, pagamento ou estoque.
+- Backup pré-deploy: cópia de configuração/código no histórico versionado; banco inalterado.
+
+---
+
 ## [1.0.5] — 2026-06-23
 
 **Tipo:** correção crítica (importação de produtos por planilha — códigos como texto)
