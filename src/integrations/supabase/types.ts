@@ -858,7 +858,10 @@ export type Database = {
       coupons: {
         Row: {
           active: boolean | null
+          auto_apply: boolean
           code: string
+          condition_type: string | null
+          condition_value: string | null
           created_at: string | null
           description: string | null
           discount_type: string
@@ -872,7 +875,10 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          auto_apply?: boolean
           code: string
+          condition_type?: string | null
+          condition_value?: string | null
           created_at?: string | null
           description?: string | null
           discount_type: string
@@ -886,7 +892,10 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          auto_apply?: boolean
           code?: string
+          condition_type?: string | null
+          condition_value?: string | null
           created_at?: string | null
           description?: string | null
           discount_type?: string
@@ -2468,6 +2477,7 @@ export type Database = {
           external_reference: string | null
           has_bundle_discount: boolean
           id: string
+          intended_payment_method: string | null
           invoice_access_key: string | null
           invoice_danfe_url: string | null
           invoice_issued_at: string | null
@@ -2560,6 +2570,7 @@ export type Database = {
           external_reference?: string | null
           has_bundle_discount?: boolean
           id?: string
+          intended_payment_method?: string | null
           invoice_access_key?: string | null
           invoice_danfe_url?: string | null
           invoice_issued_at?: string | null
@@ -2652,6 +2663,7 @@ export type Database = {
           external_reference?: string | null
           has_bundle_discount?: boolean
           id?: string
+          intended_payment_method?: string | null
           invoice_access_key?: string | null
           invoice_danfe_url?: string | null
           invoice_issued_at?: string | null
@@ -3925,6 +3937,10 @@ export type Database = {
           created_count: number
           skipped_count: number
         }[]
+      }
+      get_active_auto_coupon_code: {
+        Args: { _condition_type: string; _condition_value: string }
+        Returns: string
       }
       get_cart_complementary_products: {
         Args: { _limit?: number; _product_ids: string[]; _user_id?: string }
