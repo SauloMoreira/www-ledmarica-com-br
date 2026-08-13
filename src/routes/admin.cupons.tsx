@@ -57,6 +57,32 @@ interface Coupon {
   used_count: number | null;
   expires_at: string | null;
   active: boolean | null;
+  auto_apply?: boolean | null;
+  condition_type?: string | null;
+  condition_value?: string | null;
+}
+
+/**
+ * Condições disponíveis para aplicação automática.
+ * Estruturado como lista para crescer com novas condições
+ * (ex.: primeira compra, categoria, faixa de valor) sem mexer na UI.
+ */
+const AUTO_CONDITIONS = [
+  {
+    key: "payment_method:pix",
+    label: "Forma de pagamento: Pix",
+    conditionType: "payment_method",
+    conditionValue: "pix",
+  },
+] as const;
+
+function conditionKey(type?: string | null, value?: string | null) {
+  return type && value ? `${type}:${value}` : "";
+}
+
+function conditionLabel(type?: string | null, value?: string | null) {
+  const k = conditionKey(type, value);
+  return AUTO_CONDITIONS.find((c) => c.key === k)?.label ?? k;
 }
 
 function CuponsPage() {
@@ -72,7 +98,10 @@ function CuponsPage() {
     max_uses: "",
     expires_at: "",
     active: true,
+    auto_apply: false,
+    condition_key: AUTO_CONDITIONS[0].key as string,
   });
+
 
   const sp = Route.useSearch();
   const { page, pageSize, q, sort, setPage, setPageSize, setQ, setSort, setFilter, clearAll } =
@@ -131,6 +160,8 @@ function CuponsPage() {
       max_uses: "",
       expires_at: "",
       active: true,
+      auto_apply: false,
+      condition_key: AUTO_CONDITIONS[0].key,
     });
     setOpen(true);
   };
@@ -145,12 +176,35 @@ function CuponsPage() {
       max_uses: c.max_uses ? String(c.max_uses) : "",
       expires_at: c.expires_at ? c.expires_at.slice(0, 16) : "",
       active: !!c.active,
+      auto_apply: !!c.auto_apply,
+      condition_key: conditionKey(c.condition_type, c.condition_value) || AUTO_CONDITIONS[0].key,
     });
     setOpen(true);
   };
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
+    const condition = AUTO_CONDITIONS.find((c) => c.key === form.condition_key);
+    if (form.auto_apply && !condition) {
+      return toast.error("Selecione uma condição para a aplicação automática.");
+    }
+
+    // Regra: só pode existir 1 cupom automático ativo por condição.
+    if (form.auto_apply && form.active && condition) {
+      const conflict = (list ?? []).find(
+        (c) =>
+          c.id !== editing?.id &&
+          c.active &&
+          c.auto_apply &&
+          conditionKey(c.condition_type, c.condition_value) === condition.key,
+      );
+      if (conflict) {
+        return toast.error(
+          `Já existe um cupom automático ativo para esta condição: ${conflict.code} (${condition.label})`,
+        );
+      }
+    }
+
     const payload = {
       code: form.code.trim().toUpperCase(),
       description: form.description || null,
@@ -160,15 +214,24 @@ function CuponsPage() {
       max_uses: form.max_uses ? Number(form.max_uses) : null,
       expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
       active: form.active,
+      auto_apply: form.auto_apply,
+      condition_type: form.auto_apply ? (condition?.conditionType ?? null) : null,
+      condition_value: form.auto_apply ? (condition?.conditionValue ?? null) : null,
     };
     const res = editing
       ? await supabase.from("coupons").update(payload).eq("id", editing.id)
       : await supabase.from("coupons").insert(payload);
-    if (res.error) return toast.error(res.error.message);
+    if (res.error) {
+      const msg = res.error.message.includes("coupons_unique_active_auto_condition")
+        ? "Já existe um cupom automático ativo para esta condição."
+        : res.error.message;
+      return toast.error(msg);
+    }
     toast.success("Salvo");
     setOpen(false);
     load();
   };
+
 
   const del = async (id: string) => {
     if (!confirm("Excluir cupom?")) return;
@@ -184,7 +247,20 @@ function CuponsPage() {
       id: "code",
       header: "Código",
       sortable: true,
-      cell: (c) => <span className="font-mono font-semibold">{c.code}</span>,
+      cell: (c) => (
+        <span className="inline-flex items-center gap-2">
+          <span className="font-mono font-semibold">{c.code}</span>
+          {c.auto_apply && (
+            <span
+              className="rounded-full bg-primary-tint text-primary border border-primary/30 px-2 py-0.5 text-[10px] font-medium"
+              title={conditionLabel(c.condition_type, c.condition_value)}
+            >
+              Automático
+            </span>
+          )}
+        </span>
+      ),
+
     },
     {
       id: "discount_value",
@@ -397,6 +473,41 @@ function CuponsPage() {
                 onCheckedChange={(v) => setForm({ ...form, active: v })}
               />
             </div>
+            <div className="rounded-lg border border-border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Aplicação automática</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Aplica o cupom sozinho quando a condição for atendida no checkout.
+                  </p>
+                </div>
+                <Switch
+                  checked={form.auto_apply}
+                  onCheckedChange={(v) => setForm({ ...form, auto_apply: v })}
+                />
+              </div>
+              {form.auto_apply && (
+                <div>
+                  <Label>Condição</Label>
+                  <Select
+                    value={form.condition_key}
+                    onValueChange={(v) => setForm({ ...form, condition_key: v })}
+                  >
+                    <SelectTrigger className="mt-1 h-10">
+                      <SelectValue placeholder="Selecione a condição" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AUTO_CONDITIONS.map((c) => (
+                        <SelectItem key={c.key} value={c.key}>
+                          {c.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
             <DialogFooter>
               <Button type="submit">Salvar</Button>
             </DialogFooter>

@@ -9,6 +9,8 @@ import {
   MapPin,
   Truck,
   CreditCard,
+  QrCode,
+
   ShoppingBag,
   Store,
   Building2,
@@ -27,6 +29,8 @@ import {
   calculateShipping,
   applyCoupon,
   createOrder,
+  getAutoCouponCode,
+
   lookupLocalDeliveryZone,
 } from "@/server/checkout.functions";
 import { getCartBundlePreview } from "@/server/cartBundlePreview.functions";
@@ -107,6 +111,13 @@ function CheckoutPage() {
   const [couponCode, setCouponCode] = useState<string | null>(null);
   const [discount, setDiscount] = useState(0);
   const [couponLoading, setCouponLoading] = useState(false);
+  // true quando o cupom aplicado veio da regra automática (ex.: Pix), não digitado
+  const [couponIsAuto, setCouponIsAuto] = useState(false);
+
+  // Forma de pagamento pretendida (obrigatória para finalizar)
+  const [paymentChoice, setPaymentChoice] = useState<"pix" | "other" | null>(null);
+  const [paymentChoiceLoading, setPaymentChoiceLoading] = useState(false);
+
 
   const [notes, setNotes] = useState("");
 
@@ -314,18 +325,58 @@ function CheckoutPage() {
     try {
       const r = await applyCoupon({ data: { code: couponInput.trim(), subtotal } });
       if (r.valid) {
+        // Cupom manual sempre prevalece sobre o automático.
         setCouponCode(couponInput.trim());
         setDiscount(r.discount);
+        setCouponIsAuto(false);
         toast.success(r.message);
       } else {
-        setCouponCode(null);
-        setDiscount(0);
+        if (!couponIsAuto) {
+          setCouponCode(null);
+          setDiscount(0);
+        }
         toast.error(r.message);
       }
     } finally {
       setCouponLoading(false);
     }
   }
+
+  async function handleSelectPayment(choice: "pix" | "other") {
+    if (paymentChoiceLoading) return;
+    setPaymentChoice(choice);
+
+    if (choice === "other") {
+      // Remove apenas o desconto automático — cupom manual permanece.
+      if (couponIsAuto) {
+        setCouponCode(null);
+        setDiscount(0);
+        setCouponIsAuto(false);
+      }
+      return;
+    }
+
+    // Pix: só aplica automático se não houver cupom manual válido aplicado.
+    if (couponCode && !couponIsAuto) return;
+    setPaymentChoiceLoading(true);
+    try {
+      const { code } = await getAutoCouponCode({
+        data: { conditionType: "payment_method", conditionValue: "pix" },
+      });
+      if (!code) return;
+      const r = await applyCoupon({ data: { code, subtotal } });
+      if (r.valid) {
+        setCouponCode(code);
+        setDiscount(r.discount);
+        setCouponIsAuto(true);
+      }
+    } catch {
+      // silencioso: ausência de desconto automático não impede o checkout
+    } finally {
+      setPaymentChoiceLoading(false);
+    }
+  }
+
 
   async function handleSubmit() {
     if (!isPickup && !selectedShipping) return;
@@ -366,6 +417,8 @@ function CheckoutPage() {
             saveAddress: isPickup ? false : saveAddress,
           },
           couponCode,
+          intendedPaymentMethod: paymentChoice,
+
           notes: notes || null,
           tracking: (await import("@/lib/leadTracking")).getLeadTrackingPayload(),
         },
@@ -845,16 +898,64 @@ function CheckoutPage() {
 
                 <section className="mb-5">
                   <h3 className="font-semibold text-sm mb-2 text-muted-foreground uppercase tracking-wide">
-                    Pagamento
+                    Forma de pagamento
                   </h3>
-                  <div className="p-4 bg-primary-tint border border-primary/30 rounded-lg text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(
+                      [
+                        {
+                          id: "pix" as const,
+                          title: "Pix",
+                          desc: "Aprovação imediata",
+                          icon: <QrCode className="w-5 h-5" />,
+                        },
+                        {
+                          id: "other" as const,
+                          title: "Cartão / Boleto",
+                          desc: "Crédito, débito ou boleto",
+                          icon: <CreditCard className="w-5 h-5" />,
+                        },
+                      ] as const
+                    ).map((opt) => {
+                      const selected = paymentChoice === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => handleSelectPayment(opt.id)}
+                          disabled={paymentChoiceLoading}
+                          className={`flex items-start gap-3 rounded-lg border p-4 text-left transition-colors disabled:opacity-60 ${
+                            selected
+                              ? "border-primary bg-primary-tint ring-1 ring-primary"
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <span className="mt-0.5 text-primary">{opt.icon}</span>
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium">{opt.title}</span>
+                            <span className="block text-xs text-muted-foreground">{opt.desc}</span>
+                          </span>
+                          {selected && <Check className="w-4 h-4 text-primary ml-auto shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {!paymentChoice && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Escolha a forma de pagamento para finalizar o pedido.
+                    </p>
+                  )}
+                  <div className="mt-3 p-4 bg-primary-tint border border-primary/30 rounded-lg text-sm">
                     <p className="font-medium mb-1">Pagamento via Mercado Pago</p>
                     <p className="text-muted-foreground text-xs">
-                      Ao confirmar, você será redirecionado para o checkout seguro do Mercado Pago
-                      (Pix, cartão ou boleto).
+                      {paymentChoice === "pix"
+                        ? "Ao confirmar, você será redirecionado para o checkout seguro do Mercado Pago com pagamento via Pix."
+                        : "Ao confirmar, você será redirecionado para o checkout seguro do Mercado Pago (Pix, cartão ou boleto)."}
                     </p>
                   </div>
                 </section>
+
 
                 <section className="mb-5">
                   <Label htmlFor="notes">Observações (opcional)</Label>
@@ -876,7 +977,12 @@ function CheckoutPage() {
                   >
                     Voltar
                   </Button>
-                  <Button onClick={handleSubmit} disabled={submitting} className="flex-1 h-12">
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={submitting || !paymentChoice || paymentChoiceLoading}
+                    className="flex-1 h-12"
+                  >
+
                     {submitting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -948,10 +1054,20 @@ function CheckoutPage() {
               )}
               {discount > 0 && (
                 <div className="flex justify-between text-success">
-                  <span>Desconto ({couponCode})</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    {couponIsAuto ? (
+                      <>
+                        <QrCode className="w-3.5 h-3.5" />
+                        Desconto Pix ({couponCode})
+                      </>
+                    ) : (
+                      <>Desconto ({couponCode})</>
+                    )}
+                  </span>
                   <span>−{formatBRL(discount)}</span>
                 </div>
               )}
+
               {bundleDiscountPreview > 0 && (
                 <div className="flex justify-between text-success">
                   <span>Desconto de combo</span>

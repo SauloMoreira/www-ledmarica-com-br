@@ -174,6 +174,35 @@ export const applyCoupon = createServerFn({ method: "POST" })
   });
 
 // ============================================================
+// Cupom automático por condição (ex.: forma de pagamento = pix)
+// Retorna apenas o código; a validação (mínimo, validade, limites)
+// continua sendo feita por `apply_coupon`.
+// ============================================================
+export const getAutoCouponCode = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        conditionType: z.enum(["payment_method"]),
+        conditionValue: z.string().min(1).max(40),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: code, error } = await supabaseAdmin.rpc(
+      "get_active_auto_coupon_code" as never,
+      {
+        _condition_type: data.conditionType,
+        _condition_value: data.conditionValue,
+      } as never,
+    );
+    if (error) return { code: null as string | null };
+    return { code: (code as unknown as string | null) ?? null };
+  });
+
+
+
+// ============================================================
 // Criar pedido (RLS aplicada como o usuário)
 // ============================================================
 const CreateOrderInput = z.object({
@@ -223,6 +252,8 @@ const CreateOrderInput = z.object({
     .nullable()
     .optional(),
   couponCode: z.string().optional().nullable(),
+  intendedPaymentMethod: z.enum(["pix", "other"]).optional().nullable(),
+
   notes: z.string().optional().nullable(),
   tracking: z
     .object({
@@ -574,6 +605,8 @@ export const createOrder = createServerFn({ method: "POST" })
         shipping_cost: shippingCost,
         total,
         coupon_code: data.couponCode ?? null,
+        intended_payment_method: data.intendedPaymentMethod ?? null,
+
         shipping_carrier: shippingCarrier,
         shipping_service: shippingService,
         address_id: addressId,
