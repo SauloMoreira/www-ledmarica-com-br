@@ -473,6 +473,41 @@ function CuponsPage() {
                 onCheckedChange={(v) => setForm({ ...form, active: v })}
               />
             </div>
+            <div className="rounded-lg border border-border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Aplicação automática</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Aplica o cupom sozinho quando a condição for atendida no checkout.
+                  </p>
+                </div>
+                <Switch
+                  checked={form.auto_apply}
+                  onCheckedChange={(v) => setForm({ ...form, auto_apply: v })}
+                />
+              </div>
+              {form.auto_apply && (
+                <div>
+                  <Label>Condição</Label>
+                  <Select
+                    value={form.condition_key}
+                    onValueChange={(v) => setForm({ ...form, condition_key: v })}
+                  >
+                    <SelectTrigger className="mt-1 h-10">
+                      <SelectValue placeholder="Selecione a condição" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AUTO_CONDITIONS.map((c) => (
+                        <SelectItem key={c.key} value={c.key}>
+                          {c.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
             <DialogFooter>
               <Button type="submit">Salvar</Button>
             </DialogFooter>
