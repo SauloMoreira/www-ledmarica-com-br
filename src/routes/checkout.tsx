@@ -894,16 +894,64 @@ function CheckoutPage() {
 
                 <section className="mb-5">
                   <h3 className="font-semibold text-sm mb-2 text-muted-foreground uppercase tracking-wide">
-                    Pagamento
+                    Forma de pagamento
                   </h3>
-                  <div className="p-4 bg-primary-tint border border-primary/30 rounded-lg text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(
+                      [
+                        {
+                          id: "pix" as const,
+                          title: "Pix",
+                          desc: "Aprovação imediata",
+                          icon: <QrCode className="w-5 h-5" />,
+                        },
+                        {
+                          id: "other" as const,
+                          title: "Cartão / Boleto",
+                          desc: "Crédito, débito ou boleto",
+                          icon: <CreditCard className="w-5 h-5" />,
+                        },
+                      ] as const
+                    ).map((opt) => {
+                      const selected = paymentChoice === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => handleSelectPayment(opt.id)}
+                          disabled={paymentChoiceLoading}
+                          className={`flex items-start gap-3 rounded-lg border p-4 text-left transition-colors disabled:opacity-60 ${
+                            selected
+                              ? "border-primary bg-primary-tint ring-1 ring-primary"
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <span className="mt-0.5 text-primary">{opt.icon}</span>
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium">{opt.title}</span>
+                            <span className="block text-xs text-muted-foreground">{opt.desc}</span>
+                          </span>
+                          {selected && <Check className="w-4 h-4 text-primary ml-auto shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {!paymentChoice && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Escolha a forma de pagamento para finalizar o pedido.
+                    </p>
+                  )}
+                  <div className="mt-3 p-4 bg-primary-tint border border-primary/30 rounded-lg text-sm">
                     <p className="font-medium mb-1">Pagamento via Mercado Pago</p>
                     <p className="text-muted-foreground text-xs">
-                      Ao confirmar, você será redirecionado para o checkout seguro do Mercado Pago
-                      (Pix, cartão ou boleto).
+                      {paymentChoice === "pix"
+                        ? "Ao confirmar, você será redirecionado para o checkout seguro do Mercado Pago com pagamento via Pix."
+                        : "Ao confirmar, você será redirecionado para o checkout seguro do Mercado Pago (Pix, cartão ou boleto)."}
                     </p>
                   </div>
                 </section>
+
 
                 <section className="mb-5">
                   <Label htmlFor="notes">Observações (opcional)</Label>
