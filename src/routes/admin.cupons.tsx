@@ -247,7 +247,20 @@ function CuponsPage() {
       id: "code",
       header: "Código",
       sortable: true,
-      cell: (c) => <span className="font-mono font-semibold">{c.code}</span>,
+      cell: (c) => (
+        <span className="inline-flex items-center gap-2">
+          <span className="font-mono font-semibold">{c.code}</span>
+          {c.auto_apply && (
+            <span
+              className="rounded-full bg-primary-tint text-primary border border-primary/30 px-2 py-0.5 text-[10px] font-medium"
+              title={conditionLabel(c.condition_type, c.condition_value)}
+            >
+              Automático
+            </span>
+          )}
+        </span>
+      ),
+
     },
     {
       id: "discount_value",
