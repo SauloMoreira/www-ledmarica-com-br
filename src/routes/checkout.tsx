@@ -321,18 +321,58 @@ function CheckoutPage() {
     try {
       const r = await applyCoupon({ data: { code: couponInput.trim(), subtotal } });
       if (r.valid) {
+        // Cupom manual sempre prevalece sobre o automático.
         setCouponCode(couponInput.trim());
         setDiscount(r.discount);
+        setCouponIsAuto(false);
         toast.success(r.message);
       } else {
-        setCouponCode(null);
-        setDiscount(0);
+        if (!couponIsAuto) {
+          setCouponCode(null);
+          setDiscount(0);
+        }
         toast.error(r.message);
       }
     } finally {
       setCouponLoading(false);
     }
   }
+
+  async function handleSelectPayment(choice: "pix" | "other") {
+    if (paymentChoiceLoading) return;
+    setPaymentChoice(choice);
+
+    if (choice === "other") {
+      // Remove apenas o desconto automático — cupom manual permanece.
+      if (couponIsAuto) {
+        setCouponCode(null);
+        setDiscount(0);
+        setCouponIsAuto(false);
+      }
+      return;
+    }
+
+    // Pix: só aplica automático se não houver cupom manual válido aplicado.
+    if (couponCode && !couponIsAuto) return;
+    setPaymentChoiceLoading(true);
+    try {
+      const { code } = await getAutoCouponCode({
+        data: { conditionType: "payment_method", conditionValue: "pix" },
+      });
+      if (!code) return;
+      const r = await applyCoupon({ data: { code, subtotal } });
+      if (r.valid) {
+        setCouponCode(code);
+        setDiscount(r.discount);
+        setCouponIsAuto(true);
+      }
+    } catch {
+      // silencioso: ausência de desconto automático não impede o checkout
+    } finally {
+      setPaymentChoiceLoading(false);
+    }
+  }
+
 
   async function handleSubmit() {
     if (!isPickup && !selectedShipping) return;
