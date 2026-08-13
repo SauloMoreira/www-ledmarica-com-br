@@ -75,10 +75,11 @@ export const createMercadoPagoPreference = createServerFn({ method: "POST" })
     const { data: order, error: orderErr } = await supabase
       .from("orders")
       .select(
-        "id, user_id, order_number, status, payment_status, subtotal, discount, bundle_discount_total, shipping_cost, total, address_snapshot, mp_preference_id, checkout_url, order_items(id, product_id, product_name, qty, unit_price, total_price)",
+        "id, user_id, order_number, status, payment_status, subtotal, discount, bundle_discount_total, shipping_cost, total, address_snapshot, mp_preference_id, checkout_url, intended_payment_method, order_items(id, product_id, product_name, qty, unit_price, total_price)",
       )
       .eq("id", data.orderId)
       .single();
+
 
     if (orderErr || !order) {
       console.error("[MP] pedido não encontrado", orderErr);
