@@ -204,3 +204,18 @@ neste arquivo na seção "Histórico" abaixo.
   modelo baixável não for validado no Microsoft Excel com SKU numérico longo preservado como
   Texto.
 
+### CC-2026-010 — Hotfix de variáveis públicas no build publicado
+- **Solicitante:** Saulo Moreira
+- **Classificação:** Crítica (configuração de produção/auth; indisponibilidade pública)
+- **Data abertura:** 13/ago/2026
+- **Risco segurança:** Baixo após revisão — somente chave publicável no frontend; service role permanece exclusivamente server-side.
+- **Risco regressão:** Baixo e restrito à inicialização do cliente; nenhuma lógica funcional alterada.
+- **Backup necessário:** configuração/código preservados no histórico versionado; banco e storage inalterados.
+- **Arquivos alterados:** `.env.production` e documentação em `docs/production/*`.
+- **Plano de teste:** healthcheck server-side, build publicado e reload real sem cache em home/catálogo nos dois domínios.
+- **Plano de rollback:** restaurar commit `44756dc3` e republicar.
+- **Aprovador:** Saulo Moreira (solicitação explícita nesta conversa)
+- **Versão alvo:** v1.0.6
+- **Status:** aprovado
+- **Data fechamento:** pendente de validação pós-deploy
+- **Observações pós-deploy:** bindings server-side confirmados antes da mudança por `/api/public/health` = 200; falha isolada ao bundle client.

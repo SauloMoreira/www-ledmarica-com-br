@@ -17,6 +17,7 @@ linha a linha (é contínuo); registrar apenas verificações periódicas.
 | Data/Hora | Versão alvo | Escopo                     | Local seguro                | Retenção | Responsável | ChangeControl | Observações |
 |-----------|-------------|----------------------------|-----------------------------|----------|-------------|---------------|-------------|
 | —         | v1.0.0      | Baseline (snapshot diário) | Lovable Cloud (nativo)      | 7 dias   | Saulo       | CC-2026-001   | Marco inicial |
+| 13/08/2026 14:55 UTC | v1.0.6 | configuração de build; banco inalterado | histórico versionado (commit 44756dc3) | indefinida | Saulo | CC-2026-010 | Rollback integral por versão anterior; nenhuma alteração de dados ou secrets privilegiados. |
 
 ## Testes de restauração
 

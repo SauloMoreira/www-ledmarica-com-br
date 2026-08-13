@@ -5,6 +5,36 @@ Resumo curto vai em `CHANGELOG.md`; o dossiê completo fica aqui.
 
 ---
 
+## v1.0.6 — Hotfix de variáveis públicas no build publicado (13/ago/2026)
+
+| Campo               | Valor                                              |
+|---------------------|----------------------------------------------------|
+| Versão              | 1.0.6                                              |
+| Data                | 13/ago/2026                                        |
+| Responsável         | Saulo Moreira (saulocmoreira@gmail.com)            |
+| Tipo                | hotfix crítico de configuração                     |
+| Status              | aprovado para publicação                           |
+| ChangeControl       | CC-2026-010                                        |
+| Backup pré-deploy   | histórico versionado da configuração; banco inalterado |
+| Plano de rollback   | restaurar commit `44756dc3` e republicar           |
+
+### Descrição
+Corrige a indisponibilidade do frontend publicado causada pela ausência das variáveis públicas `VITE_SUPABASE_*` no build do navegador. Os bindings server-side foram confirmados pelo healthcheck publicado e permanecem gerenciados pela plataforma.
+
+### Arquivos alterados
+- `.env.production` — somente configuração pública necessária ao bundle do navegador.
+- Documentação de governança da release.
+
+### Testes planejados
+- Build automatizado da publicação.
+- Reload sem cache em `/`, `/catalogo` e `/api/public/health` no domínio próprio e no domínio Lovable.
+- Verificação de ausência do erro `Missing Supabase environment variables` no console.
+
+### Pós-deploy / monitoramento
+Janela crítica de 72h; rollback imediato se home, catálogo, auth ou funções server-side apresentarem erro 5xx ou falha de inicialização.
+
+---
+
 ## v1.0.5 — Importação de produtos com códigos como texto (23/jun/2026)
 
 | Campo               | Valor                                              |
