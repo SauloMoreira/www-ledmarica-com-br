@@ -252,6 +252,8 @@ const CreateOrderInput = z.object({
     .nullable()
     .optional(),
   couponCode: z.string().optional().nullable(),
+  intendedPaymentMethod: z.enum(["pix", "other"]).optional().nullable(),
+
   notes: z.string().optional().nullable(),
   tracking: z
     .object({
