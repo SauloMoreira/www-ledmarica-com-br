@@ -43,17 +43,21 @@ export function ProductVariantSelector({ productId, currentSlug, onChange }: Pro
 
   const title = option.option_title;
 
+  // O produto-pai normalmente não tem valor gravado em variant_attributes:
+  // nesse caso mostramos um rótulo curto ("Padrão") em vez do nome completo.
+  const labelOf = (m: (typeof members)[number]) =>
+    m.variant_attributes?.[title]?.trim() || (m.is_parent ? "Padrão" : m.name);
+
+  const current = members.find((m) => m.slug === currentSlug);
+
   return (
     <div className="space-y-2">
       <div className="text-sm text-muted-foreground">
-        {title}:{" "}
-        <strong className="text-foreground">
-          {members.find((m) => m.slug === currentSlug)?.variant_attributes[title] ?? "—"}
-        </strong>
+        {title}: <strong className="text-foreground">{current ? labelOf(current) : "—"}</strong>
       </div>
       <div className="flex flex-wrap gap-2" role="group" aria-label={`Escolher ${title}`}>
         {members.map((m) => {
-          const value = m.variant_attributes[title] ?? m.name;
+          const value = labelOf(m);
           const selected = m.slug === currentSlug;
           const soldOut = m.stock_qty <= 0;
           const hex = option.display_type === "swatch_color" ? colorHex(value) : null;
