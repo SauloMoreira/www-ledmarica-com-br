@@ -1054,10 +1054,20 @@ function CheckoutPage() {
               )}
               {discount > 0 && (
                 <div className="flex justify-between text-success">
-                  <span>Desconto ({couponCode})</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    {couponIsAuto ? (
+                      <>
+                        <QrCode className="w-3.5 h-3.5" />
+                        Desconto Pix ({couponCode})
+                      </>
+                    ) : (
+                      <>Desconto ({couponCode})</>
+                    )}
+                  </span>
                   <span>−{formatBRL(discount)}</span>
                 </div>
               )}
+
               {bundleDiscountPreview > 0 && (
                 <div className="flex justify-between text-success">
                   <span>Desconto de combo</span>
