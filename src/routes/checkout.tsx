@@ -977,7 +977,12 @@ function CheckoutPage() {
                   >
                     Voltar
                   </Button>
-                  <Button onClick={handleSubmit} disabled={submitting} className="flex-1 h-12">
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={submitting || !paymentChoice || paymentChoiceLoading}
+                    className="flex-1 h-12"
+                  >
+
                     {submitting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
