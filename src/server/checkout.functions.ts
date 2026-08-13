@@ -605,6 +605,8 @@ export const createOrder = createServerFn({ method: "POST" })
         shipping_cost: shippingCost,
         total,
         coupon_code: data.couponCode ?? null,
+        intended_payment_method: data.intendedPaymentMethod ?? null,
+
         shipping_carrier: shippingCarrier,
         shipping_service: shippingService,
         address_id: addressId,
