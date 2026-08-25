@@ -46,6 +46,8 @@ function Field({
   );
 }
 
+const NO_CHANGES_ERROR = "NO_CHANGES";
+
 function AdminHomepageContentPage() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
@@ -53,18 +55,40 @@ function AdminHomepageContentPage() {
     queryFn: fetchHomepageSettings,
   });
   const [form, setForm] = useState<FormState>({});
+  // Rastreia apenas os campos que o usuário efetivamente editou nesta aba.
+  // Isso evita que um salvamento sobrescreva, com dados desatualizados,
+  // campos que outra aba/usuário/SQL alterou enquanto esta tela ficou aberta.
+  const [dirtyFields, setDirtyFields] = useState<Set<keyof HomepageSettings>>(new Set());
 
   useEffect(() => {
-    if (data) setForm(data);
+    if (data) {
+      setForm(data);
+      setDirtyFields(new Set());
+    }
   }, [data]);
 
-  const set = <K extends keyof HomepageSettings>(k: K, v: HomepageSettings[K] | null) =>
+  const set = <K extends keyof HomepageSettings>(k: K, v: HomepageSettings[K] | null) => {
     setForm((f) => ({ ...f, [k]: v as any }));
+    setDirtyFields((prev) => {
+      const next = new Set(prev);
+      next.add(k);
+      return next;
+    });
+  };
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!data?.id) throw new Error("ID ausente");
-      const { id: _id, ...payload } = form as any;
+      if (dirtyFields.size === 0) throw new Error(NO_CHANGES_ERROR);
+
+      // Envia somente os campos alterados nesta aba, nunca a linha inteira.
+      // Assim, valores atualizados por outra aba/SQL nos campos não tocados
+      // aqui são preservados no banco.
+      const payload: Record<string, any> = {};
+      for (const key of dirtyFields) {
+        payload[key] = (form as any)[key];
+      }
+
       const { error } = await (supabase as any)
         .from("homepage_settings")
         .update(payload)
@@ -73,9 +97,16 @@ function AdminHomepageContentPage() {
     },
     onSuccess: () => {
       toast.success("Conteúdo da homepage atualizado");
+      setDirtyFields(new Set());
       qc.invalidateQueries({ queryKey: ["homepage_settings"] });
     },
-    onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar"),
+    onError: (e: any) => {
+      if (e?.message === NO_CHANGES_ERROR) {
+        toast.info("Nenhuma alteração para salvar");
+        return;
+      }
+      toast.error(e?.message ?? "Erro ao salvar");
+    },
   });
 
   const saveButton = (
