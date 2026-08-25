@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -58,9 +58,10 @@ function EditPage() {
     is_required: false,
   });
   const [slugTouched, setSlugTouched] = useState(false);
+  const hydratedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (data?.page) {
+    if (data?.page && hydratedIdRef.current !== id) {
       const p = data.page;
       setForm({
         title: p.title,
@@ -76,8 +77,9 @@ function EditPage() {
         is_required: p.is_required,
       });
       setSlugTouched(true);
+      hydratedIdRef.current = id;
     }
-  }, [data?.page]);
+  }, [data?.page, id]);
 
   const save = useMutation({
     mutationFn: () =>
@@ -237,7 +239,6 @@ function EditPage() {
                   slug={form.slug}
                   onChange={(field, value) => setForm((f) => ({ ...f, [field]: value }))}
                   onBoosted={() => {
-                    qc.invalidateQueries({ queryKey: ["admin-page", id] });
                     qc.invalidateQueries({ queryKey: ["admin-pages"] });
                   }}
                 />
