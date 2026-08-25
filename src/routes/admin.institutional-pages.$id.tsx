@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -58,6 +58,7 @@ function EditPage() {
     is_required: false,
   });
   const [slugTouched, setSlugTouched] = useState(false);
+  const hydratedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (data?.page && hydratedIdRef.current !== id) {
