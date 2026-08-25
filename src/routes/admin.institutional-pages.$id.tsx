@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
+import { InstitutionalSEOSection } from "@/components/admin/InstitutionalSEOSection";
+
 import {
   adminGetInstitutionalPage,
   adminSaveInstitutionalPage,
@@ -222,27 +224,23 @@ function EditPage() {
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-6 space-y-4">
-                <h3 className="font-semibold">SEO</h3>
-                <div className="space-y-1.5">
-                  <Label htmlFor="seo_title">SEO title</Label>
-                  <Input
-                    id="seo_title"
-                    maxLength={200}
-                    value={form.seo_title}
-                    onChange={(e) => setForm({ ...form, seo_title: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="seo_description">SEO description</Label>
-                  <Textarea
-                    id="seo_description"
-                    rows={3}
-                    maxLength={300}
-                    value={form.seo_description}
-                    onChange={(e) => setForm({ ...form, seo_description: e.target.value })}
-                  />
-                </div>
+              <CardContent className="p-6">
+                <InstitutionalSEOSection
+                  pageId={isNew ? undefined : id}
+                  pageCtx={{
+                    title: form.title,
+                    excerpt: form.excerpt,
+                    content: form.content,
+                  }}
+                  seoTitle={form.seo_title}
+                  seoDescription={form.seo_description}
+                  slug={form.slug}
+                  onChange={(field, value) => setForm((f) => ({ ...f, [field]: value }))}
+                  onBoosted={() => {
+                    qc.invalidateQueries({ queryKey: ["admin-page", id] });
+                    qc.invalidateQueries({ queryKey: ["admin-pages"] });
+                  }}
+                />
               </CardContent>
             </Card>
           </div>

@@ -77,7 +77,7 @@ function buildUserPrompt(data: z.infer<typeof InputSchema>): string {
     .join("\n");
 }
 
-async function callAiGateway(body: Record<string, unknown>) {
+export async function callAiGateway(body: Record<string, unknown>) {
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) throw new Error("LOVABLE_API_KEY não configurada");
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
