@@ -60,7 +60,7 @@ function EditPage() {
   const [slugTouched, setSlugTouched] = useState(false);
 
   useEffect(() => {
-    if (data?.page) {
+    if (data?.page && hydratedIdRef.current !== id) {
       const p = data.page;
       setForm({
         title: p.title,
@@ -76,8 +76,9 @@ function EditPage() {
         is_required: p.is_required,
       });
       setSlugTouched(true);
+      hydratedIdRef.current = id;
     }
-  }, [data?.page]);
+  }, [data?.page, id]);
 
   const save = useMutation({
     mutationFn: () =>
