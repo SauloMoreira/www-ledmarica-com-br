@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Loader2,
@@ -119,6 +119,7 @@ function SummaryCard({
   hint,
   ctaHref,
   ctaLabel,
+  onCtaClick,
   tone = "neutral",
 }: {
   icon: any;
@@ -128,6 +129,7 @@ function SummaryCard({
   hint?: string;
   ctaHref?: string;
   ctaLabel?: string;
+  onCtaClick?: () => void;
   tone?: "neutral" | "good" | "warn" | "bad";
 }) {
   const toneClass =
@@ -160,6 +162,16 @@ function SummaryCard({
             </Button>
           </Link>
         )}
+        {!ctaHref && onCtaClick && (
+          <Button
+            size="sm"
+            variant="link"
+            className="px-0 h-auto mt-1 text-xs"
+            onClick={onCtaClick}
+          >
+            {ctaLabel ?? "Ver detalhes"}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
@@ -173,6 +185,15 @@ function SeoPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 25;
+  const [activeTab, setActiveTab] = useState("produtos");
+  const tabsSectionRef = useRef<HTMLDivElement>(null);
+
+  function goToProblemPages() {
+    setActiveTab("paginas");
+    requestAnimationFrame(() => {
+      tabsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
 
   async function load() {
     setLoading(true);
@@ -239,6 +260,7 @@ function SeoPage() {
 
   const s = data.summary;
   const categories = data.categories;
+  const problemPages = data.pages.filter((p) => p.severity !== "ok");
 
   const filterChips: { id: ProductFilter; label: string; qty?: number }[] = [
     { id: "all", label: "Todos", qty: data.products.length },
@@ -321,6 +343,16 @@ function SeoPage() {
             qty={s.pagesWithIssues}
             total={s.pagesTotal}
             tone={s.pagesWithIssues > 0 ? "warn" : "good"}
+            hint={
+              problemPages.length > 0
+                ? problemPages
+                    .slice(0, 3)
+                    .map((p) => p.title)
+                    .join(", ") + (problemPages.length > 3 ? ` e mais ${problemPages.length - 3}` : "")
+                : undefined
+            }
+            ctaLabel={problemPages.length > 0 ? "Ver página(s)" : undefined}
+            onCtaClick={problemPages.length > 0 ? goToProblemPages : undefined}
           />
         </div>
 
@@ -442,7 +474,8 @@ function SeoPage() {
         </Card>
 
         {/* Tabs */}
-        <Tabs defaultValue="produtos" className="w-full">
+        <div ref={tabsSectionRef}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full justify-start flex-wrap h-auto">
             <TabsTrigger value="produtos">
               Produtos{" "}
@@ -743,6 +776,7 @@ function SeoPage() {
             </Card>
           </TabsContent>
         </Tabs>
+        </div>
 
         <p className="text-xs text-muted-foreground text-center">
           Análise baseada em campos cadastrados — não realiza crawling externo. Atualizada em{" "}
