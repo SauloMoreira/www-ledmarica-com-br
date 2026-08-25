@@ -237,7 +237,6 @@ function EditPage() {
                   slug={form.slug}
                   onChange={(field, value) => setForm((f) => ({ ...f, [field]: value }))}
                   onBoosted={() => {
-                    qc.invalidateQueries({ queryKey: ["admin-page", id] });
                     qc.invalidateQueries({ queryKey: ["admin-pages"] });
                   }}
                 />
