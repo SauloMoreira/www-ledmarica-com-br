@@ -8,6 +8,22 @@ e versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.7] — 2026-08-26
+
+**Tipo:** integração (marketing/analytics)
+**ChangeControl:** CC-2026-011
+**Classificação:** Média
+
+### Adicionado
+- Integração `google_ads` (tag `AW-18412575433`) na tabela `marketing_integrations`, habilitada com consent_category `marketing`; carregamento via `ConditionalScripts.tsx` respeitando LGPD (sem script manual no `__root.tsx`).
+- Função `trackGoogleAdsPurchase` em `src/lib/tracking.ts`: dispara a conversão "Compra" (`AW-18412575433/6cdfCIqvtOgcEMm15stE`) apenas com consentimento de marketing.
+- Disparo da conversão na página `/pedido/:id/confirmacao` somente quando `paymentStatus` é `paid` ou `approved` (valores canônicos já usados no código), com deduplicação por pedido via `localStorage` (`gads_conversion_<orderId>`) para não repetir em refresh.
+
+### Notas de rollback
+- Desativar a linha `google_ads` em `marketing_integrations` (`enabled=false`) e reverter os dois arquivos de código; sem alteração de schema, checkout, pagamento, estoque ou RLS.
+
+---
+
 ## [1.0.6] — 2026-08-13
 
 **Tipo:** hotfix crítico de configuração de produção

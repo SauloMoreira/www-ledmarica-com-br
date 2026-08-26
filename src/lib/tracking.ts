@@ -133,6 +133,33 @@ export function trackPurchase(order: {
   });
 }
 
+const GOOGLE_ADS_CONVERSION_SEND_TO = "AW-18412575433/6cdfCIqvtOgcEMm15stE";
+
+/**
+ * Conversão "Compra" do Google Ads. Dispara apenas com consentimento
+ * da categoria "marketing" (mesma regra do trackEvent).
+ */
+export function trackGoogleAdsPurchase(order: {
+  orderId: string;
+  orderNumber: number;
+  total: number;
+}) {
+  if (typeof window === "undefined") return;
+  const { preferences, consented } = useCookieStore.getState();
+  if (!consented || !preferences.marketing) return;
+  if (typeof window.gtag !== "function") return;
+  try {
+    window.gtag("event", "conversion", {
+      send_to: GOOGLE_ADS_CONVERSION_SEND_TO,
+      value: order.total,
+      currency: "BRL",
+      transaction_id: String(order.orderNumber ?? order.orderId),
+    });
+  } catch {
+    /* noop */
+  }
+}
+
 export function trackSearch(query: string) {
   trackEvent("search", { search_string: query });
 }

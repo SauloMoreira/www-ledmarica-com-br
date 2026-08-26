@@ -26,6 +26,7 @@ import { getOrderForCustomer } from "@/server/orderTracking.functions";
 import { createMercadoPagoPreference } from "@/server/payment.functions";
 import { orderStatusLabel } from "@/lib/orderStatus";
 import { redirectToExternalCheckout } from "@/lib/externalCheckout";
+import { trackGoogleAdsPurchase } from "@/lib/tracking";
 import { buildSeo } from "@/lib/seo";
 
 const SearchSchema = z.object({
@@ -229,6 +230,26 @@ function OrderTrackingPage() {
     }
     load(false);
   }, [user, loading, token, load, navigate]);
+
+  // Conversão "Compra" do Google Ads: só quando pagamento aprovado/pago,
+  // com deduplicação por pedido (localStorage) para não repetir em refresh.
+  useEffect(() => {
+    if (!order) return;
+    const isPaid = order.paymentStatus === "paid" || order.paymentStatus === "approved";
+    if (!isPaid) return;
+    const dedupeKey = `gads_conversion_${order.id}`;
+    try {
+      if (window.localStorage.getItem(dedupeKey)) return;
+      window.localStorage.setItem(dedupeKey, new Date().toISOString());
+    } catch {
+      /* storage indisponível — tenta mesmo assim */
+    }
+    trackGoogleAdsPurchase({
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      total: order.total,
+    });
+  }, [order]);
 
   async function startPayment() {
     if (!order || payRedirecting) return;

@@ -204,6 +204,21 @@ neste arquivo na seção "Histórico" abaixo.
   modelo baixável não for validado no Microsoft Excel com SKU numérico longo preservado como
   Texto.
 
+### CC-2026-011 — v1.0.7: Conversão Google Ads (tag base + evento Compra)
+- **Solicitante:** Saulo Moreira
+- **Classificação:** Média (marketing/analytics; não toca checkout, pagamento, estoque ou RLS)
+- **Data abertura:** 26/ago/2026
+- **Risco segurança:** baixo — ID de tag público (`AW-18412575433`), carregado client-side somente após consentimento de marketing (LGPD).
+- **Risco regressão:** baixo — código aditivo isolado em `tracking.ts` e na página de confirmação de pedido; nenhuma lógica existente alterada.
+- **Backup necessário:** não (snapshot diário cobre; config reversível por `enabled=false`).
+- **Arquivos alterados:** `marketing_integrations` (1 linha via SQL idempotente), `src/lib/tracking.ts`, `src/routes/pedido.$id.confirmacao.tsx`, `docs/production/CHANGELOG.md`, este arquivo.
+- **Plano de teste:** aceitar cookies de marketing, abrir `/pedido/:id/confirmacao` de pedido pago → evento `conversion` no gtag; refresh não repete; pedido pendente não dispara; sem consentimento não dispara.
+- **Plano de rollback:** ROLLBACK_PLAN.md — desativar integração (`enabled=false`) e reverter os 2 arquivos de código.
+- **Aprovador:** Saulo Moreira
+- **Versão alvo:** v1.0.7
+- **Status:** publicado
+- **Data fechamento:** 26/ago/2026
+
 ### CC-2026-010 — Hotfix de variáveis públicas no build publicado
 - **Solicitante:** Saulo Moreira
 - **Classificação:** Crítica (configuração de produção/auth; indisponibilidade pública)
