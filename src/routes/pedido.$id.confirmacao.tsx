@@ -26,6 +26,7 @@ import { getOrderForCustomer } from "@/server/orderTracking.functions";
 import { createMercadoPagoPreference } from "@/server/payment.functions";
 import { orderStatusLabel } from "@/lib/orderStatus";
 import { redirectToExternalCheckout } from "@/lib/externalCheckout";
+import { trackGoogleAdsPurchase } from "@/lib/tracking";
 import { buildSeo } from "@/lib/seo";
 
 const SearchSchema = z.object({
