@@ -143,8 +143,8 @@ export const adminUpdateCompanyStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => updateStatusInput.parse(data))
   .handler(async ({ data, context }) => {
-    const { userId, claims } = context;
-    void claims;
+    const { userId } = context;
+
 
     // verifica admin
     const { data: prof } = await supabaseAdmin
