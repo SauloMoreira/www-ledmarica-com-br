@@ -8,6 +8,44 @@ e versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.9] — 2026-08-31
+
+**Tipo:** correção de segurança (autorização / RLS)
+**ChangeControl:** CC-2026-012
+**Classificação:** Crítica (vazamento de dados comerciais/confidenciais)
+**Aplicação:** SQL direto no banco de produção, sem alteração de código de aplicação.
+
+### Corrigido
+- **Escalada de papel em `profiles`**: criado o trigger `enforce_profile_role`
+  (`trg_enforce_profile_role`), que força `role = 'customer'` na criação do perfil
+  e impede que um usuário altere o próprio `role` (auto-promoção a admin) em
+  atualizações. Promoção a admin passa a ocorrer exclusivamente por caminho
+  administrativo com service role + MFA.
+- **Funções `SECURITY DEFINER` sem checagem interna de autorização**: as funções
+  `get_stock_report`, `get_commercial_sales_aggregate`, `get_stock_counters` e
+  `get_commercial_review_counters` tinham `GRANT EXECUTE ... TO authenticated`
+  sem validar o papel do chamador. Qualquer cliente autenticado (não-admin)
+  podia consultar, por RPC direta, estoque, vendas, receita e sinais de margem
+  por produto. Corrigido com `IF NOT is_admin(auth.uid()) THEN RAISE EXCEPTION`
+  no início de cada função, replicando o padrão já usado em `admin_get_product`,
+  `admin_list_products` e `import_product_with_attrs`.
+
+### Alterado (código de aplicação, mesma data)
+- Escritas administrativas que antes exigiam apenas `role = 'admin'` passam a
+  exigir também sessão AAL2 (segundo fator): `adminBlockUser`, `adminUnblockUser`,
+  `adminArchiveUser`, `adminRestoreUser`, `adminSendPasswordReset`
+  (`users.functions.ts`), `adminUpdateCompanyStatus` (`companies.functions.ts`)
+  e `adminUpdateB2bSettings` (`b2bSettings.functions.ts`). Funções somente-leitura
+  (listagens, relatórios, contadores) seguem com verificação simples de admin.
+
+### Notas de rollback
+- Banco: remover o trigger `trg_enforce_profile_role` e recriar as 4 funções sem o
+  bloco `IF NOT is_admin(...)`. **Não recomendado** — reabre o vazamento.
+- Código: reverter os três arquivos de server functions citados; sem alteração de
+  schema, checkout, pagamento ou estoque.
+
+---
+
 ## [1.0.8] — 2026-08-31
 
 **Tipo:** correção de segurança (RLS / B2B)
