@@ -60,6 +60,7 @@ const Input = z.object({
     .min(0)
     .max(200),
   hasCoupon: z.boolean().optional(),
+  couponPresent: z.boolean().optional(),
 });
 
 async function getOptionalUserId(): Promise<string | null> {
@@ -101,6 +102,7 @@ export const getCartBundlePreview = createServerFn({ method: "POST" })
       userId,
       items: data.items.map((i) => ({ productId: i.product_id, qty: i.qty })),
       hasCoupon: data.hasCoupon ?? false,
+      couponPresent: data.couponPresent ?? data.hasCoupon ?? false,
     });
     const appliedById = new Map(app.details.applied.map((a) => [a.bundle_id, a]));
     const blockedById = new Map(app.details.blocked.map((b) => [b.bundle_id, b]));
