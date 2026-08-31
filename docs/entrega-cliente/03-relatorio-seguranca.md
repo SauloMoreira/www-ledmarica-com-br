@@ -282,9 +282,28 @@ em P0 (resolver antes do Go-Live) e P1+ (roadmap pós-Go-Live).
 - Roles administrativos granulares (se demanda surgir).
 - Migração para Lovable Emails após domínio próprio.
 
+### 20.1 Atualização — auditoria de 31/ago/2026
+
+A afirmação de "0 crítico aberto" acima é datada de **12/maio/2026** e não vale
+para o estado atual. Nova auditoria em **31/ago/2026** encontrou e **corrigiu**:
+
+1. **Escalada de papel em `profiles`** — ausência de trigger impedindo o usuário
+   de alterar o próprio `role`. Corrigido com `trg_enforce_profile_role`.
+2. **Crítico — 4 funções `SECURITY DEFINER` sem checagem de autorização**
+   (`get_stock_report`, `get_commercial_sales_aggregate`, `get_stock_counters`,
+   `get_commercial_review_counters`): concedidas a `authenticated` sem validar
+   admin, expondo estoque, vendas, receita e sinais de margem a qualquer cliente
+   logado via RPC direta. Corrigido com `IF NOT is_admin(auth.uid())` em cada uma.
+
+Adicionalmente, as escritas administrativas que exigiam apenas `role = 'admin'`
+passaram a exigir sessão AAL2 (MFA). Detalhes em `docs/production/CHANGELOG.md`
+(v1.0.9). Ambos os itens estão **fechados**; nenhum crítico permanece aberto
+nesta data.
+
 ---
 
 ## 21. Conclusão
+
 
 A plataforma apresenta postura de segurança **adequada e madura para
 Go-Live**, com controles modernos (MFA AAL2, RLS, idempotência, auditoria
