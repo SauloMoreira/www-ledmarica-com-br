@@ -8,7 +8,36 @@ e versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.10] — 2026-08-31
+
+**Tipo:** correção de segurança (RLS / exposição de rascunho)
+**ChangeControl:** CC-2026-013
+**Classificação:** Baixa (exposição de produto não publicado, sem dado pessoal)
+**Aplicação:** SQL direto no banco de produção, sem alteração de código de aplicação.
+
+### Corrigido
+- **Leitura pública de filhos de produto inativo**: as policies
+  `product_images_public_read` (`product_images`) e
+  "Variant options are publicly readable" (`product_variant_options`) usavam
+  `USING (true)`, permitindo que qualquer visitante lesse imagens e opções de
+  variação de produtos ainda em rascunho (`active = false`) antes da publicação.
+  Ambas passaram a usar
+  `is_admin(auth.uid()) OR EXISTS (SELECT 1 FROM products p WHERE p.id = <tabela>.product_id AND p.active = true)`,
+  alinhando-se ao padrão já aplicado em `product_attributes_public_read`.
+
+### Validação
+- 636 produtos ativos com imagem seguem legíveis publicamente (catálogo intacto).
+- 3 produtos inativos com imagem deixaram de ser legíveis para não-admin.
+- Security Scan pós-fix: **0 error / 0 warn** ativos.
+
+### Notas de rollback
+- Recriar as duas policies com `USING (true)`. **Não recomendado** — reabre a
+  exposição de rascunhos.
+
+---
+
 ## [1.0.9] — 2026-08-31
+
 
 **Tipo:** correção de segurança (autorização / RLS)
 **ChangeControl:** CC-2026-012
