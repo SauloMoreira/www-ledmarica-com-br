@@ -24,11 +24,18 @@ e versionamento [SemVer](https://semver.org/lang/pt-BR/).
   Ambas passaram a usar
   `is_admin(auth.uid()) OR EXISTS (SELECT 1 FROM products p WHERE p.id = <tabela>.product_id AND p.active = true)`,
   alinhando-se ao padrão já aplicado em `product_attributes_public_read`.
+- **Defesa em profundidade em `profiles`**: a policy `profiles_self_insert` passou a
+  ter `WITH CHECK (auth.uid() = id AND role = 'customer')`, somando-se ao trigger
+  `trg_enforce_profile_role` (v1.0.9). Duas camadas independentes impedem a
+  auto-promoção a admin no cadastro, mesmo que uma delas seja removida por engano.
 
 ### Validação
 - 636 produtos ativos com imagem seguem legíveis publicamente (catálogo intacto).
 - 3 produtos inativos com imagem deixaram de ser legíveis para não-admin.
-- Security Scan pós-fix: **0 error / 0 warn** ativos.
+- Cadastro de usuário comum inalterado (trigger normaliza `role` antes do WITH CHECK).
+- Security Scan pós-fix: **0 error**; achado `profiles_self_insert_role_escalation`
+  não reaparece.
+
 
 ### Notas de rollback
 - Recriar as duas policies com `USING (true)`. **Não recomendado** — reabre a
