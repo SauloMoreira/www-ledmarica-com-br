@@ -225,7 +225,13 @@ function ProductPage() {
   const navigate = useNavigate();
   const [qty, setQty] = useState(1);
 
-  const { data: product, isLoading } = useQuery(productQueryOptions(slug));
+  // initialData vindo do loader (SSR) evita que a hidratação troque o HTML já
+  // renderizado por um skeleton — principal fonte de layout shift na página.
+  const { product: ssrProduct } = Route.useLoaderData();
+  const { data: product, isLoading } = useQuery({
+    ...productQueryOptions(slug),
+    ...(ssrProduct ? { initialData: ssrProduct, initialDataUpdatedAt: Date.now() } : {}),
+  });
 
   // Blocos abaixo da dobra: só montam depois do primeiro paint, para não
   // competirem com o LCP da galeria.

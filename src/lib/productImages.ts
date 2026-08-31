@@ -102,6 +102,22 @@ function ensureOptimized(
   return variantUrl(url, variant);
 }
 
+/**
+ * Gera um srcset (300w/600w) para URLs já otimizadas pelo endpoint /render/image.
+ * Permite que o grid mobile de 2 colunas baixe a imagem de 300px em vez de 600px.
+ * Devolve null quando a URL não é transformável (ex.: imagem externa).
+ */
+export function responsiveSrcSet(url: string | null | undefined): string | null {
+  if (!url || !url.includes("/storage/v1/render/image/")) return null;
+  const [base, query] = url.split("?");
+  const build = (w: number) => {
+    const params = new URLSearchParams(query ?? "");
+    params.set("width", String(w));
+    return `${base}?${params.toString()} ${w}w`;
+  };
+  return [build(300), build(600)].join(", ");
+}
+
 export function imageUrlsFromProductImages(
   images: ProductImagePreviewRow[] | null | undefined,
   fallback: string[] | null | undefined = [],

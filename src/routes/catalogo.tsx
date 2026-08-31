@@ -119,9 +119,16 @@ export const Route = createFileRoute("/catalogo")({
   loader: async ({ context, deps }) => {
     try {
       const result = await context.queryClient.ensureQueryData(catalogSearchQueryOptions(deps));
-      return { firstImage: (result?.products?.[0] as { images?: string[] } | undefined)?.images?.[0] ?? null };
+      // Devolvemos o resultado inteiro para o cliente usar como initialData:
+      // sem isso o HTML do SSR (com os produtos) é substituído pelo skeleton
+      // na hidratação, causando layout shift.
+      return {
+        firstImage:
+          (result?.products?.[0] as { images?: string[] } | undefined)?.images?.[0] ?? null,
+        initialResult: result,
+      };
     } catch {
-      return { firstImage: null };
+      return { firstImage: null, initialResult: null };
     }
   },
   head: ({ loaderData }) => {
@@ -266,10 +273,13 @@ function CatalogPage() {
     return m;
   }, [facetsData]);
 
+  const { initialResult } = Route.useLoaderData();
+
   const { data, isLoading, isFetching } = useQuery({
     ...catalogSearchQueryOptions(search),
     placeholderData: keepPreviousData,
     staleTime: 30_000,
+    ...(initialResult ? { initialData: initialResult, initialDataUpdatedAt: Date.now() } : {}),
   });
 
   const products = (data?.products ?? []) as Product[];

@@ -4,6 +4,7 @@ import type { Product } from "@/lib/domain";
 import { formatBRL } from "@/lib/domain";
 import { useCart } from "@/stores/cartStore";
 import { ProductImagePlaceholder } from "@/components/store/ProductImagePlaceholder";
+import { responsiveSrcSet } from "@/lib/productImages";
 
 export function ProductCard({
   product,
@@ -54,6 +55,8 @@ export function ProductCard({
           {product.images[0] ? (
             <img
               src={product.images[0]}
+              srcSet={responsiveSrcSet(product.images[0]) ?? undefined}
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
               alt={product.name}
               width={400}
               height={400}

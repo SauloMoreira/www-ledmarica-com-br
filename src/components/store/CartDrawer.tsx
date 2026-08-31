@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { motion, AnimatePresence } from "framer-motion";
+
 import { X, Trash2, Plus, Minus, ShoppingBag, AlertCircle, Package } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCart, validateB2bLine } from "@/stores/cartStore";
@@ -39,24 +39,24 @@ export function CartDrawer() {
   }>;
   const hasB2bIssue = b2bIssues.length > 0;
 
+  const open = cart.isOpen;
+
   return (
-    <AnimatePresence>
-      {cart.isOpen && (
+    <>
+      {
         <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
+          <div
             onClick={cart.close}
-            className="fixed inset-0 bg-foreground/40 backdrop-blur-sm z-[60]"
+            aria-hidden={!open}
+            className={`fixed inset-0 bg-foreground/40 backdrop-blur-sm z-[60] transition-opacity duration-200 ${
+              open ? "opacity-100" : "pointer-events-none opacity-0"
+            }`}
           />
-          <motion.aside
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "tween", duration: 0.22, ease: "easeOut" }}
-            className="fixed top-0 right-0 h-full w-full max-w-md bg-card z-[61] flex flex-col shadow-floating"
+          <aside
+            aria-hidden={!open}
+            className={`fixed top-0 right-0 h-full w-full max-w-md bg-card z-[61] flex flex-col shadow-floating transition-transform duration-200 ease-out will-change-transform ${
+              open ? "translate-x-0" : "pointer-events-none translate-x-full"
+            }`}
           >
             <div className="px-5 py-4 border-b border-border flex items-center justify-between">
               <h2 className="font-display font-bold text-lg">Seu carrinho</h2>
@@ -270,9 +270,9 @@ export function CartDrawer() {
                 </div>
               </>
             )}
-          </motion.aside>
+          </aside>
         </>
-      )}
-    </AnimatePresence>
+      }
+    </>
   );
 }
