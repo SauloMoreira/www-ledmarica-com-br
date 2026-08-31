@@ -1045,6 +1045,17 @@ export const getAdminOperations = createServerFn({ method: "GET" })
       });
     }
 
+    if (webhookErrors > 0) {
+      alerts.push({
+        id: "alert-webhook-errors",
+        title: "Webhooks de pagamento com erro",
+        description: `${webhookErrors} webhook(s) do Mercado Pago com erro nos últimos 7 dias.`,
+        severity: "high",
+        ctaLabel: "Ver detalhes",
+        ctaHref: "/admin",
+      });
+    }
+
     if (emailFailuresOrStuck > 0) {
       alerts.push({
         id: "alert-email-failures",
@@ -1056,16 +1067,6 @@ export const getAdminOperations = createServerFn({ method: "GET" })
       });
     }
 
-    if (webhookErrors > 0) {
-      alerts.push({
-        id: "alert-webhook-errors",
-        title: "Webhooks de pagamento com erro",
-        description: `${webhookErrors} webhook(s) do Mercado Pago com erro nos últimos 7 dias.`,
-        severity: "high",
-        ctaLabel: "Ver detalhes",
-        ctaHref: "/admin",
-      });
-    }
 
     // SEO alerts
     if (seo.homepageMissingSeo) {
