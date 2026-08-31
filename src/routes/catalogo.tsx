@@ -267,44 +267,9 @@ function CatalogPage() {
   }, [facetsData]);
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: [
-      "products",
-      "catalog-search",
-      search.q ?? "",
-      search.cat ?? "",
-      search.marca ?? "",
-      search.precoMin ?? null,
-      search.precoMax ?? null,
-      !!search.estoque,
-      !!search.oferta,
-      search.shipping ?? "",
-      sortValue,
-      page,
-      // Filtros técnicos entram na chave para invalidar cache
-      JSON.stringify(attrFilters),
-    ],
+    ...catalogSearchQueryOptions(search),
     placeholderData: keepPreviousData,
     staleTime: 30_000,
-    queryFn: async () => {
-      const res = await searchProducts({
-        data: {
-          q: search.q || undefined,
-          categorySlug: search.cat || undefined,
-          brand: search.marca || undefined,
-          priceMin: search.precoMin,
-          priceMax: search.precoMax,
-          inStock: search.estoque || undefined,
-          onSale: search.oferta || undefined,
-          freeShipping: search.shipping === "free" || undefined,
-          sort: sortValue,
-          page,
-          pageSize: PAGE_SIZE,
-          source: "public_store",
-          attrFilters: attrFilters.length > 0 ? attrFilters : undefined,
-        },
-      });
-      return res;
-    },
   });
 
   const products = (data?.products ?? []) as Product[];
