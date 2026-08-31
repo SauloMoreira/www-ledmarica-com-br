@@ -472,7 +472,7 @@ function ProductPage() {
                 </span>
               </div>
             </div>
-            <BuyTogetherBlock product={product} />
+            {belowFoldReady && <BuyTogetherBlock product={product} />}
           </aside>
         </div>
 
