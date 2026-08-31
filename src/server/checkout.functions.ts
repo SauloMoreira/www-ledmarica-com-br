@@ -688,7 +688,7 @@ export const createOrder = createServerFn({ method: "POST" })
         discount,
         shipping_cost: shippingCost,
         total,
-        coupon_code: data.couponCode ?? null,
+        coupon_code: appliedCouponCode,
         intended_payment_method: data.intendedPaymentMethod ?? null,
 
         shipping_carrier: shippingCarrier,
@@ -711,7 +711,7 @@ export const createOrder = createServerFn({ method: "POST" })
         pricing_validated_at: pricing.validated_at,
         // === Onda 9E.4b: desconto de combo ===
         bundle_discount_total: bundleDiscountTotal,
-        bundle_discount_details: bundleApp.details as never,
+        bundle_discount_details: bundleDetails as never,
         has_bundle_discount: hasBundleDiscount,
         ...(pickupSnap ?? {}),
         ...(localZoneInfo
@@ -749,7 +749,7 @@ export const createOrder = createServerFn({ method: "POST" })
           hasCost && totalPrice > 0
             ? Number(((grossMarginAmount! / totalPrice) * 100).toFixed(2))
             : null;
-        const bundleAlloc = bundleApp.perItem.get(i.productId);
+        const bundleAlloc = bundlePerItem.get(i.productId);
         return {
           order_id: order.id,
           product_id: i.productId,
@@ -801,6 +801,7 @@ export const createOrder = createServerFn({ method: "POST" })
       ok: true as const,
       orderId: order.id,
       orderNumber: order.order_number,
+      discountNotice,
     };
   });
 
