@@ -144,18 +144,38 @@ function CheckoutPage() {
       previewItems.map((i) => `${i.product_id}:${i.qty}`).join("|"),
     ],
     queryFn: () =>
-      getCartBundlePreview({ data: { items: previewItems, hasCoupon: Boolean(couponCode) } }),
+      getCartBundlePreview({
+        data: {
+          items: previewItems,
+          // hipotético: não bloqueia globalmente por causa do cupom,
+          // mas respeita kits com accepts_coupon = false
+          hasCoupon: false,
+          couponPresent: Boolean(couponCode),
+        },
+      }),
     enabled: previewItems.length > 0,
     staleTime: 15_000,
   });
-  const bundleDiscountPreview = (bundlePreviewRows ?? [])
+  const bundleDiscountRaw = (bundlePreviewRows ?? [])
     .filter((r) => r.status === "eligible_preview")
     .reduce((acc, r) => acc + r.estimated_discount, 0);
 
+  // Regra: cupom e combo NUNCA somam — vence o maior desconto para o cliente.
+  const comboWins = bundleDiscountRaw > discount;
+  const couponDiscountApplied = comboWins ? 0 : discount;
+  const bundleDiscountPreview = comboWins ? bundleDiscountRaw : 0;
+  const discountNotice =
+    discount > 0 && bundleDiscountRaw > 0
+      ? comboWins
+        ? `Seu combo garante um desconto maior (${formatBRL(bundleDiscountRaw)}) do que o cupom ${couponCode} (${formatBRL(discount)}) — aplicamos o combo.`
+        : `Seu cupom ${couponCode} garante um desconto maior (${formatBRL(discount)}) do que o combo (${formatBRL(bundleDiscountRaw)}) — aplicamos o cupom.`
+      : null;
+
   const total = useMemo(
-    () => Math.max(0, subtotal - discount - bundleDiscountPreview + shippingCost),
-    [subtotal, discount, bundleDiscountPreview, shippingCost],
+    () => Math.max(0, subtotal - couponDiscountApplied - bundleDiscountPreview + shippingCost),
+    [subtotal, couponDiscountApplied, bundleDiscountPreview, shippingCost],
   );
+
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
