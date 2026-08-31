@@ -142,6 +142,16 @@ export const Route = createFileRoute("/api/public/mercadopago/webhook")({
             ? ((body as { live_mode?: boolean }).live_mode as boolean)
             : null;
 
+        // Notificação legada tipo IPN (MercadoPago Feed v2.0): corpo mínimo
+        // {resource, topic}, sem data/live_mode. A MP envia essa duplicada junto
+        // com o webhook assinado moderno — nunca vem assinada neste esquema, então
+        // tentar validar HMAC só gera falso alarme. Registramos pra rastreabilidade,
+        // mas pulamos validação/processamento.
+        const isLegacyFeedNotification =
+          liveMode === null &&
+          typeof (body as { resource?: unknown }).resource !== "undefined" &&
+          typeof (body as { data?: unknown }).data === "undefined";
+
         // 1) Auditoria — registra SEMPRE, antes de processar
         const headersObj: Record<string, string> = {};
         request.headers.forEach((v, k) => {
