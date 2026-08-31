@@ -3,7 +3,18 @@
 - **Versão:** 1.0
 - **Data:** 12/maio/2026
 - **Público-alvo:** Cliente, equipe de compliance e equipe técnica
+# Relatório Técnico e Funcional de Segurança — Plataforma Led Maricá
+
+- **Versão:** 1.0
+- **Data:** 12/maio/2026
+- **Público-alvo:** Cliente, equipe de compliance e equipe técnica
 - **Objetivo:** Apresentar postura de segurança da plataforma, controles aplicados e riscos aceitos.
+
+> **Nota de atualização (31/ago/2026):** este documento reflete o estado da
+> plataforma em **12/maio/2026**, não o estado atual. Uma nova auditoria em
+> 31/ago/2026 encontrou e corrigiu dois itens (um deles crítico) — ver a
+> seção 20.1 e o `CHANGELOG.md` v1.0.9.
+
 
 ---
 
