@@ -295,10 +295,20 @@ para o estado atual. Nova auditoria em **31/ago/2026** encontrou e **corrigiu**:
    admin, expondo estoque, vendas, receita e sinais de margem a qualquer cliente
    logado via RPC direta. Corrigido com `IF NOT is_admin(auth.uid())` em cada uma.
 
+3. **Baixo risco — leitura pública de filhos de produto inativo**
+   (`product_images` e `product_variant_options`): as policies de leitura pública
+   usavam `USING (true)`, expondo imagens e opções de variação de produtos ainda
+   em rascunho (`active = false`). Corrigido no mesmo dia com
+   `is_admin(auth.uid()) OR EXISTS (... p.active = true)`. Validado: 636 produtos
+   ativos com imagem seguem públicos; 3 produtos inativos deixaram de vazar.
+
 Adicionalmente, as escritas administrativas que exigiam apenas `role = 'admin'`
-passaram a exigir sessão AAL2 (MFA). Detalhes em `docs/production/CHANGELOG.md`
-(v1.0.9). Ambos os itens estão **fechados**; nenhum crítico permanece aberto
-nesta data.
+passaram a exigir sessão AAL2 (MFA), e o **Leaked Password Protection (HIBP)** foi
+ativado no Auth. Detalhes em `docs/production/CHANGELOG.md` (v1.0.9 e v1.0.10).
+
+**Status em 31/ago/2026:** Security Scan interno com **0 error e 0 warn** ativos.
+Todos os itens desta rodada de auditoria — críticos e de baixo risco — estão
+**fechados**; nenhum permanece aberto nesta data.
 
 ---
 
