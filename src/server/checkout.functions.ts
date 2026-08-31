@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { couponConditionMetPrePayment } from "@/lib/couponConditions";
 
 // ============================================================
 // ViaCEP — público, sem token
@@ -174,31 +175,38 @@ export const applyCoupon = createServerFn({ method: "POST" })
   });
 
 // ============================================================
-// Cupom automático por condição (ex.: forma de pagamento = pix)
+// Cupom automático por condição (forma de pagamento / escopo da compra)
 // Retorna apenas o código; a validação (mínimo, validade, limites)
 // continua sendo feita por `apply_coupon`.
 // ============================================================
-export const getAutoCouponCode = createServerFn({ method: "POST" })
+export const getAutoCouponForContext = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        conditionType: z.enum(["payment_method"]),
-        conditionValue: z.string().min(1).max(40),
+        intendedPaymentMethod: z.enum(["pix", "other"]).nullable().default(null),
+        deliveryMethod: z.enum(["delivery", "local_delivery", "pickup"]).nullable().default(null),
       })
       .parse(input),
   )
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: code, error } = await supabaseAdmin.rpc(
-      "get_active_auto_coupon_code" as never,
-      {
-        _condition_type: data.conditionType,
-        _condition_value: data.conditionValue,
-      } as never,
-    );
-    if (error) return { code: null as string | null };
-    return { code: (code as unknown as string | null) ?? null };
+    const { data: rows, error } = await supabaseAdmin
+      .from("coupons")
+      .select("code, condition_type, condition_value")
+      .eq("active", true)
+      .eq("auto_apply", true);
+    if (error || !rows) return { code: null as string | null };
+    // Mais específico vence: condição concreta > "qualquer forma" > sem condição.
+    const specificity = (c: { condition_type: string | null; condition_value: string | null }) =>
+      !c.condition_type ? 0 : c.condition_value === "any" ? 1 : 2;
+    const match = (
+      rows as { code: string; condition_type: string | null; condition_value: string | null }[]
+    )
+      .filter((c) => couponConditionMetPrePayment(c, data))
+      .sort((a, b) => specificity(b) - specificity(a))[0];
+    return { code: match?.code ?? null };
   });
+
 
 
 

@@ -1,3 +1,4 @@
+import { MP_PAYMENT_TYPE_BY_CONDITION } from "@/lib/couponConditions";
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -266,7 +267,7 @@ export const Route = createFileRoute("/api/public/mercadopago/webhook")({
         // 5) Localizar pedido
         const { data: order, error: orderErr } = await supabaseAdmin
           .from("orders")
-          .select("id, payment_status, status, mp_payment_id, user_id")
+          .select("id, order_number, payment_status, status, mp_payment_id, user_id, coupon_code, discount, admin_notes")
           .eq("external_reference", externalRef)
           .single();
         if (orderErr || !order) {
@@ -346,6 +347,34 @@ export const Route = createFileRoute("/api/public/mercadopago/webhook")({
               .eq("id", auditId);
           }
           return new Response("ok", { status: 200 });
+        }
+
+        // Reconciliação de cupom condicionado à forma de pagamento
+        // (crédito/débito/boleto só são confirmáveis depois do pagamento).
+        if (willBePaid && order.coupon_code && Number(order.discount ?? 0) > 0) {
+          try {
+            const { data: coupon } = await supabaseAdmin
+              .from("coupons")
+              .select("code, condition_type, condition_value")
+              .eq("code", order.coupon_code)
+              .maybeSingle();
+            const cv = (coupon as { condition_type?: string | null; condition_value?: string | null } | null)
+              ?.condition_type === "payment_method"
+              ? ((coupon as { condition_value?: string | null }).condition_value ?? null)
+              : null;
+            const expected = cv ? MP_PAYMENT_TYPE_BY_CONDITION[cv] : null;
+            if (expected && payment.payment_type_id !== expected) {
+              const alert = `[${nowIso}] Cupom ${order.coupon_code} exigia ${cv} mas pagamento foi ${payment.payment_type_id ?? "desconhecido"} — revisar desconto manualmente.`;
+              await supabaseAdmin
+                .from("orders")
+                .update({
+                  admin_notes: order.admin_notes ? `${order.admin_notes}\n${alert}` : alert,
+                } as never)
+                .eq("id", order.id);
+            }
+          } catch (e) {
+            console.error("[MP webhook] falha na reconciliação de cupom", e);
+          }
         }
 
         // Baixa de estoque idempotente quando aprovado
