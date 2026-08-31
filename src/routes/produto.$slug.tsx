@@ -497,17 +497,21 @@ function ProductPage() {
           );
         })()}
 
-        <div className="mt-12">
-          <ProductInBundlesBlock productId={product.id} />
-        </div>
+        {belowFoldReady && (
+          <>
+            <div className="mt-12">
+              <ProductInBundlesBlock productId={product.id} />
+            </div>
 
-        <div className="mt-12">
-          <RelatedProductsBlock
-            productId={product.id}
-            excludeProductIds={[product.id]}
-            prioritizeReplacements={product.stock_qty <= 0}
-          />
-        </div>
+            <div className="mt-12">
+              <RelatedProductsBlock
+                productId={product.id}
+                excludeProductIds={[product.id]}
+                prioritizeReplacements={product.stock_qty <= 0}
+              />
+            </div>
+          </>
+        )}
       </div>
     </StoreLayout>
   );
