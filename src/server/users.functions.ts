@@ -471,6 +471,7 @@ export const adminBlockUser = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => statusInput.parse(data))
   .handler(async ({ data, context }) => {
     const admin = await assertAdmin(context.userId);
+    assertAal2(context.claims);
     return changeStatus(
       admin.id,
       admin.email,
@@ -485,6 +486,7 @@ export const adminUnblockUser = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => statusInput.parse(data))
   .handler(async ({ data, context }) => {
     const admin = await assertAdmin(context.userId);
+    assertAal2(context.claims);
     return changeStatus(
       admin.id,
       admin.email,
@@ -499,6 +501,7 @@ export const adminArchiveUser = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => statusInput.parse(data))
   .handler(async ({ data, context }) => {
     const admin = await assertAdmin(context.userId);
+    assertAal2(context.claims);
     return changeStatus(
       admin.id,
       admin.email,
@@ -513,6 +516,7 @@ export const adminRestoreUser = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => statusInput.parse(data))
   .handler(async ({ data, context }) => {
     const admin = await assertAdmin(context.userId);
+    assertAal2(context.claims);
     return changeStatus(
       admin.id,
       admin.email,
@@ -529,6 +533,7 @@ export const adminSendPasswordReset = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => resetInput.parse(data))
   .handler(async ({ data, context }) => {
     const admin = await assertAdmin(context.userId);
+    assertAal2(context.claims);
     const target = await loadTargetProfile(data.user_id);
     if (target.status !== "active") {
       throw new Error(

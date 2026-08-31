@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logAdminAction } from "@/server/security/auditLog";
+import { assertAal2 } from "@/server/security/assertAdmin";
 
 export type B2bSettings = {
   id: string;
@@ -68,6 +69,7 @@ export const adminUpdateB2bSettings = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => updateInput.parse(data))
   .handler(async ({ data, context }) => {
     const adminEmail = await ensureAdmin(context.userId);
+    assertAal2(context.claims);
     const id = await getOrCreateSettingsId();
     const { data: before } = await supabaseAdmin
       .from("b2b_settings")
