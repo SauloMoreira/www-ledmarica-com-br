@@ -339,24 +339,54 @@ function CheckoutPage() {
     setDeliveryMethod(s.id === "local-zone" ? "local_delivery" : "delivery");
   }
 
+  /**
+   * Resolve o melhor cupom automático elegível no contexto atual,
+   * validando os candidatos em ordem de maior desconto (fallback se
+   * o primeiro falhar por validade/limite).
+   */
+  async function resolveBestAutoCoupon(
+    choice: "pix" | "other" | null,
+    delivery: "delivery" | "local_delivery" | "pickup" | null,
+  ): Promise<{ code: string; discount: number } | null> {
+    const { candidates } = await getAutoCouponForContext({
+      data: { intendedPaymentMethod: choice, deliveryMethod: delivery, subtotal },
+    });
+    for (const c of candidates ?? []) {
+      const r = await applyCoupon({ data: { code: c.code, subtotal } });
+      if (r.valid && r.discount > 0) return { code: c.code, discount: r.discount };
+    }
+    return null;
+  }
+
   async function handleApplyCoupon() {
     if (!couponInput.trim()) return;
     setCouponLoading(true);
     try {
-      const r = await applyCoupon({ data: { code: couponInput.trim(), subtotal } });
-      if (r.valid) {
-        // Cupom manual sempre prevalece sobre o automático.
-        setCouponCode(couponInput.trim());
-        setDiscount(r.discount);
-        setCouponIsAuto(false);
-        toast.success(r.message);
-      } else {
+      const code = couponInput.trim();
+      const r = await applyCoupon({ data: { code, subtotal } });
+      if (!r.valid) {
         if (!couponIsAuto) {
           setCouponCode(null);
           setDiscount(0);
         }
         toast.error(r.message);
+        return;
       }
+      // Cupons nunca acumulam: mantém o de MAIOR desconto para o cliente.
+      const auto = await resolveBestAutoCoupon(paymentChoice, deliveryMethod);
+      if (auto && auto.discount > r.discount && auto.code !== code) {
+        setCouponCode(auto.code);
+        setDiscount(auto.discount);
+        setCouponIsAuto(true);
+        toast.info(
+          `O cupom ${auto.code} já aplicado é mais vantajoso (${formatBRL(auto.discount)}) do que ${code} (${formatBRL(r.discount)}). Mantivemos o maior desconto.`,
+        );
+        return;
+      }
+      setCouponCode(code);
+      setDiscount(r.discount);
+      setCouponIsAuto(false);
+      toast.success(r.message);
     } finally {
       setCouponLoading(false);
     }
@@ -370,21 +400,17 @@ function CheckoutPage() {
   }, [deliveryMethod]);
 
   /**
-   * Recalcula o cupom automático conforme o contexto pré-pagamento
-   * (forma de pagamento pretendida + modalidade de entrega).
-   * Cupom manual sempre prevalece.
+   * Recalcula o cupom automático conforme o contexto pré-pagamento.
+   * Um cupom manual só é mantido se for MAIOR que o melhor automático.
    */
   async function refreshAutoCoupon(
     choice: "pix" | "other" | null,
     delivery: "delivery" | "local_delivery" | "pickup" | null,
   ) {
-    if (couponCode && !couponIsAuto) return; // manual vence
     setPaymentChoiceLoading(true);
     try {
-      const { code } = await getAutoCouponForContext({
-        data: { intendedPaymentMethod: choice, deliveryMethod: delivery },
-      });
-      if (!code) {
+      const auto = await resolveBestAutoCoupon(choice, delivery);
+      if (!auto) {
         if (couponIsAuto) {
           setCouponCode(null);
           setDiscount(0);
@@ -392,22 +418,26 @@ function CheckoutPage() {
         }
         return;
       }
-      const r = await applyCoupon({ data: { code, subtotal } });
-      if (r.valid) {
-        setCouponCode(code);
-        setDiscount(r.discount);
-        setCouponIsAuto(true);
-      } else if (couponIsAuto) {
-        setCouponCode(null);
-        setDiscount(0);
-        setCouponIsAuto(false);
+      // Cupom manual em uso: só é substituído se o automático for maior.
+      if (couponCode && !couponIsAuto) {
+        if (auto.discount > discount && auto.code !== couponCode) {
+          setCouponCode(auto.code);
+          setDiscount(auto.discount);
+          setCouponIsAuto(true);
+          toast.info(`Aplicamos o cupom ${auto.code}, mais vantajoso para você.`);
+        }
+        return;
       }
+      setCouponCode(auto.code);
+      setDiscount(auto.discount);
+      setCouponIsAuto(true);
     } catch {
       // silencioso: ausência de desconto automático não impede o checkout
     } finally {
       setPaymentChoiceLoading(false);
     }
   }
+
 
   async function handleSelectPayment(choice: "pix" | "other") {
     if (paymentChoiceLoading) return;
