@@ -445,18 +445,55 @@ export const createOrder = createServerFn({ method: "POST" })
 
     // ========================================================
     // Onda 9E.4b — DESCONTO DE COMBO
-    // Calculado server-side. Cupom vence: se há cupom aplicado e
-    // allow_bundle_discount_with_coupon=false, o helper retorna 0
-    // e marca todos os combos como blocked_by_coupon.
+    // REGRA: cupom e combo NUNCA se somam. Calculamos o combo de forma
+    // hipotética (sem bloqueio global por cupom, mas respeitando
+    // `accepts_coupon=false` por kit via `couponPresent`) e aplicamos
+    // apenas o MAIOR desconto para o cliente. Base B2B já foi aplicada antes.
     // ========================================================
     const { computeBundleApplication } = await import("@/server/cartBundleApply.server");
     const bundleApp = await computeBundleApplication({
       userId,
       items: data.items.map((i) => ({ productId: i.productId, qty: i.qty })),
-      hasCoupon: discount > 0,
+      hasCoupon: false,
+      couponPresent: discount > 0,
     });
-    const bundleDiscountTotal = bundleApp.bundle_discount_total;
+
+    let bundleDiscountTotal = bundleApp.bundle_discount_total;
+    let bundleDetails = bundleApp.details;
+    let bundlePerItem = bundleApp.perItem;
+    let appliedCouponCode: string | null = discount > 0 ? (data.couponCode ?? null) : null;
+    let discountNotice: string | null = null;
+    const fmtBRL = (v: number) =>
+      `R$ ${v.toFixed(2).replace(".", ",")}`;
+
+    if (discount > 0 && bundleDiscountTotal > 0) {
+      if (bundleDiscountTotal > discount) {
+        // Combo vence: zera o cupom
+        discountNotice = `Seu combo já garante um desconto maior (${fmtBRL(bundleDiscountTotal)}) do que o cupom ${appliedCouponCode ?? ""} (${fmtBRL(discount)}) — aplicamos o combo.`.trim();
+        discount = 0;
+        appliedCouponCode = null;
+      } else {
+        // Cupom vence: zera o combo
+        discountNotice = `Seu cupom ${appliedCouponCode ?? ""} garante um desconto maior (${fmtBRL(discount)}) do que o combo (${fmtBRL(bundleDiscountTotal)}) — aplicamos o cupom.`.trim();
+        bundleDiscountTotal = 0;
+        bundlePerItem = new Map();
+        bundleDetails = {
+          ...bundleApp.details,
+          applied: [],
+          blocked: [
+            ...bundleApp.details.blocked,
+            ...bundleApp.details.applied.map((a) => ({
+              bundle_id: a.bundle_id,
+              bundle_name: a.bundle_name,
+              status: "blocked_by_coupon" as const,
+              reason: "Cupom aplicado gerou desconto maior que o combo.",
+            })),
+          ],
+        } as typeof bundleApp.details;
+      }
+    }
     const hasBundleDiscount = bundleDiscountTotal > 0;
+
     const isPickup = data.deliveryMethod === "pickup";
     const isLocal = data.deliveryMethod === "local_delivery";
 
