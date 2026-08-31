@@ -175,6 +175,10 @@ function CatalogPage() {
     setPriceMax(search.precoMax?.toString() ?? "");
   }, [search.precoMax]);
 
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+
+
   const { data: categories } = useQuery({
     queryKey: ["categories"],
     staleTime: 1000 * 60 * 60,
@@ -531,7 +535,20 @@ function CatalogPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
           <aside className="lg:w-64 shrink-0">
-            <div className="bg-card border border-border rounded-xl p-5 lg:sticky lg:top-20 space-y-6">
+            {/* Mobile: painel fechado por padrão — evita que dados assíncronos
+                (categorias, marcas, facetas) empurrem a grade e gerem CLS. */}
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              className="lg:hidden w-full h-11 mb-4 inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card text-sm font-medium"
+            >
+              <SlidersHorizontal className="w-4 h-4 text-primary" />
+              {filtersOpen ? "Ocultar filtros" : "Filtrar produtos"}
+            </button>
+            <div
+              className={`${filtersOpen ? "block" : "hidden"} lg:block bg-card border border-border rounded-xl p-5 lg:sticky lg:top-20 space-y-6`}
+            >
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <SlidersHorizontal className="w-4 h-4 text-primary" />
