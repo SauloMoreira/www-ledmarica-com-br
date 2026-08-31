@@ -112,27 +112,32 @@ function buildBreadcrumbJsonLd(p: ProductWithSeo) {
 const productQueryOptions = (slug: string) => ({
   queryKey: ["product", slug],
   queryFn: async () => {
+    // Uma única ida ao banco: produto + imagens via embedding do PostgREST.
+    // Duas queries sequenciais dobravam o tempo de resposta do SSR (resourceLoadDelay).
     const { data, error } = await supabase
       .from("products")
       .select(
         // Colunas sensíveis (cost_price, b2b_price, fiscal_*, stock_min_alert, stock_alert_enabled etc.)
         // não são retornadas ao público — a leitura das mesmas foi restrita via GRANT no banco.
-        "id, name, slug, description, specs, price, sale_price, stock_qty, sku, ncm, brand, weight_kg, height_cm, width_cm, length_cm, category_id, images, tags, active, featured, created_at, updated_at, seo_title, seo_description, seo_keywords, free_shipping_eligible, b2b_enabled, b2b_show_in_vitrine, b2b_commercial_note, allow_out_of_stock_sales, avg_rating, review_count, parent_product_id, variant_attributes",
+        "id, name, slug, description, specs, price, sale_price, stock_qty, sku, ncm, brand, weight_kg, height_cm, width_cm, length_cm, category_id, images, tags, active, featured, created_at, updated_at, seo_title, seo_description, seo_keywords, free_shipping_eligible, b2b_enabled, b2b_show_in_vitrine, b2b_commercial_note, allow_out_of_stock_sales, avg_rating, review_count, parent_product_id, variant_attributes, product_images(*)",
       )
       .eq("slug", slug)
       .eq("active", true)
       .maybeSingle();
     if (error) throw error;
     if (!data) throw notFound();
-    const { data: imgs } = await supabase
-      .from("product_images")
-      .select("*")
-      .eq("product_id", (data as { id: string }).id)
-      .order("is_primary", { ascending: false })
-      .order("sort_order", { ascending: true });
-    return { ...(data as unknown as ProductWithSeo), product_images: (imgs ?? []) as ProductImageRow[] };
+    const { product_images: rawImages, ...product } = data as unknown as ProductWithSeo & {
+      product_images?: ProductImageRow[] | null;
+    };
+    const imgs = [...((rawImages ?? []) as ProductImageRow[])].sort((a, b) => {
+      const primary = Number(!!b.is_primary) - Number(!!a.is_primary);
+      if (primary !== 0) return primary;
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    });
+    return { ...(product as ProductWithSeo), product_images: imgs };
   },
 });
+
 
 export const Route = createFileRoute("/produto/$slug")({
   loader: async ({ params, context }) => {
