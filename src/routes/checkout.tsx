@@ -144,18 +144,38 @@ function CheckoutPage() {
       previewItems.map((i) => `${i.product_id}:${i.qty}`).join("|"),
     ],
     queryFn: () =>
-      getCartBundlePreview({ data: { items: previewItems, hasCoupon: Boolean(couponCode) } }),
+      getCartBundlePreview({
+        data: {
+          items: previewItems,
+          // hipotético: não bloqueia globalmente por causa do cupom,
+          // mas respeita kits com accepts_coupon = false
+          hasCoupon: false,
+          couponPresent: Boolean(couponCode),
+        },
+      }),
     enabled: previewItems.length > 0,
     staleTime: 15_000,
   });
-  const bundleDiscountPreview = (bundlePreviewRows ?? [])
+  const bundleDiscountRaw = (bundlePreviewRows ?? [])
     .filter((r) => r.status === "eligible_preview")
     .reduce((acc, r) => acc + r.estimated_discount, 0);
 
+  // Regra: cupom e combo NUNCA somam — vence o maior desconto para o cliente.
+  const comboWins = bundleDiscountRaw > discount;
+  const couponDiscountApplied = comboWins ? 0 : discount;
+  const bundleDiscountPreview = comboWins ? bundleDiscountRaw : 0;
+  const discountNotice =
+    discount > 0 && bundleDiscountRaw > 0
+      ? comboWins
+        ? `Seu combo garante um desconto maior (${formatBRL(bundleDiscountRaw)}) do que o cupom ${couponCode} (${formatBRL(discount)}) — aplicamos o combo.`
+        : `Seu cupom ${couponCode} garante um desconto maior (${formatBRL(discount)}) do que o combo (${formatBRL(bundleDiscountRaw)}) — aplicamos o cupom.`
+      : null;
+
   const total = useMemo(
-    () => Math.max(0, subtotal - discount - bundleDiscountPreview + shippingCost),
-    [subtotal, discount, bundleDiscountPreview, shippingCost],
+    () => Math.max(0, subtotal - couponDiscountApplied - bundleDiscountPreview + shippingCost),
+    [subtotal, couponDiscountApplied, bundleDiscountPreview, shippingCost],
   );
+
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
@@ -319,24 +339,54 @@ function CheckoutPage() {
     setDeliveryMethod(s.id === "local-zone" ? "local_delivery" : "delivery");
   }
 
+  /**
+   * Resolve o melhor cupom automático elegível no contexto atual,
+   * validando os candidatos em ordem de maior desconto (fallback se
+   * o primeiro falhar por validade/limite).
+   */
+  async function resolveBestAutoCoupon(
+    choice: "pix" | "other" | null,
+    delivery: "delivery" | "local_delivery" | "pickup" | null,
+  ): Promise<{ code: string; discount: number } | null> {
+    const { candidates } = await getAutoCouponForContext({
+      data: { intendedPaymentMethod: choice, deliveryMethod: delivery, subtotal },
+    });
+    for (const c of candidates ?? []) {
+      const r = await applyCoupon({ data: { code: c.code, subtotal } });
+      if (r.valid && r.discount > 0) return { code: c.code, discount: r.discount };
+    }
+    return null;
+  }
+
   async function handleApplyCoupon() {
     if (!couponInput.trim()) return;
     setCouponLoading(true);
     try {
-      const r = await applyCoupon({ data: { code: couponInput.trim(), subtotal } });
-      if (r.valid) {
-        // Cupom manual sempre prevalece sobre o automático.
-        setCouponCode(couponInput.trim());
-        setDiscount(r.discount);
-        setCouponIsAuto(false);
-        toast.success(r.message);
-      } else {
+      const code = couponInput.trim();
+      const r = await applyCoupon({ data: { code, subtotal } });
+      if (!r.valid) {
         if (!couponIsAuto) {
           setCouponCode(null);
           setDiscount(0);
         }
         toast.error(r.message);
+        return;
       }
+      // Cupons nunca acumulam: mantém o de MAIOR desconto para o cliente.
+      const auto = await resolveBestAutoCoupon(paymentChoice, deliveryMethod);
+      if (auto && auto.discount > r.discount && auto.code !== code) {
+        setCouponCode(auto.code);
+        setDiscount(auto.discount);
+        setCouponIsAuto(true);
+        toast.info(
+          `O cupom ${auto.code} já aplicado é mais vantajoso (${formatBRL(auto.discount)}) do que ${code} (${formatBRL(r.discount)}). Mantivemos o maior desconto.`,
+        );
+        return;
+      }
+      setCouponCode(code);
+      setDiscount(r.discount);
+      setCouponIsAuto(false);
+      toast.success(r.message);
     } finally {
       setCouponLoading(false);
     }
@@ -350,21 +400,17 @@ function CheckoutPage() {
   }, [deliveryMethod]);
 
   /**
-   * Recalcula o cupom automático conforme o contexto pré-pagamento
-   * (forma de pagamento pretendida + modalidade de entrega).
-   * Cupom manual sempre prevalece.
+   * Recalcula o cupom automático conforme o contexto pré-pagamento.
+   * Um cupom manual só é mantido se for MAIOR que o melhor automático.
    */
   async function refreshAutoCoupon(
     choice: "pix" | "other" | null,
     delivery: "delivery" | "local_delivery" | "pickup" | null,
   ) {
-    if (couponCode && !couponIsAuto) return; // manual vence
     setPaymentChoiceLoading(true);
     try {
-      const { code } = await getAutoCouponForContext({
-        data: { intendedPaymentMethod: choice, deliveryMethod: delivery },
-      });
-      if (!code) {
+      const auto = await resolveBestAutoCoupon(choice, delivery);
+      if (!auto) {
         if (couponIsAuto) {
           setCouponCode(null);
           setDiscount(0);
@@ -372,22 +418,26 @@ function CheckoutPage() {
         }
         return;
       }
-      const r = await applyCoupon({ data: { code, subtotal } });
-      if (r.valid) {
-        setCouponCode(code);
-        setDiscount(r.discount);
-        setCouponIsAuto(true);
-      } else if (couponIsAuto) {
-        setCouponCode(null);
-        setDiscount(0);
-        setCouponIsAuto(false);
+      // Cupom manual em uso: só é substituído se o automático for maior.
+      if (couponCode && !couponIsAuto) {
+        if (auto.discount > discount && auto.code !== couponCode) {
+          setCouponCode(auto.code);
+          setDiscount(auto.discount);
+          setCouponIsAuto(true);
+          toast.info(`Aplicamos o cupom ${auto.code}, mais vantajoso para você.`);
+        }
+        return;
       }
+      setCouponCode(auto.code);
+      setDiscount(auto.discount);
+      setCouponIsAuto(true);
     } catch {
       // silencioso: ausência de desconto automático não impede o checkout
     } finally {
       setPaymentChoiceLoading(false);
     }
   }
+
 
   async function handleSelectPayment(choice: "pix" | "other") {
     if (paymentChoiceLoading) return;
@@ -1069,19 +1119,19 @@ function CheckoutPage() {
                   <span>−{formatBRL(b2bSavings)}</span>
                 </div>
               )}
-              {discount > 0 && (
+              {couponDiscountApplied > 0 && (
                 <div className="flex justify-between text-success">
                   <span className="inline-flex items-center gap-1.5">
                     {couponIsAuto ? (
                       <>
                         <QrCode className="w-3.5 h-3.5" />
-                        Desconto Pix ({couponCode})
+                        Desconto automático ({couponCode})
                       </>
                     ) : (
                       <>Desconto ({couponCode})</>
                     )}
                   </span>
-                  <span>−{formatBRL(discount)}</span>
+                  <span>−{formatBRL(couponDiscountApplied)}</span>
                 </div>
               )}
 
@@ -1091,6 +1141,10 @@ function CheckoutPage() {
                   <span>−{formatBRL(bundleDiscountPreview)}</span>
                 </div>
               )}
+              {discountNotice && (
+                <p className="text-xs text-muted-foreground leading-snug">{discountNotice}</p>
+              )}
+
               <div className="flex justify-between">
                 <span className="text-muted-foreground">
                   {isPickup ? "Retirada na loja" : isLocal ? "Frete Local Maricá" : "Frete"}

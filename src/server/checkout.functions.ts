@@ -176,15 +176,39 @@ export const applyCoupon = createServerFn({ method: "POST" })
 
 // ============================================================
 // Cupom automático por condição (forma de pagamento / escopo da compra)
-// Retorna apenas o código; a validação (mínimo, validade, limites)
-// continua sendo feita por `apply_coupon`.
+// Regra: entre os cupons automáticos elegíveis, vence SEMPRE o de MAIOR
+// desconto para o cliente (especificidade só desempata). A validação final
+// (validade, limites, uso por cliente) continua sendo feita por `apply_coupon`.
 // ============================================================
+type AutoCouponRow = {
+  code: string;
+  condition_type: string | null;
+  condition_value: string | null;
+  discount_type: string | null;
+  discount_value: number | null;
+  min_order_value: number | null;
+};
+
+/** Desconto estimado de um cupom sobre um subtotal (mesma fórmula do RPC). */
+export function estimateCouponDiscount(
+  coupon: { discount_type?: string | null; discount_value?: number | null },
+  subtotal: number,
+): number {
+  const value = Number(coupon.discount_value ?? 0);
+  if (value <= 0 || subtotal <= 0) return 0;
+  if ((coupon.discount_type ?? "percent") === "percentage" || coupon.discount_type === "percent") {
+    return Number(((subtotal * value) / 100).toFixed(2));
+  }
+  return Number(Math.min(value, subtotal).toFixed(2));
+}
+
 export const getAutoCouponForContext = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
         intendedPaymentMethod: z.enum(["pix", "other"]).nullable().default(null),
         deliveryMethod: z.enum(["delivery", "local_delivery", "pickup"]).nullable().default(null),
+        subtotal: z.number().min(0).default(0),
       })
       .parse(input),
   )
@@ -192,20 +216,35 @@ export const getAutoCouponForContext = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("coupons")
-      .select("code, condition_type, condition_value")
+      .select("code, condition_type, condition_value, discount_type, discount_value, min_order_value")
       .eq("active", true)
       .eq("auto_apply", true);
-    if (error || !rows) return { code: null as string | null };
-    // Mais específico vence: condição concreta > "qualquer forma" > sem condição.
+    if (error || !rows) return { code: null as string | null, discount: 0, candidates: [] as { code: string; discount: number }[] };
+    // Especificidade só como desempate: condição concreta > "qualquer forma" > sem condição.
     const specificity = (c: { condition_type: string | null; condition_value: string | null }) =>
       !c.condition_type ? 0 : c.condition_value === "any" ? 1 : 2;
-    const match = (
-      rows as { code: string; condition_type: string | null; condition_value: string | null }[]
-    )
-      .filter((c) => couponConditionMetPrePayment(c, data))
-      .sort((a, b) => specificity(b) - specificity(a))[0];
-    return { code: match?.code ?? null };
+
+    const candidates = (rows as AutoCouponRow[])
+      .filter(
+        (c) =>
+          couponConditionMetPrePayment(c, data) &&
+          data.subtotal >= Number(c.min_order_value ?? 0),
+      )
+      .map((c) => ({
+        code: c.code,
+        discount: estimateCouponDiscount(c, data.subtotal),
+        specificity: specificity(c),
+      }))
+      .sort((a, b) => b.discount - a.discount || b.specificity - a.specificity);
+
+    const best = candidates[0];
+    return {
+      code: best?.code ?? null,
+      discount: best?.discount ?? 0,
+      candidates: candidates.map((c) => ({ code: c.code, discount: c.discount })),
+    };
   });
+
 
 
 
@@ -406,18 +445,55 @@ export const createOrder = createServerFn({ method: "POST" })
 
     // ========================================================
     // Onda 9E.4b — DESCONTO DE COMBO
-    // Calculado server-side. Cupom vence: se há cupom aplicado e
-    // allow_bundle_discount_with_coupon=false, o helper retorna 0
-    // e marca todos os combos como blocked_by_coupon.
+    // REGRA: cupom e combo NUNCA se somam. Calculamos o combo de forma
+    // hipotética (sem bloqueio global por cupom, mas respeitando
+    // `accepts_coupon=false` por kit via `couponPresent`) e aplicamos
+    // apenas o MAIOR desconto para o cliente. Base B2B já foi aplicada antes.
     // ========================================================
     const { computeBundleApplication } = await import("@/server/cartBundleApply.server");
     const bundleApp = await computeBundleApplication({
       userId,
       items: data.items.map((i) => ({ productId: i.productId, qty: i.qty })),
-      hasCoupon: discount > 0,
+      hasCoupon: false,
+      couponPresent: discount > 0,
     });
-    const bundleDiscountTotal = bundleApp.bundle_discount_total;
+
+    let bundleDiscountTotal = bundleApp.bundle_discount_total;
+    let bundleDetails = bundleApp.details;
+    let bundlePerItem = bundleApp.perItem;
+    let appliedCouponCode: string | null = discount > 0 ? (data.couponCode ?? null) : null;
+    let discountNotice: string | null = null;
+    const fmtBRL = (v: number) =>
+      `R$ ${v.toFixed(2).replace(".", ",")}`;
+
+    if (discount > 0 && bundleDiscountTotal > 0) {
+      if (bundleDiscountTotal > discount) {
+        // Combo vence: zera o cupom
+        discountNotice = `Seu combo já garante um desconto maior (${fmtBRL(bundleDiscountTotal)}) do que o cupom ${appliedCouponCode ?? ""} (${fmtBRL(discount)}) — aplicamos o combo.`.trim();
+        discount = 0;
+        appliedCouponCode = null;
+      } else {
+        // Cupom vence: zera o combo
+        discountNotice = `Seu cupom ${appliedCouponCode ?? ""} garante um desconto maior (${fmtBRL(discount)}) do que o combo (${fmtBRL(bundleDiscountTotal)}) — aplicamos o cupom.`.trim();
+        bundleDiscountTotal = 0;
+        bundlePerItem = new Map();
+        bundleDetails = {
+          ...bundleApp.details,
+          applied: [],
+          blocked: [
+            ...bundleApp.details.blocked,
+            ...bundleApp.details.applied.map((a) => ({
+              bundle_id: a.bundle_id,
+              bundle_name: a.bundle_name,
+              status: "blocked_by_coupon" as const,
+              reason: "Cupom aplicado gerou desconto maior que o combo.",
+            })),
+          ],
+        } as typeof bundleApp.details;
+      }
+    }
     const hasBundleDiscount = bundleDiscountTotal > 0;
+
     const isPickup = data.deliveryMethod === "pickup";
     const isLocal = data.deliveryMethod === "local_delivery";
 
@@ -612,7 +688,7 @@ export const createOrder = createServerFn({ method: "POST" })
         discount,
         shipping_cost: shippingCost,
         total,
-        coupon_code: data.couponCode ?? null,
+        coupon_code: appliedCouponCode,
         intended_payment_method: data.intendedPaymentMethod ?? null,
 
         shipping_carrier: shippingCarrier,
@@ -635,7 +711,7 @@ export const createOrder = createServerFn({ method: "POST" })
         pricing_validated_at: pricing.validated_at,
         // === Onda 9E.4b: desconto de combo ===
         bundle_discount_total: bundleDiscountTotal,
-        bundle_discount_details: bundleApp.details as never,
+        bundle_discount_details: bundleDetails as never,
         has_bundle_discount: hasBundleDiscount,
         ...(pickupSnap ?? {}),
         ...(localZoneInfo
@@ -673,7 +749,7 @@ export const createOrder = createServerFn({ method: "POST" })
           hasCost && totalPrice > 0
             ? Number(((grossMarginAmount! / totalPrice) * 100).toFixed(2))
             : null;
-        const bundleAlloc = bundleApp.perItem.get(i.productId);
+        const bundleAlloc = bundlePerItem.get(i.productId);
         return {
           order_id: order.id,
           product_id: i.productId,
@@ -725,6 +801,7 @@ export const createOrder = createServerFn({ method: "POST" })
       ok: true as const,
       orderId: order.id,
       orderNumber: order.order_number,
+      discountNotice,
     };
   });
 
