@@ -176,6 +176,19 @@ export const Route = createFileRoute("/produto/$slug")({
 
     if (p.seo_keywords) seo.meta.push({ name: "keywords", content: p.seo_keywords });
 
+    // LCP: a imagem principal da galeria já é conhecida no servidor — emitimos o
+    // preload para o navegador descobri-la antes da hidratação.
+    const lcpPrimary = ogPrimary;
+    const lcpSrc = lcpPrimary ? (pickUrl(lcpPrimary, "full") ?? lcpPrimary.original_url) : null;
+    if (lcpSrc) {
+      (seo.links as Array<Record<string, string>>).push({
+        rel: "preload",
+        as: "image",
+        href: lcpSrc,
+        fetchPriority: "high",
+      });
+    }
+
     const productJsonLd = JSON.stringify(buildProductJsonLd(p, finalPrice, baseDesc, allImageUrls));
 
     const faq = extractFaq(p.specs);
