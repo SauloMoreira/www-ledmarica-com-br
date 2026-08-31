@@ -789,10 +789,10 @@ export const createOrder = createServerFn({ method: "POST" })
       return { ok: false as const, error: itemsErr.message };
     }
 
-    // Disparar e-mail "pedido recebido" — não bloqueia retorno; falhas são logadas
+    // Disparar e-mail "pedido recebido" — AWAIT obrigatório (Worker aborta promises não aguardadas após a Response); sendOrderEmail nunca propaga erro.
     try {
       const { sendOrderEmail } = await import("@/server/email/orderEmails");
-      void sendOrderEmail({ orderId: order.id, type: "order_created" });
+      await sendOrderEmail({ orderId: order.id, type: "order_created" });
     } catch (e) {
       console.error("[checkout] falha ao agendar e-mail order_created", e);
     }
