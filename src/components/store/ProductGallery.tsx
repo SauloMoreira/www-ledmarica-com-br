@@ -98,6 +98,8 @@ export function ProductGallery({ images, productName }: Props) {
                     src={thumb}
                     alt={img.alt_text || `${productName} ${i + 1}`}
                     className="w-full h-full object-cover"
+                    width={68}
+                    height={68}
                     loading="lazy"
                   />
                 </button>
@@ -213,6 +215,8 @@ export function ProductGallery({ images, productName }: Props) {
                       src={thumb}
                       alt={img.alt_text || `${productName} ${i + 1}`}
                       className="w-full h-full object-cover"
+                      width={64}
+                      height={64}
                       loading="lazy"
                     />
                   </button>
