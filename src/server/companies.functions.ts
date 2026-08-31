@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertAal2 } from "./security/assertAdmin";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isValidCNPJ, onlyDigits } from "@/lib/cnpj";
 import { decideAutoApproval, lookupCnpj } from "./cnpjLookup";
@@ -142,7 +143,8 @@ export const adminUpdateCompanyStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => updateStatusInput.parse(data))
   .handler(async ({ data, context }) => {
-    const { userId } = context;
+    const { userId, claims } = context;
+    void claims;
 
     // verifica admin
     const { data: prof } = await supabaseAdmin
@@ -151,6 +153,7 @@ export const adminUpdateCompanyStatus = createServerFn({ method: "POST" })
       .eq("id", userId)
       .maybeSingle();
     if (prof?.role !== "admin") throw new Error("Acesso negado");
+    assertAal2(context.claims);
 
     const patch: {
       status: "approved" | "rejected" | "blocked" | "pending";
