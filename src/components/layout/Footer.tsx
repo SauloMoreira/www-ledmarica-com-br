@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { MessageCircle, Instagram, Facebook } from "lucide-react";
 import { STORE_NAME, STORE_WHATSAPP } from "@/lib/domain";
-import logoFooter from "@/assets/logo-footer.jpg";
+import logoFooter from "@/assets/logo-footer.webp";
 
 export function Footer() {
   const openCookiePreferences = () => {
@@ -32,7 +32,15 @@ export function Footer() {
           {/* Marca */}
           <div className="col-span-2 md:col-span-1">
             <div className="bg-white/95 rounded-xl p-3 inline-block mb-5 shadow-lg shadow-black/20 ring-1 ring-white/10">
-              <img src={logoFooter} alt={STORE_NAME} className="w-44 h-auto object-contain" />
+              <img
+                src={logoFooter}
+                alt={STORE_NAME}
+                width={352}
+                height={163}
+                loading="lazy"
+                decoding="async"
+                className="w-44 h-auto object-contain"
+              />
             </div>
             <p className="text-sm text-slate-300 leading-relaxed mb-5">
               Qualidade que ilumina o seu projeto.

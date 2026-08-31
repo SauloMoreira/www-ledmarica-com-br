@@ -6,7 +6,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { Button } from "@/components/ui/button";
 import { STORE_NAME } from "@/lib/domain";
 import { SearchAutocomplete } from "@/components/store/SearchAutocomplete";
-import logoNavbar from "@/assets/logo-navbar.png";
+import logoNavbar from "@/assets/logo-navbar.webp";
 
 export function Header() {
   const cart = useCart();
