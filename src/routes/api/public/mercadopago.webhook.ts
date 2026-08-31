@@ -158,12 +158,16 @@ export const Route = createFileRoute("/api/public/mercadopago/webhook")({
           headersObj[k] = v;
         });
 
+        const auditAction = isLegacyFeedNotification
+          ? (action ?? "ignored_legacy_feed_duplicate")
+          : action;
+
         const { data: auditRow, error: auditErr } = await supabaseAdmin
           .from("payment_webhook_events")
           .insert({
             provider: "mercadopago",
             event_id: eventId,
-            action,
+            action: auditAction,
             type,
             data_id: dataId,
             live_mode: liveMode,
@@ -174,6 +178,23 @@ export const Route = createFileRoute("/api/public/mercadopago/webhook")({
           .single();
         if (auditErr) console.error("[MP webhook] erro audit insert", auditErr);
         const auditId = auditRow?.id ?? null;
+
+        // Notificação legada duplicada — registrada, sem validar/processar.
+        // O webhook assinado moderno já trata o evento de verdade.
+        if (isLegacyFeedNotification) {
+          if (auditId) {
+            await supabaseAdmin
+              .from("payment_webhook_events")
+              .update({ processed: true, processing_error: null })
+              .eq("id", auditId);
+          }
+          console.log("[MP webhook] notificação legada ignorada", {
+            auditId,
+            type,
+            dataId,
+          });
+          return new Response("ok", { status: 200 });
+        }
 
         // 2) Validar assinatura
         // Em produção, secret é OBRIGATÓRIO — ausente => 503.
