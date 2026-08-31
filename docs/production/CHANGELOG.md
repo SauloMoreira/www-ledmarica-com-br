@@ -35,15 +35,22 @@ e versionamento [SemVer](https://semver.org/lang/pt-BR/).
   Ambas passaram a ter `WITH CHECK (... AND (user_id IS NULL OR user_id = auth.uid()))`:
   inserção anônima (`user_id` NULL) segue permitida; o bloqueado é marcar a linha
   com o `user_id` de terceiro.
+- **Policies explícitas de SELECT em buckets públicos**: criadas as policies
+  `Public read product-images` (`product-images`) e `Public read marketing-creatives`
+  (`marketing-creatives`) em `storage.objects`. Os buckets já eram `public=true`
+  (leitura pública por URL, intencional para a vitrine/criativos); a policy explícita
+  apenas documenta a intenção e torna o acesso auditável. Zero mudança de comportamento.
 
 ### Validação
 - 636 produtos ativos com imagem seguem legíveis publicamente (catálogo intacto).
 - 3 produtos inativos com imagem deixaram de ser legíveis para não-admin.
 - Cadastro de usuário comum inalterado (trigger normaliza `role` antes do WITH CHECK).
 - Inserção anônima em `chat_messages`/`search_logs` (`user_id` NULL) segue permitida.
-- Security Scan pós-fix: **0 error**; achados `chat_messages_insert_user_id_spoofing`
-  e `search_logs_insert_user_id_spoofing` não reaparecem; `profiles_self_insert_role_escalation`
-  tampouco. Restam apenas `warn` de linter `SECURITY DEFINER` já aceitos.
+- Buckets `product-images`/`marketing-creatives` seguem públicos; leitura por URL intacta.
+- Security Scan pós-fix: **0 error**. Os achados `companies_cnpj_contact_exposed...`,
+  `storage_marketing_creatives_select_missing`, `storage_product_images_select_missing`,
+  `chat_messages_insert_user_id_spoofing`, `search_logs_insert_user_id_spoofing` e
+  `profiles_self_insert_role_escalation` não reaparecem.
 
 
 ### Notas de rollback
