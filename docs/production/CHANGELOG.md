@@ -8,6 +8,25 @@ e versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.8] — 2026-08-31
+
+**Tipo:** correção de segurança (RLS / B2B)
+**Classificação:** Alta
+
+### Corrigido
+- **Escalada de privilégio em `company_users`**: a policy `company_users_self_insert`
+  validava apenas `auth.uid() = user_id`, sem restringir `company_id` — qualquer
+  usuário autenticado podia se auto-vincular a **qualquer** empresa e passar a ver
+  preços/condições B2B negociados de outro cliente (e comprar em nome dela).
+- Policy removida e `INSERT/UPDATE/DELETE` revogados de `authenticated`/`anon`.
+  Vínculos passam a ser criados exclusivamente por código de servidor
+  (`createCompany` em `src/server/companies.functions.ts`, via service role, que
+  vincula o próprio usuário como `owner` da empresa que ele acabou de cadastrar)
+  ou por admin (`company_users_admin_all`). Leitura (`SELECT`) inalterada.
+
+---
+
+
 ## [1.0.7] — 2026-08-26
 
 **Tipo:** integração (marketing/analytics)
