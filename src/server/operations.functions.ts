@@ -1044,6 +1044,18 @@ export const getAdminOperations = createServerFn({ method: "GET" })
         ctaHref: "/admin/produtos",
       });
     }
+
+    if (emailFailuresOrStuck > 0) {
+      alerts.push({
+        id: "alert-email-failures",
+        title: "E-mails de pedido travados ou com falha",
+        description: `${emailFailuresOrStuck} e-mail(is) de pedido falharam ou ficaram parados em "pendente" por mais de 1h nos últimos 7 dias. O cliente pode não ter recebido a confirmação/atualização do pedido.`,
+        severity: "high",
+        ctaLabel: "Ver pedidos",
+        ctaHref: "/admin/pedidos",
+      });
+    }
+
     if (webhookErrors > 0) {
       alerts.push({
         id: "alert-webhook-errors",
