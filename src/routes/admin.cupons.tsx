@@ -30,6 +30,13 @@ import {
 } from "@/components/admin/datatable";
 import { useTableState } from "@/hooks/useTableState";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  PAYMENT_CONDITION_VALUES,
+  DELIVERY_SCOPE_VALUES,
+  POST_PAYMENT_ONLY_VALUES,
+  conditionLabel,
+  conditionBadge,
+} from "@/lib/couponConditions";
 import { toast } from "sonner";
 
 const searchSchema = z.object({
@@ -62,27 +69,10 @@ interface Coupon {
   condition_value?: string | null;
 }
 
-/**
- * Condições disponíveis para aplicação automática.
- * Estruturado como lista para crescer com novas condições
- * (ex.: primeira compra, categoria, faixa de valor) sem mexer na UI.
- */
-const AUTO_CONDITIONS = [
-  {
-    key: "payment_method:pix",
-    label: "Forma de pagamento: Pix",
-    conditionType: "payment_method",
-    conditionValue: "pix",
-  },
-] as const;
+type ConditionTypeKey = "none" | "payment_method" | "delivery_scope";
 
 function conditionKey(type?: string | null, value?: string | null) {
-  return type && value ? `${type}:${value}` : "";
-}
-
-function conditionLabel(type?: string | null, value?: string | null) {
-  const k = conditionKey(type, value);
-  return AUTO_CONDITIONS.find((c) => c.key === k)?.label ?? k;
+  return type && value ? `${type}:${value}` : "none";
 }
 
 function CuponsPage() {
@@ -99,7 +89,8 @@ function CuponsPage() {
     expires_at: "",
     active: true,
     auto_apply: false,
-    condition_key: AUTO_CONDITIONS[0].key as string,
+    condition_type: "payment_method" as ConditionTypeKey,
+    condition_value: "pix" as string,
   });
 
 
@@ -161,7 +152,8 @@ function CuponsPage() {
       expires_at: "",
       active: true,
       auto_apply: false,
-      condition_key: AUTO_CONDITIONS[0].key,
+      condition_type: "payment_method",
+      condition_value: "pix",
     });
     setOpen(true);
   };
@@ -177,30 +169,36 @@ function CuponsPage() {
       expires_at: c.expires_at ? c.expires_at.slice(0, 16) : "",
       active: !!c.active,
       auto_apply: !!c.auto_apply,
-      condition_key: conditionKey(c.condition_type, c.condition_value) || AUTO_CONDITIONS[0].key,
+      condition_type: (c.condition_type as ConditionTypeKey) ?? "none",
+      condition_value: c.condition_value ?? "",
     });
     setOpen(true);
   };
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
-    const condition = AUTO_CONDITIONS.find((c) => c.key === form.condition_key);
-    if (form.auto_apply && !condition) {
-      return toast.error("Selecione uma condição para a aplicação automática.");
+    const hasCondition = form.condition_type !== "none";
+    const conditionType = hasCondition ? form.condition_type : null;
+    const conditionValue = hasCondition ? form.condition_value : null;
+    if (form.auto_apply && hasCondition && !conditionValue) {
+      return toast.error("Selecione o valor da condição.");
     }
 
     // Regra: só pode existir 1 cupom automático ativo por condição.
-    if (form.auto_apply && form.active && condition) {
+    if (form.auto_apply && form.active) {
+      const key = conditionKey(conditionType, conditionValue);
       const conflict = (list ?? []).find(
         (c) =>
           c.id !== editing?.id &&
           c.active &&
           c.auto_apply &&
-          conditionKey(c.condition_type, c.condition_value) === condition.key,
+          conditionKey(c.condition_type, c.condition_value) === key,
       );
       if (conflict) {
         return toast.error(
-          `Já existe um cupom automático ativo para esta condição: ${conflict.code} (${condition.label})`,
+          `Já existe um cupom automático ativo para esta condição: ${conflict.code} (${conditionLabel(
+            { condition_type: conditionType, condition_value: conditionValue },
+          )})`,
         );
       }
     }
@@ -215,8 +213,8 @@ function CuponsPage() {
       expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
       active: form.active,
       auto_apply: form.auto_apply,
-      condition_type: form.auto_apply ? (condition?.conditionType ?? null) : null,
-      condition_value: form.auto_apply ? (condition?.conditionValue ?? null) : null,
+      condition_type: form.auto_apply ? conditionType : null,
+      condition_value: form.auto_apply ? conditionValue : null,
     };
     const res = editing
       ? await supabase.from("coupons").update(payload).eq("id", editing.id)
@@ -251,12 +249,17 @@ function CuponsPage() {
         <span className="inline-flex items-center gap-2">
           <span className="font-mono font-semibold">{c.code}</span>
           {c.auto_apply && (
-            <span
-              className="rounded-full bg-primary-tint text-primary border border-primary/30 px-2 py-0.5 text-[10px] font-medium"
-              title={conditionLabel(c.condition_type, c.condition_value)}
-            >
-              Automático
-            </span>
+            <>
+              <span className="rounded-full bg-primary-tint text-primary border border-primary/30 px-2 py-0.5 text-[10px] font-medium">
+                Automático
+              </span>
+              <span
+                className="rounded-full bg-muted text-muted-foreground border border-border px-2 py-0.5 text-[10px] font-medium"
+                title={conditionLabel(c)}
+              >
+                {conditionBadge(c)}
+              </span>
+            </>
           )}
         </span>
       ),
@@ -487,23 +490,81 @@ function CuponsPage() {
                 />
               </div>
               {form.auto_apply && (
-                <div>
-                  <Label>Condição</Label>
-                  <Select
-                    value={form.condition_key}
-                    onValueChange={(v) => setForm({ ...form, condition_key: v })}
-                  >
-                    <SelectTrigger className="mt-1 h-10">
-                      <SelectValue placeholder="Selecione a condição" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {AUTO_CONDITIONS.map((c) => (
-                        <SelectItem key={c.key} value={c.key}>
-                          {c.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-3">
+                  <div>
+                    <Label>Tipo de condição</Label>
+                    <Select
+                      value={form.condition_type}
+                      onValueChange={(v) =>
+                        setForm({
+                          ...form,
+                          condition_type: v as ConditionTypeKey,
+                          condition_value:
+                            v === "payment_method" ? "pix" : v === "delivery_scope" ? "local" : "",
+                        })
+                      }
+                    >
+                      <SelectTrigger className="mt-1 h-10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem condição</SelectItem>
+                        <SelectItem value="payment_method">Forma de pagamento</SelectItem>
+                        <SelectItem value="delivery_scope">Escopo da compra</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {form.condition_type === "payment_method" && (
+                    <div>
+                      <Label>Forma de pagamento</Label>
+                      <Select
+                        value={form.condition_value}
+                        onValueChange={(v) => setForm({ ...form, condition_value: v })}
+                      >
+                        <SelectTrigger className="mt-1 h-10">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PAYMENT_CONDITION_VALUES.map((p) => (
+                            <SelectItem key={p.value} value={p.value}>
+                              {p.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {(POST_PAYMENT_ONLY_VALUES as readonly string[]).includes(
+                        form.condition_value,
+                      ) && (
+                        <p className="mt-1.5 text-xs text-muted-foreground">
+                          Crédito/débito só são confirmados após o pagamento (Mercado Pago Checkout
+                          Pro não informa isso antes) — o cupom não se aplica automaticamente no
+                          carrinho para esses casos; a confirmação é validada depois do pagamento.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {form.condition_type === "delivery_scope" && (
+                    <div>
+                      <Label>Escopo da compra</Label>
+                      <Select
+                        value={form.condition_value}
+                        onValueChange={(v) => setForm({ ...form, condition_value: v })}
+                      >
+                        <SelectTrigger className="mt-1 h-10">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DELIVERY_SCOPE_VALUES.map((d) => (
+                            <SelectItem key={d.value} value={d.value}>
+                              {d.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

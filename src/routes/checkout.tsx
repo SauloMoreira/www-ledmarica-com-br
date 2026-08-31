@@ -29,7 +29,7 @@ import {
   calculateShipping,
   applyCoupon,
   createOrder,
-  getAutoCouponCode,
+  getAutoCouponForContext,
 
   lookupLocalDeliveryZone,
 } from "@/server/checkout.functions";
@@ -342,33 +342,45 @@ function CheckoutPage() {
     }
   }
 
-  async function handleSelectPayment(choice: "pix" | "other") {
-    if (paymentChoiceLoading) return;
-    setPaymentChoice(choice);
+  // Reavalia o cupom automático quando a modalidade de entrega muda
+  // (condições de escopo local/nacional).
+  useEffect(() => {
+    void refreshAutoCoupon(paymentChoice, deliveryMethod);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deliveryMethod]);
 
-    if (choice === "other") {
-      // Remove apenas o desconto automático — cupom manual permanece.
-      if (couponIsAuto) {
-        setCouponCode(null);
-        setDiscount(0);
-        setCouponIsAuto(false);
-      }
-      return;
-    }
-
-    // Pix: só aplica automático se não houver cupom manual válido aplicado.
-    if (couponCode && !couponIsAuto) return;
+  /**
+   * Recalcula o cupom automático conforme o contexto pré-pagamento
+   * (forma de pagamento pretendida + modalidade de entrega).
+   * Cupom manual sempre prevalece.
+   */
+  async function refreshAutoCoupon(
+    choice: "pix" | "other" | null,
+    delivery: "delivery" | "local_delivery" | "pickup" | null,
+  ) {
+    if (couponCode && !couponIsAuto) return; // manual vence
     setPaymentChoiceLoading(true);
     try {
-      const { code } = await getAutoCouponCode({
-        data: { conditionType: "payment_method", conditionValue: "pix" },
+      const { code } = await getAutoCouponForContext({
+        data: { intendedPaymentMethod: choice, deliveryMethod: delivery },
       });
-      if (!code) return;
+      if (!code) {
+        if (couponIsAuto) {
+          setCouponCode(null);
+          setDiscount(0);
+          setCouponIsAuto(false);
+        }
+        return;
+      }
       const r = await applyCoupon({ data: { code, subtotal } });
       if (r.valid) {
         setCouponCode(code);
         setDiscount(r.discount);
         setCouponIsAuto(true);
+      } else if (couponIsAuto) {
+        setCouponCode(null);
+        setDiscount(0);
+        setCouponIsAuto(false);
       }
     } catch {
       // silencioso: ausência de desconto automático não impede o checkout
@@ -377,6 +389,11 @@ function CheckoutPage() {
     }
   }
 
+  async function handleSelectPayment(choice: "pix" | "other") {
+    if (paymentChoiceLoading) return;
+    setPaymentChoice(choice);
+    await refreshAutoCoupon(choice, deliveryMethod);
+  }
 
   async function handleSubmit() {
     if (!isPickup && !selectedShipping) return;
