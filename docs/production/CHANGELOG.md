@@ -35,6 +35,11 @@ e versionamento [SemVer](https://semver.org/lang/pt-BR/).
   Ambas passaram a ter `WITH CHECK (... AND (user_id IS NULL OR user_id = auth.uid()))`:
   inserção anônima (`user_id` NULL) segue permitida; o bloqueado é marcar a linha
   com o `user_id` de terceiro.
+- **Policies explícitas de SELECT em buckets públicos**: criadas as policies
+  `Public read product-images` (`product-images`) e `Public read marketing-creatives`
+  (`marketing-creatives`) em `storage.objects`. Os buckets já eram `public=true`
+  (leitura pública por URL, intencional para a vitrine/criativos); a policy explícita
+  apenas documenta a intenção e torna o acesso auditável. Zero mudança de comportamento.
 
 ### Validação
 - 636 produtos ativos com imagem seguem legíveis publicamente (catálogo intacto).
