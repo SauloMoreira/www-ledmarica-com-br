@@ -59,15 +59,89 @@ const searchSchema = z.object({
 
 import { buildSeo, SITE_URL } from "@/lib/seo";
 
+type CatalogSearch = z.infer<typeof searchSchema>;
+
+/**
+ * Opções da busca do catálogo compartilhadas entre o loader (SSR) e o
+ * componente — a queryKey precisa ser idêntica para reaproveitar o cache
+ * sem refetch no client. A lógica de busca em si não muda.
+ */
+function catalogSearchQueryOptions(search: CatalogSearch) {
+  const page = search.page ?? 1;
+  const sortValue = search.sort ?? (search.q ? "relevance" : "featured");
+  const attrFilters = toAttrFilterPayload({
+    power: parseFilterCsv(search.pot),
+    color_temperature: parseFilterCsv(search.cor),
+    voltage: parseFilterCsv(search.volt),
+    ip_rating: parseFilterCsv(search.ip),
+  });
+  return {
+    queryKey: [
+      "products",
+      "catalog-search",
+      search.q ?? "",
+      search.cat ?? "",
+      search.marca ?? "",
+      search.precoMin ?? null,
+      search.precoMax ?? null,
+      !!search.estoque,
+      !!search.oferta,
+      search.shipping ?? "",
+      sortValue,
+      page,
+      // Filtros técnicos entram na chave para invalidar cache
+      JSON.stringify(attrFilters),
+    ],
+    queryFn: async () =>
+      await searchProducts({
+        data: {
+          q: search.q || undefined,
+          categorySlug: search.cat || undefined,
+          brand: search.marca || undefined,
+          priceMin: search.precoMin,
+          priceMax: search.precoMax,
+          inStock: search.estoque || undefined,
+          onSale: search.oferta || undefined,
+          freeShipping: search.shipping === "free" || undefined,
+          sort: sortValue,
+          page,
+          pageSize: PAGE_SIZE,
+          source: "public_store" as const,
+          attrFilters: attrFilters.length > 0 ? attrFilters : undefined,
+        },
+      }),
+  };
+}
+
 export const Route = createFileRoute("/catalogo")({
   validateSearch: searchSchema,
-  head: () =>
-    buildSeo({
+  loaderDeps: ({ search }) => search,
+  loader: async ({ context, deps }) => {
+    try {
+      const result = await context.queryClient.ensureQueryData(catalogSearchQueryOptions(deps));
+      return { firstImage: (result?.products?.[0] as { images?: string[] } | undefined)?.images?.[0] ?? null };
+    } catch {
+      return { firstImage: null };
+    }
+  },
+  head: ({ loaderData }) => {
+    const seo = buildSeo({
       title: "Catálogo de Produtos — Material Elétrico e LED",
       description:
         "Explore nosso catálogo completo de material elétrico e iluminação LED. Filtros por categoria, preço e marca. Entrega para todo o Brasil.",
       url: "/catalogo",
-    }),
+    });
+    const first = loaderData?.firstImage;
+    if (first) {
+      (seo.links as Array<Record<string, string>>).push({
+        rel: "preload",
+        as: "image",
+        href: first,
+        fetchPriority: "high",
+      });
+    }
+    return seo;
+  },
   component: CatalogPage,
 });
 
@@ -193,44 +267,9 @@ function CatalogPage() {
   }, [facetsData]);
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: [
-      "products",
-      "catalog-search",
-      search.q ?? "",
-      search.cat ?? "",
-      search.marca ?? "",
-      search.precoMin ?? null,
-      search.precoMax ?? null,
-      !!search.estoque,
-      !!search.oferta,
-      search.shipping ?? "",
-      sortValue,
-      page,
-      // Filtros técnicos entram na chave para invalidar cache
-      JSON.stringify(attrFilters),
-    ],
+    ...catalogSearchQueryOptions(search),
     placeholderData: keepPreviousData,
     staleTime: 30_000,
-    queryFn: async () => {
-      const res = await searchProducts({
-        data: {
-          q: search.q || undefined,
-          categorySlug: search.cat || undefined,
-          brand: search.marca || undefined,
-          priceMin: search.precoMin,
-          priceMax: search.precoMax,
-          inStock: search.estoque || undefined,
-          onSale: search.oferta || undefined,
-          freeShipping: search.shipping === "free" || undefined,
-          sort: sortValue,
-          page,
-          pageSize: PAGE_SIZE,
-          source: "public_store",
-          attrFilters: attrFilters.length > 0 ? attrFilters : undefined,
-        },
-      });
-      return res;
-    },
   });
 
   const products = (data?.products ?? []) as Product[];

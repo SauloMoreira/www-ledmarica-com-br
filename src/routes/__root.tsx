@@ -96,8 +96,11 @@ const CSP_POLICY = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self' https://www.mercadopago.com https://www.mercadopago.com.br",
-  "frame-ancestors 'none'",
-  "report-uri /api/public/csp-report",
+  // NOTA: "frame-ancestors" e "report-uri" foram removidos daqui de propósito.
+  // Ambas as diretivas são ignoradas pelo navegador quando a CSP é entregue via
+  // <meta http-equiv> (só têm efeito em header HTTP real) e geravam avisos no
+  // console, penalizando o audit de performance/errors-in-console.
+  // Aplicá-las de fato exige header HTTP na borda — fora do escopo deste projeto.
 ].join("; ");
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({

@@ -120,8 +120,12 @@ export function ProductGallery({ images, productName }: Props) {
               src={mainSrc}
               alt={mainAlt}
               title={mainTitle}
+              width={800}
+              height={800}
               className="w-full h-full object-contain"
               loading="eager"
+              fetchPriority="high"
+              decoding="async"
               draggable={false}
             />
 

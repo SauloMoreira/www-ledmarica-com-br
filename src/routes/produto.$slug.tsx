@@ -176,6 +176,19 @@ export const Route = createFileRoute("/produto/$slug")({
 
     if (p.seo_keywords) seo.meta.push({ name: "keywords", content: p.seo_keywords });
 
+    // LCP: a imagem principal da galeria já é conhecida no servidor — emitimos o
+    // preload para o navegador descobri-la antes da hidratação.
+    const lcpPrimary = ogPrimary;
+    const lcpSrc = lcpPrimary ? (pickUrl(lcpPrimary, "full") ?? lcpPrimary.original_url) : null;
+    if (lcpSrc) {
+      (seo.links as Array<Record<string, string>>).push({
+        rel: "preload",
+        as: "image",
+        href: lcpSrc,
+        fetchPriority: "high",
+      });
+    }
+
     const productJsonLd = JSON.stringify(buildProductJsonLd(p, finalPrice, baseDesc, allImageUrls));
 
     const faq = extractFaq(p.specs);
@@ -213,6 +226,19 @@ function ProductPage() {
   const [qty, setQty] = useState(1);
 
   const { data: product, isLoading } = useQuery(productQueryOptions(slug));
+
+  // Blocos abaixo da dobra: só montam depois do primeiro paint, para não
+  // competirem com o LCP da galeria.
+  const [belowFoldReady, setBelowFoldReady] = useState(false);
+  useEffect(() => {
+    const hasRic = typeof window !== "undefined" && typeof window.requestIdleCallback === "function";
+    if (hasRic) {
+      const id = window.requestIdleCallback(() => setBelowFoldReady(true), { timeout: 1500 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const t = setTimeout(() => setBelowFoldReady(true), 800);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (product) trackViewProduct(product);
@@ -298,12 +324,16 @@ function ProductPage() {
               </section>
             )}
 
-            <ProductSpecsBlock productId={product.id} />
-            <ProductReviews
-              productId={product.id}
-              avgRating={Number((product as any).avg_rating ?? 0)}
-              reviewCount={Number((product as any).review_count ?? 0)}
-            />
+            {belowFoldReady && (
+              <>
+                <ProductSpecsBlock productId={product.id} />
+                <ProductReviews
+                  productId={product.id}
+                  avgRating={Number((product as any).avg_rating ?? 0)}
+                  reviewCount={Number((product as any).review_count ?? 0)}
+                />
+              </>
+            )}
           </div>
 
           {/* COLUNA DIREITA: PAINEL DE COMPRA (sticky) */}
@@ -442,7 +472,7 @@ function ProductPage() {
                 </span>
               </div>
             </div>
-            <BuyTogetherBlock product={product} />
+            {belowFoldReady && <BuyTogetherBlock product={product} />}
           </aside>
         </div>
 
@@ -467,17 +497,21 @@ function ProductPage() {
           );
         })()}
 
-        <div className="mt-12">
-          <ProductInBundlesBlock productId={product.id} />
-        </div>
+        {belowFoldReady && (
+          <>
+            <div className="mt-12">
+              <ProductInBundlesBlock productId={product.id} />
+            </div>
 
-        <div className="mt-12">
-          <RelatedProductsBlock
-            productId={product.id}
-            excludeProductIds={[product.id]}
-            prioritizeReplacements={product.stock_qty <= 0}
-          />
-        </div>
+            <div className="mt-12">
+              <RelatedProductsBlock
+                productId={product.id}
+                excludeProductIds={[product.id]}
+                prioritizeReplacements={product.stock_qty <= 0}
+              />
+            </div>
+          </>
+        )}
       </div>
     </StoreLayout>
   );
