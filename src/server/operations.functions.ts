@@ -347,6 +347,19 @@ export const getAdminOperations = createServerFn({ method: "GET" })
       (q) => q.gte("created_at", webhookSinceISO).not("processing_error", "is", null),
     );
 
+    // E-mails transacionais travados/falhos — mesmo corte de alertas do webhook.
+    // "pending" só conta como problema se estiver parado há mais de 1h (evita
+    // falso positivo de e-mail que ainda está sendo processado normalmente).
+    const emailIssuesSinceISO = await alertsSinceISO(supabaseAdmin, 24 * 7);
+    const stalePendingCutoff = hoursAgoISO(1);
+    const emailFailuresOrStuck = await safeCount(
+      () => supabaseAdmin.from("email_events"),
+      (q) =>
+        q
+          .gte("created_at", emailIssuesSinceISO)
+          .or(`status.eq.failed,and(status.eq.pending,created_at.lt.${stalePendingCutoff})`),
+    );
+
     // Notas fiscais — emissão é externa; mantemos só contagens informativas usadas no card.
     const invoicesPending = await safeCount(
       () => supabaseAdmin.from("orders"),
@@ -1031,6 +1044,7 @@ export const getAdminOperations = createServerFn({ method: "GET" })
         ctaHref: "/admin/produtos",
       });
     }
+
     if (webhookErrors > 0) {
       alerts.push({
         id: "alert-webhook-errors",
@@ -1039,6 +1053,17 @@ export const getAdminOperations = createServerFn({ method: "GET" })
         severity: "high",
         ctaLabel: "Ver detalhes",
         ctaHref: "/admin",
+      });
+    }
+
+    if (emailFailuresOrStuck > 0) {
+      alerts.push({
+        id: "alert-email-failures",
+        title: "E-mails de pedido travados ou com falha",
+        description: `${emailFailuresOrStuck} e-mail(is) de pedido falharam ou ficaram parados em "pendente" por mais de 1h nos últimos 7 dias. O cliente pode não ter recebido a confirmação/atualização do pedido.`,
+        severity: "high",
+        ctaLabel: "Ver pedidos",
+        ctaHref: "/admin/pedidos",
       });
     }
 
