@@ -176,15 +176,39 @@ export const applyCoupon = createServerFn({ method: "POST" })
 
 // ============================================================
 // Cupom automático por condição (forma de pagamento / escopo da compra)
-// Retorna apenas o código; a validação (mínimo, validade, limites)
-// continua sendo feita por `apply_coupon`.
+// Regra: entre os cupons automáticos elegíveis, vence SEMPRE o de MAIOR
+// desconto para o cliente (especificidade só desempata). A validação final
+// (validade, limites, uso por cliente) continua sendo feita por `apply_coupon`.
 // ============================================================
+type AutoCouponRow = {
+  code: string;
+  condition_type: string | null;
+  condition_value: string | null;
+  discount_type: string | null;
+  discount_value: number | null;
+  min_order_value: number | null;
+};
+
+/** Desconto estimado de um cupom sobre um subtotal (mesma fórmula do RPC). */
+export function estimateCouponDiscount(
+  coupon: { discount_type?: string | null; discount_value?: number | null },
+  subtotal: number,
+): number {
+  const value = Number(coupon.discount_value ?? 0);
+  if (value <= 0 || subtotal <= 0) return 0;
+  if ((coupon.discount_type ?? "percent") === "percentage" || coupon.discount_type === "percent") {
+    return Number(((subtotal * value) / 100).toFixed(2));
+  }
+  return Number(Math.min(value, subtotal).toFixed(2));
+}
+
 export const getAutoCouponForContext = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
         intendedPaymentMethod: z.enum(["pix", "other"]).nullable().default(null),
         deliveryMethod: z.enum(["delivery", "local_delivery", "pickup"]).nullable().default(null),
+        subtotal: z.number().min(0).default(0),
       })
       .parse(input),
   )
@@ -192,20 +216,35 @@ export const getAutoCouponForContext = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("coupons")
-      .select("code, condition_type, condition_value")
+      .select("code, condition_type, condition_value, discount_type, discount_value, min_order_value")
       .eq("active", true)
       .eq("auto_apply", true);
-    if (error || !rows) return { code: null as string | null };
-    // Mais específico vence: condição concreta > "qualquer forma" > sem condição.
+    if (error || !rows) return { code: null as string | null, discount: 0, candidates: [] as { code: string; discount: number }[] };
+    // Especificidade só como desempate: condição concreta > "qualquer forma" > sem condição.
     const specificity = (c: { condition_type: string | null; condition_value: string | null }) =>
       !c.condition_type ? 0 : c.condition_value === "any" ? 1 : 2;
-    const match = (
-      rows as { code: string; condition_type: string | null; condition_value: string | null }[]
-    )
-      .filter((c) => couponConditionMetPrePayment(c, data))
-      .sort((a, b) => specificity(b) - specificity(a))[0];
-    return { code: match?.code ?? null };
+
+    const candidates = (rows as AutoCouponRow[])
+      .filter(
+        (c) =>
+          couponConditionMetPrePayment(c, data) &&
+          data.subtotal >= Number(c.min_order_value ?? 0),
+      )
+      .map((c) => ({
+        code: c.code,
+        discount: estimateCouponDiscount(c, data.subtotal),
+        specificity: specificity(c),
+      }))
+      .sort((a, b) => b.discount - a.discount || b.specificity - a.specificity);
+
+    const best = candidates[0];
+    return {
+      code: best?.code ?? null,
+      discount: best?.discount ?? 0,
+      candidates: candidates.map((c) => ({ code: c.code, discount: c.discount })),
+    };
   });
+
 
 
 
