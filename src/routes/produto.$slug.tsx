@@ -227,6 +227,19 @@ function ProductPage() {
 
   const { data: product, isLoading } = useQuery(productQueryOptions(slug));
 
+  // Blocos abaixo da dobra: só montam depois do primeiro paint, para não
+  // competirem com o LCP da galeria.
+  const [belowFoldReady, setBelowFoldReady] = useState(false);
+  useEffect(() => {
+    const hasRic = typeof window !== "undefined" && typeof window.requestIdleCallback === "function";
+    if (hasRic) {
+      const id = window.requestIdleCallback(() => setBelowFoldReady(true), { timeout: 1500 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const t = setTimeout(() => setBelowFoldReady(true), 800);
+    return () => clearTimeout(t);
+  }, []);
+
   useEffect(() => {
     if (product) trackViewProduct(product);
   }, [product]);
