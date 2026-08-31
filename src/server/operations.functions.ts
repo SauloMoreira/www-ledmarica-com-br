@@ -1067,7 +1067,6 @@ export const getAdminOperations = createServerFn({ method: "GET" })
       });
     }
 
-
     // SEO alerts
     if (seo.homepageMissingSeo) {
       alerts.push({
