@@ -4,7 +4,26 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Fontes carregadas via <link> no <head> do __root para não bloquear o CSS parsing. */
+/* Fontes carregadas via <link> no <head> do __root para não bloquear o CSS parsing.
+   Como o carregamento é assíncrono (display=swap), declaramos fallbacks locais com
+   métricas ajustadas para que a troca de fonte não gere layout shift (CLS). */
+@font-face {
+  font-family: 'DM Sans Fallback';
+  src: local('Arial');
+  ascent-override: 97.4%;
+  descent-override: 30.4%;
+  line-gap-override: 0%;
+  size-adjust: 101.6%;
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans Fallback';
+  src: local('Arial');
+  ascent-override: 99.6%;
+  descent-override: 21.1%;
+  line-gap-override: 0%;
+  size-adjust: 105.5%;
+}
 
 /*
  * LED MARICÁ — Design System
@@ -13,8 +32,8 @@
  */
 
 @theme inline {
-  --font-sans: 'DM Sans', system-ui, sans-serif;
-  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-sans: 'DM Sans', 'DM Sans Fallback', system-ui, sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'Plus Jakarta Sans Fallback', system-ui, sans-serif;
 
   --radius-sm: 4px;
   --radius-md: 8px;
