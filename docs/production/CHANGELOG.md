@@ -28,13 +28,22 @@ e versionamento [SemVer](https://semver.org/lang/pt-BR/).
   ter `WITH CHECK (auth.uid() = id AND role = 'customer')`, somando-se ao trigger
   `trg_enforce_profile_role` (v1.0.9). Duas camadas independentes impedem a
   auto-promoção a admin no cadastro, mesmo que uma delas seja removida por engano.
+- **Falsificação de `user_id` em logs/chat**: as policies de INSERT
+  `chat_insert` (`chat_messages`) e `search_logs_public_insert` (`search_logs`)
+  validavam papel e conteúdo, mas não o `user_id`, permitindo atribuir buscas ou
+  mensagens ao `user_id` de outra pessoa (polui score de lead e relatórios).
+  Ambas passaram a ter `WITH CHECK (... AND (user_id IS NULL OR user_id = auth.uid()))`:
+  inserção anônima (`user_id` NULL) segue permitida; o bloqueado é marcar a linha
+  com o `user_id` de terceiro.
 
 ### Validação
 - 636 produtos ativos com imagem seguem legíveis publicamente (catálogo intacto).
 - 3 produtos inativos com imagem deixaram de ser legíveis para não-admin.
 - Cadastro de usuário comum inalterado (trigger normaliza `role` antes do WITH CHECK).
-- Security Scan pós-fix: **0 error**; achado `profiles_self_insert_role_escalation`
-  não reaparece.
+- Inserção anônima em `chat_messages`/`search_logs` (`user_id` NULL) segue permitida.
+- Security Scan pós-fix: **0 error**; achados `chat_messages_insert_user_id_spoofing`
+  e `search_logs_insert_user_id_spoofing` não reaparecem; `profiles_self_insert_role_escalation`
+  tampouco. Restam apenas `warn` de linter `SECURITY DEFINER` já aceitos.
 
 
 ### Notas de rollback
