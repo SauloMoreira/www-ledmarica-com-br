@@ -1089,19 +1089,19 @@ function CheckoutPage() {
                   <span>−{formatBRL(b2bSavings)}</span>
                 </div>
               )}
-              {discount > 0 && (
+              {couponDiscountApplied > 0 && (
                 <div className="flex justify-between text-success">
                   <span className="inline-flex items-center gap-1.5">
                     {couponIsAuto ? (
                       <>
                         <QrCode className="w-3.5 h-3.5" />
-                        Desconto Pix ({couponCode})
+                        Desconto automático ({couponCode})
                       </>
                     ) : (
                       <>Desconto ({couponCode})</>
                     )}
                   </span>
-                  <span>−{formatBRL(discount)}</span>
+                  <span>−{formatBRL(couponDiscountApplied)}</span>
                 </div>
               )}
 
@@ -1111,6 +1111,10 @@ function CheckoutPage() {
                   <span>−{formatBRL(bundleDiscountPreview)}</span>
                 </div>
               )}
+              {discountNotice && (
+                <p className="text-xs text-muted-foreground leading-snug">{discountNotice}</p>
+              )}
+
               <div className="flex justify-between">
                 <span className="text-muted-foreground">
                   {isPickup ? "Retirada na loja" : isLocal ? "Frete Local Maricá" : "Frete"}
