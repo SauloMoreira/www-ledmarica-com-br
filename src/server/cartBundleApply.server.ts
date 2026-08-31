@@ -96,6 +96,13 @@ export type ApplyCartBundlesInput = {
   items: Array<{ productId: string; qty: number }>;
   /** Cupom efetivamente aplicado no pedido (após validar). */
   hasCoupon: boolean;
+  /**
+   * Existe cupom válido no contexto, mesmo que este cálculo seja hipotético
+   * (comparação cupom x combo). Usado apenas para a regra própria do kit
+   * (`accepts_coupon=false` bloqueia o kit incondicionalmente).
+   * Default: `hasCoupon`.
+   */
+  couponPresent?: boolean;
 };
 
 export type AppliedBundleItem = {
@@ -297,7 +304,7 @@ export async function computeBundleApplication(
   for (const r of list) {
     const cfg = kitConfigById.get(r.bundle_id);
     if (cfg) {
-      if (input.hasCoupon && !cfg.accepts_coupon) {
+      if ((input.couponPresent ?? input.hasCoupon) && !cfg.accepts_coupon) {
         blocked.push({
           bundle_id: r.bundle_id,
           bundle_name: r.bundle_name,
