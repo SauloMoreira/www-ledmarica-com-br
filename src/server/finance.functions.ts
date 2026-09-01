@@ -371,11 +371,14 @@ export const getFinanceMargin = createServerFn({ method: "POST" })
     const ids = list.map((p) => p.id);
     const sales = new Map<string, { qty: number; profit: number }>();
     if (ids.length > 0) {
-      const { data: items } = await supabaseAdmin
-        .from("order_items")
-        .select("product_id, qty, gross_margin_amount, orders!inner(payment_status)")
-        .in("product_id", ids)
-        .in("orders.payment_status", ["paid", "approved"]);
+      const items = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+        supabaseAdmin
+          .from("order_items")
+          .select("product_id, qty, gross_margin_amount, orders!inner(payment_status)")
+          .in("product_id", ids)
+          .in("orders.payment_status", ["paid", "approved"])
+          .range(fromIdx, toIdx),
+      );
       for (const it of (items ?? []) as Array<{
         product_id: string | null;
         qty: number | null;
