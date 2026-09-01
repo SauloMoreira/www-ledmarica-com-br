@@ -196,14 +196,16 @@ function CatalogPage() {
     queryKey: ["catalog-brands"],
     staleTime: 1000 * 60 * 30,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("products")
-        .select("brand")
-        .eq("active", true)
-        .not("brand", "is", null)
-        .limit(1000);
+      const data = await fetchAllRows<{ brand: string | null }>((from, to) =>
+        supabase
+          .from("products")
+          .select("brand")
+          .eq("active", true)
+          .not("brand", "is", null)
+          .range(from, to),
+      );
       const set = new Set<string>();
-      (data ?? []).forEach((r: any) => {
+      data.forEach((r) => {
         const b = (r.brand ?? "").trim();
         if (b) set.add(b);
       });

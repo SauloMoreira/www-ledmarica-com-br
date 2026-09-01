@@ -273,17 +273,21 @@ async function buildEnriched() {
   const [defMin, settings] = await Promise.all([loadDefaultMinMargin(), loadStockSettings()]);
   const salesMap = await loadSalesAggregates(settings.salesWindow);
 
-  const { data: products, error } = await supabaseAdmin
-    .from("products")
-    .select(
-      "id, name, sku, slug, active, category_id, brand, price, sale_price, cost_price, min_margin_percent, b2b_enabled, b2b_price, b2b_min_qty, stock_qty, categories:category_id(name)",
-    )
-    .eq("active", true)
-    .limit(5000);
-
-  if (error) {
-    throw new Error(`Falha ao carregar produtos: ${error.message}`);
+  let products: unknown[];
+  try {
+    products = await fetchAllRows((from, to) =>
+      supabaseAdmin
+        .from("products")
+        .select(
+          "id, name, sku, slug, active, category_id, brand, price, sale_price, cost_price, min_margin_percent, b2b_enabled, b2b_price, b2b_min_qty, stock_qty, categories:category_id(name)",
+        )
+        .eq("active", true)
+        .range(from, to),
+    );
+  } catch (e) {
+    throw new Error(`Falha ao carregar produtos: ${(e as Error).message}`);
   }
+
 
   type Raw = {
     id: string;
