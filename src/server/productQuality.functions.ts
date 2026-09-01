@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { computeProductQuality, type QualityResult } from "@/lib/productQuality";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 const PRODUCT_QUALITY_SELECT = `
   id, name, slug, sku, brand, active, featured, tags,
@@ -127,19 +128,22 @@ export const listProductQuality = createServerFn({ method: "GET" })
 
 /**
  * Contadores leves para o Painel do Dia.
- * Reaproveita listProductQuality (a tabela de produtos costuma ter < 1000 linhas).
+ * Pagina via fetchAllRows — não depende mais do teto de 1000 do Supabase.
  */
 export const getProductQualityQuickCounts = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async () => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
-      .from("products")
-      .select(PRODUCT_QUALITY_SELECT)
-      .eq("active", true)
-      .limit(1000);
-
-    if (error) {
+    let data: any[];
+    try {
+      data = await fetchAllRows<any>((from, to) =>
+        supabaseAdmin
+          .from("products")
+          .select(PRODUCT_QUALITY_SELECT)
+          .eq("active", true)
+          .range(from, to),
+      );
+    } catch {
       return { activeBelow70: 0, featuredBelow70: 0, ruim: 0 };
     }
 
