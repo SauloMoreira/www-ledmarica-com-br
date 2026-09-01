@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -218,27 +219,35 @@ async function fetchPaidOrders(
   range: { from: Date; to: Date },
 ): Promise<OrderRow[]> {
   const supabaseAdmin = await getSupabaseAdmin();
-  let q = supabaseAdmin
-    .from("orders")
-    .select(
-      "id, order_number, status, payment_status, payment_method, delivery_method, order_type, " +
-        "total, discount, b2b_discount_total, coupon_code, mp_fee_amount, estimated_fee_amount, " +
-        "payment_fee_source, company_name, address_snapshot, created_at",
-    )
-    .gte("created_at", range.from.toISOString())
-    .lte("created_at", range.to.toISOString())
-    .in("payment_status", PAID)
-    .order("created_at", { ascending: false });
+  const build = () => {
+    let q = supabaseAdmin
+      .from("orders")
+      .select(
+        "id, order_number, status, payment_status, payment_method, delivery_method, order_type, " +
+          "total, discount, b2b_discount_total, coupon_code, mp_fee_amount, estimated_fee_amount, " +
+          "payment_fee_source, company_name, address_snapshot, created_at",
+      )
+      .gte("created_at", range.from.toISOString())
+      .lte("created_at", range.to.toISOString())
+      .in("payment_status", PAID)
+      .order("created_at", { ascending: false });
 
-  if (filters.orderType !== "all") q = q.eq("order_type", filters.orderType);
-  if (filters.paymentMethod) q = q.eq("payment_method", filters.paymentMethod);
-  if (filters.deliveryMethod) q = q.eq("delivery_method", filters.deliveryMethod);
-  if (filters.status) q = q.eq("status", filters.status);
+    if (filters.orderType !== "all") q = q.eq("order_type", filters.orderType);
+    if (filters.paymentMethod) q = q.eq("payment_method", filters.paymentMethod);
+    if (filters.deliveryMethod) q = q.eq("delivery_method", filters.deliveryMethod);
+    if (filters.status) q = q.eq("status", filters.status);
+    return q;
+  };
 
-  const { data, error } = await q;
-  if (error) throw new Response(`orders query failed: ${error.message}`, { status: 500 });
-  return (data ?? []) as unknown as OrderRow[];
+  try {
+    return (await fetchAllRows<unknown>((from, to) =>
+      build().range(from, to),
+    )) as unknown as OrderRow[];
+  } catch (e) {
+    throw new Response(`orders query failed: ${(e as Error).message}`, { status: 500 });
+  }
 }
+
 
 function feeOf(o: {
   mp_fee_amount: number | string | null;
@@ -314,11 +323,14 @@ export const getMarginCards = createServerFn({ method: "POST" })
 
     if (orders.length > 0) {
       const ids = orders.map((o) => o.id);
-      const { data: items } = await supabaseAdmin
-        .from("order_items")
-        .select("order_id, product_id, qty, unit_cost, total_cost, applied_unit_price, unit_price")
-        .in("order_id", ids);
-      for (const it of items ?? []) {
+      const items = await fetchAllRows<any>((from, to) =>
+        supabaseAdmin
+          .from("order_items")
+          .select("order_id, product_id, qty, unit_cost, total_cost, applied_unit_price, unit_price")
+          .in("order_id", ids)
+          .range(from, to),
+      );
+      for (const it of items) {
         const oid = it.order_id as string;
         const itemRevenue =
           Number(it.applied_unit_price ?? it.unit_price ?? 0) * Number(it.qty ?? 0);
@@ -396,11 +408,14 @@ export const getMarginByOrder = createServerFn({ method: "POST" })
     const orderCogs = new Map<string, { cost: number; missing: number }>();
     if (orders.length > 0) {
       const ids = orders.map((o) => o.id);
-      const { data: items } = await supabaseAdmin
-        .from("order_items")
-        .select("order_id, qty, unit_cost, total_cost")
-        .in("order_id", ids);
-      for (const it of items ?? []) {
+      const items = await fetchAllRows<any>((from, to) =>
+        supabaseAdmin
+          .from("order_items")
+          .select("order_id, qty, unit_cost, total_cost")
+          .in("order_id", ids)
+          .range(from, to),
+      );
+      for (const it of items) {
         const oid = it.order_id as string;
         const cur = orderCogs.get(oid) ?? { cost: 0, missing: 0 };
         if (it.unit_cost == null) {
@@ -490,13 +505,16 @@ export const getProductsReport = createServerFn({ method: "POST" })
 
     if (orders.length > 0) {
       const ids = orders.map((o) => o.id);
-      const { data: items } = await supabaseAdmin
-        .from("order_items")
-        .select(
-          "order_id, product_id, product_name, product_sku, qty, unit_cost, total_cost, applied_unit_price, retail_unit_price, unit_price, b2b_discount_unit",
-        )
-        .in("order_id", ids);
-      for (const it of items ?? []) {
+      const items = await fetchAllRows<any>((from, to) =>
+        supabaseAdmin
+          .from("order_items")
+          .select(
+            "order_id, product_id, product_name, product_sku, qty, unit_cost, total_cost, applied_unit_price, retail_unit_price, unit_price, b2b_discount_unit",
+          )
+          .in("order_id", ids)
+          .range(from, to),
+      );
+      for (const it of items) {
         const pid = (it.product_id as string | null) ?? `unknown-${it.product_name}`;
         const cur =
           agg.get(pid) ??
@@ -533,23 +551,29 @@ export const getProductsReport = createServerFn({ method: "POST" })
     const productIds = Array.from(agg.keys()).filter((id) => !id.startsWith("unknown-"));
     const productMeta = new Map<string, { stock_qty: number | null; category: string | null }>();
     if (productIds.length > 0) {
-      const { data: products } = await supabaseAdmin
-        .from("products")
-        .select("id, stock_qty, category_id")
-        .in("id", productIds);
+      const products = await fetchAllRows<any>((from, to) =>
+        supabaseAdmin
+          .from("products")
+          .select("id, stock_qty, category_id")
+          .in("id", productIds)
+          .range(from, to),
+      );
       const catIds = new Set<string>();
-      for (const p of products ?? []) {
+      for (const p of products) {
         if (p.category_id) catIds.add(p.category_id as string);
       }
       const catMap = new Map<string, string>();
       if (catIds.size > 0) {
-        const { data: cats } = await supabaseAdmin
-          .from("categories")
-          .select("id, name")
-          .in("id", Array.from(catIds));
-        for (const c of cats ?? []) catMap.set(c.id as string, c.name as string);
+        const cats = await fetchAllRows<any>((from, to) =>
+          supabaseAdmin
+            .from("categories")
+            .select("id, name")
+            .in("id", Array.from(catIds))
+            .range(from, to),
+        );
+        for (const c of cats) catMap.set(c.id as string, c.name as string);
       }
-      for (const p of products ?? []) {
+      for (const p of products) {
         productMeta.set(p.id as string, {
           stock_qty: p.stock_qty != null ? Number(p.stock_qty) : null,
           category: p.category_id ? (catMap.get(p.category_id as string) ?? null) : null,
@@ -652,11 +676,14 @@ export const exportMarginByOrderCsv = createServerFn({ method: "POST" })
     const orderCogs = new Map<string, { cost: number; missing: number }>();
     if (orders.length > 0) {
       const ids = orders.map((o) => o.id);
-      const { data: items } = await supabaseAdmin
-        .from("order_items")
-        .select("order_id, qty, unit_cost, total_cost")
-        .in("order_id", ids);
-      for (const it of items ?? []) {
+      const items = await fetchAllRows<any>((from, to) =>
+        supabaseAdmin
+          .from("order_items")
+          .select("order_id, qty, unit_cost, total_cost")
+          .in("order_id", ids)
+          .range(from, to),
+      );
+      for (const it of items) {
         const oid = it.order_id as string;
         const cur = orderCogs.get(oid) ?? { cost: 0, missing: 0 };
         if (it.unit_cost == null) cur.missing += 1;
@@ -754,13 +781,16 @@ export const exportProductsReportCsv = createServerFn({ method: "POST" })
       const agg = new Map<string, Agg>();
       if (orders.length > 0) {
         const ids = orders.map((o) => o.id);
-        const { data: items } = await supabaseAdmin
-          .from("order_items")
-          .select(
-            "order_id, product_id, product_name, product_sku, qty, unit_cost, total_cost, applied_unit_price, retail_unit_price, unit_price",
-          )
-          .in("order_id", ids);
-        for (const it of items ?? []) {
+        const items = await fetchAllRows<any>((from, to) =>
+          supabaseAdmin
+            .from("order_items")
+            .select(
+              "order_id, product_id, product_name, product_sku, qty, unit_cost, total_cost, applied_unit_price, retail_unit_price, unit_price",
+            )
+            .in("order_id", ids)
+            .range(from, to),
+        );
+        for (const it of items) {
           const pid = (it.product_id as string | null) ?? `unknown-${it.product_name}`;
           const cur =
             agg.get(pid) ??
@@ -792,21 +822,27 @@ export const exportProductsReportCsv = createServerFn({ method: "POST" })
       const productIds = Array.from(agg.keys()).filter((id) => !id.startsWith("unknown-"));
       const meta = new Map<string, { stock_qty: number | null; category: string | null }>();
       if (productIds.length > 0) {
-        const { data: products } = await supabaseAdmin
-          .from("products")
-          .select("id, stock_qty, category_id")
-          .in("id", productIds);
+        const products = await fetchAllRows<any>((from, to) =>
+          supabaseAdmin
+            .from("products")
+            .select("id, stock_qty, category_id")
+            .in("id", productIds)
+            .range(from, to),
+        );
         const catIds = new Set<string>();
-        for (const p of products ?? []) if (p.category_id) catIds.add(p.category_id as string);
+        for (const p of products) if (p.category_id) catIds.add(p.category_id as string);
         const catMap = new Map<string, string>();
         if (catIds.size > 0) {
-          const { data: cats } = await supabaseAdmin
-            .from("categories")
-            .select("id, name")
-            .in("id", Array.from(catIds));
-          for (const c of cats ?? []) catMap.set(c.id as string, c.name as string);
+          const cats = await fetchAllRows<any>((from, to) =>
+            supabaseAdmin
+              .from("categories")
+              .select("id, name")
+              .in("id", Array.from(catIds))
+              .range(from, to),
+          );
+          for (const c of cats) catMap.set(c.id as string, c.name as string);
         }
-        for (const p of products ?? []) {
+        for (const p of products) {
           meta.set(p.id as string, {
             stock_qty: p.stock_qty != null ? Number(p.stock_qty) : null,
             category: p.category_id ? (catMap.get(p.category_id as string) ?? null) : null,
