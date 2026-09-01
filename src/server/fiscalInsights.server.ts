@@ -2,6 +2,9 @@
  * Helpers server-only para insights e listagens fiscais.
  * Importado dinamicamente para não vazar `client.server` no bundle do cliente.
  */
+import { fetchAllRows } from "@/lib/fetchAllRows";
+
+
 
 export type FiscalQuickCounts = {
   productsActive: number;
