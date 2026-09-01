@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 
@@ -202,10 +203,13 @@ export const getStockReport = createServerFn({ method: "GET" })
         high_movement_min_qty: 10,
       };
 
-      const { data, error } = await supabaseAdmin.rpc("get_stock_report", {
-        _sales_window_days: settings.sales_window_days,
-      });
-      if (error) throw new Error(error.message);
+      const data = await fetchAllRows<any>((fromIdx, toIdx) =>
+        supabaseAdmin
+          .rpc("get_stock_report", {
+            _sales_window_days: settings.sales_window_days,
+          })
+          .range(fromIdx, toIdx),
+      );
 
       const isHiddenTest = (r: any) => {
         const n = (r.name ?? "").toLowerCase().trim();

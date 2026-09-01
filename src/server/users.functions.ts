@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -162,11 +163,15 @@ export const adminListUsers = createServerFn({ method: "POST" })
     }
 
     // 3. Pedidos: contagem + último por usuário
-    const { data: orders } = await supabaseAdmin
-      .from("orders")
-      .select("user_id, created_at")
-      .in("user_id", userIds)
-      .order("created_at", { ascending: false });
+    const orders = await fetchAllRows<{ user_id: string | null; created_at: string | null }>(
+      (fromIdx, toIdx) =>
+        supabaseAdmin
+          .from("orders")
+          .select("user_id, created_at")
+          .in("user_id", userIds)
+          .order("created_at", { ascending: false })
+          .range(fromIdx, toIdx),
+    );
 
     const orderStats = new Map<string, { count: number; last: string | null }>();
     for (const o of orders ?? []) {

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 
 /**
@@ -205,13 +206,15 @@ export const getAdminOperations = createServerFn({ method: "GET" })
           (financeS as { default_min_margin_percent?: number | string | null } | null)
             ?.default_min_margin_percent,
         ) || 25;
-      const { data: prodList } = await supabaseAdmin
-        .from("products")
-        .select(
-          "id, price, sale_price, cost_price, min_margin_percent, b2b_enabled, b2b_price, b2b_min_qty",
-        )
-        .eq("active", true)
-        .limit(2000);
+      const prodList = await fetchAllRows<any>((fromIdx, toIdx) =>
+        supabaseAdmin
+          .from("products")
+          .select(
+            "id, price, sale_price, cost_price, min_margin_percent, b2b_enabled, b2b_price, b2b_min_qty",
+          )
+          .eq("active", true)
+          .range(fromIdx, toIdx),
+      );
       for (const p of (prodList ?? []) as Array<{
         id: string;
         price: number | null;
@@ -425,11 +428,13 @@ export const getAdminOperations = createServerFn({ method: "GET" })
     let abandonedTotalValue = 0;
     let abandonedB2bCount = 0;
     try {
-      const { data: ac } = await supabaseAdmin
-        .from("abandoned_carts")
-        .select("subtotal_amount, company_id")
-        .in("status", ["novo", "contato_enviado"])
-        .limit(500);
+      const ac = await fetchAllRows<any>((fromIdx, toIdx) =>
+        supabaseAdmin
+          .from("abandoned_carts")
+          .select("subtotal_amount, company_id")
+          .in("status", ["novo", "contato_enviado"])
+          .range(fromIdx, toIdx),
+      );
       (ac ?? []).forEach((c) => {
         const v = Number(c.subtotal_amount ?? 0);
         abandonedTotalValue += v;
@@ -545,13 +550,15 @@ export const getAdminOperations = createServerFn({ method: "GET" })
     const productQuality = { activeBelow70: 0, featuredBelow70: 0, ruim: 0, missingTech: 0 };
     try {
       const { computeProductQuality } = await import("@/lib/productQuality");
-      const { data } = await supabaseAdmin
-        .from("products")
-        .select(
-          "id, name, tags, featured, description, specs, seo_title, seo_description, slug, ncm, weight_kg, height_cm, width_cm, length_cm, cost_price, category_id, images, product_images(alt_text, original_url), product_attributes(attribute_key, attribute_value, attribute_unit, is_visible)",
-        )
-        .eq("active", true)
-        .limit(1000);
+      const data = await fetchAllRows<any>((fromIdx, toIdx) =>
+        supabaseAdmin
+          .from("products")
+          .select(
+            "id, name, tags, featured, description, specs, seo_title, seo_description, slug, ncm, weight_kg, height_cm, width_cm, length_cm, cost_price, category_id, images, product_images(alt_text, original_url), product_attributes(attribute_key, attribute_value, attribute_unit, is_visible)",
+          )
+          .eq("active", true)
+          .range(fromIdx, toIdx),
+      );
       for (const p of (data ?? []) as any[]) {
         const q = computeProductQuality(p);
         if (q.score < 70) productQuality.activeBelow70++;

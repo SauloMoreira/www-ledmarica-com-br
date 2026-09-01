@@ -2,6 +2,9 @@
  * Helpers server-only para insights e listagens fiscais.
  * Importado dinamicamente para não vazar `client.server` no bundle do cliente.
  */
+import { fetchAllRows } from "@/lib/fetchAllRows";
+
+
 
 export type FiscalQuickCounts = {
   productsActive: number;
@@ -144,14 +147,16 @@ export async function fetchFiscalQuickCounts(): Promise<FiscalQuickCounts> {
 
   let productsNoWeightOrDims = 0;
   try {
-    const { data } = await supabaseAdmin
-      .from("products")
-      .select(
-        "id, weight_kg, net_weight, gross_weight, width_cm, height_cm, length_cm, active, fiscal_status",
-      )
-      .eq("active", true)
-      .neq("fiscal_status", "nao_aplicavel")
-      .limit(2000);
+    const data = await fetchAllRows<any>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("products")
+        .select(
+          "id, weight_kg, net_weight, gross_weight, width_cm, height_cm, length_cm, active, fiscal_status",
+        )
+        .eq("active", true)
+        .neq("fiscal_status", "nao_aplicavel")
+        .range(fromIdx, toIdx),
+    );
     productsNoWeightOrDims = (data ?? []).filter((p: any) => {
       const w = Number(p.weight_kg ?? p.net_weight ?? p.gross_weight ?? 0);
       const dimsOk =
@@ -162,11 +167,13 @@ export async function fetchFiscalQuickCounts(): Promise<FiscalQuickCounts> {
 
   let paidOrdersWithFiscalIssues = 0;
   try {
-    const { data: items } = await supabaseAdmin
-      .from("order_items")
-      .select("order_id, product_id, products!inner(fiscal_status, active)")
-      .in("products.fiscal_status", ["incompleto", "revisar"])
-      .limit(5000);
+    const items = await fetchAllRows<any>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("order_items")
+        .select("order_id, product_id, products!inner(fiscal_status, active)")
+        .in("products.fiscal_status", ["incompleto", "revisar"])
+        .range(fromIdx, toIdx),
+    );
     const orderIds = Array.from(
       new Set((items ?? []).map((it: any) => it.order_id).filter(Boolean)),
     );
@@ -503,11 +510,13 @@ export async function fetchPaidOrdersWithFiscalIssues(): Promise<
   Array<{ order_id: string; product_id: string; product_name: string; fiscal_status: string }>
 > {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: items } = await supabaseAdmin
-    .from("order_items")
-    .select("order_id, product_id, product_name, products!inner(fiscal_status)")
-    .in("products.fiscal_status", ["incompleto", "revisar"])
-    .limit(2000);
+  const items = await fetchAllRows<any>((fromIdx, toIdx) =>
+    supabaseAdmin
+      .from("order_items")
+      .select("order_id, product_id, product_name, products!inner(fiscal_status)")
+      .in("products.fiscal_status", ["incompleto", "revisar"])
+      .range(fromIdx, toIdx),
+  );
   if (!items || items.length === 0) return [];
   const orderIds = Array.from(new Set(items.map((i: any) => i.order_id).filter(Boolean)));
   const { data: orders } = await supabaseAdmin

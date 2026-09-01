@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 
@@ -458,12 +459,14 @@ export const getSeoInsights = createServerFn({ method: "GET" })
     // Contagem de produtos ativos por categoria
     const productsActiveByCat = new Map<string, number>();
     {
-      const { data: rows } = await supabaseAdmin
-        .from("products")
-        .select("category_id")
-        .eq("active", true)
-        .not("category_id", "is", null)
-        .limit(5000);
+      const rows = await fetchAllRows<any>((fromIdx, toIdx) =>
+        supabaseAdmin
+          .from("products")
+          .select("category_id")
+          .eq("active", true)
+          .not("category_id", "is", null)
+          .range(fromIdx, toIdx),
+      );
       (rows ?? []).forEach((r: any) => {
         const id = r.category_id as string;
         productsActiveByCat.set(id, (productsActiveByCat.get(id) ?? 0) + 1);
@@ -475,14 +478,16 @@ export const getSeoInsights = createServerFn({ method: "GET" })
       .map((c: any) => checkCategory(c, productsActiveByCat.get(c.id) ?? 0));
 
     // Produtos ativos
-    const { data: prodData } = await supabaseAdmin
-      .from("products")
-      .select(
-        "id, name, slug, sku, price, description, seo_title, seo_description, seo_keywords, images, active, category_id",
-      )
-      .eq("active", true)
-      .order("updated_at", { ascending: false })
-      .limit(productLimit);
+    const prodData = await fetchAllRows<any>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("products")
+        .select(
+          "id, name, slug, sku, price, description, seo_title, seo_description, seo_keywords, images, active, category_id",
+        )
+        .eq("active", true)
+        .order("updated_at", { ascending: false })
+        .range(fromIdx, toIdx),
+    );
 
     const products = (prodData ?? []).map((p: any) =>
       checkProduct(p, p.category_id ? (catMap.get(p.category_id) ?? null) : null),

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 
@@ -123,27 +124,28 @@ async function fetchPaidOrders(
   range: { from: Date; to: Date },
 ): Promise<OrderRow[]> {
   const supabaseAdmin = await getSupabaseAdmin();
-  let q = supabaseAdmin
-    .from("orders")
-    .select(
-      "id, order_number, status, payment_status, payment_method, delivery_method, order_type, " +
-        "total, subtotal, shipping_cost, discount, b2b_discount_total, bundle_discount_total, retail_subtotal, b2b_subtotal, " +
-        "coupon_code, company_id, company_name, company_cnpj, local_delivery_zone_id, local_delivery_district, " +
-        "mp_fee_amount, estimated_fee_amount, payment_fee_source, address_snapshot, created_at, paid_at",
-    )
-    .gte("created_at", range.from.toISOString())
-    .lte("created_at", range.to.toISOString())
-    .in("payment_status", PAID)
-    .order("created_at", { ascending: false });
+  const data = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) => {
+    let q = supabaseAdmin
+      .from("orders")
+      .select(
+        "id, order_number, status, payment_status, payment_method, delivery_method, order_type, " +
+          "total, subtotal, shipping_cost, discount, b2b_discount_total, bundle_discount_total, retail_subtotal, b2b_subtotal, " +
+          "coupon_code, company_id, company_name, company_cnpj, local_delivery_zone_id, local_delivery_district, " +
+          "mp_fee_amount, estimated_fee_amount, payment_fee_source, address_snapshot, created_at, paid_at",
+      )
+      .gte("created_at", range.from.toISOString())
+      .lte("created_at", range.to.toISOString())
+      .in("payment_status", PAID)
+      .order("created_at", { ascending: false })
+      .range(fromIdx, toIdx);
 
-  if (filters.orderType !== "all") q = q.eq("order_type", filters.orderType);
-  if (filters.paymentMethod) q = q.eq("payment_method", filters.paymentMethod);
-  if (filters.deliveryMethod) q = q.eq("delivery_method", filters.deliveryMethod);
-  if (filters.status) q = q.eq("status", filters.status);
-
-  const { data, error } = await q;
-  if (error) throw new Response(`orders query failed: ${error.message}`, { status: 500 });
-  return (data ?? []) as unknown as OrderRow[];
+    if (filters.orderType !== "all") q = q.eq("order_type", filters.orderType);
+    if (filters.paymentMethod) q = q.eq("payment_method", filters.paymentMethod);
+    if (filters.deliveryMethod) q = q.eq("delivery_method", filters.deliveryMethod);
+    if (filters.status) q = q.eq("status", filters.status);
+    return q.returns<Record<string, unknown>[]>();
+  });
+  return data as unknown as OrderRow[];
 }
 
 function feeOf(o: OrderRow): number {

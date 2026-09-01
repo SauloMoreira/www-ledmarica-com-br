@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 
@@ -224,35 +225,33 @@ async function fetchPaidOrders(
   range: { from: Date; to: Date },
 ): Promise<OrderRow[]> {
   const supabaseAdmin = await getSupabaseAdmin();
-  let q = supabaseAdmin
-    .from("orders")
-    .select(
-      "id, order_number, status, payment_status, payment_method, delivery_method, order_type, " +
-        "total, subtotal, discount, shipping_cost, coupon_code, company_id, company_name, " +
-        "utm_source, utm_medium, utm_campaign, utm_content, utm_term, origin_context, origin_page, " +
-        "mp_fee_amount, estimated_fee_amount, payment_fee_source, user_id, created_at, paid_at",
-    )
-    .gte("created_at", range.from.toISOString())
-    .lte("created_at", range.to.toISOString())
-    .in("payment_status", PAID)
-    .order("created_at", { ascending: false });
+  const data = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) => {
+    let q = supabaseAdmin
+      .from("orders")
+      .select(
+        "id, order_number, status, payment_status, payment_method, delivery_method, order_type, " +
+          "total, subtotal, discount, shipping_cost, coupon_code, company_id, company_name, " +
+          "utm_source, utm_medium, utm_campaign, utm_content, utm_term, origin_context, origin_page, " +
+          "mp_fee_amount, estimated_fee_amount, payment_fee_source, user_id, created_at, paid_at",
+      )
+      .gte("created_at", range.from.toISOString())
+      .lte("created_at", range.to.toISOString())
+      .in("payment_status", PAID)
+      .order("created_at", { ascending: false })
+      .range(fromIdx, toIdx);
 
-  if (filters.orderType !== "all") q = q.eq("order_type", filters.orderType);
-  if (filters.paymentMethod) q = q.eq("payment_method", filters.paymentMethod);
-  if (filters.deliveryMethod) q = q.eq("delivery_method", filters.deliveryMethod);
-  if (filters.status) q = q.eq("status", filters.status);
-  if (filters.utmSource) q = q.eq("utm_source", filters.utmSource);
-  if (filters.utmMedium) q = q.eq("utm_medium", filters.utmMedium);
-  if (filters.utmCampaign) q = q.eq("utm_campaign", filters.utmCampaign);
-  if (filters.couponCode) q = q.eq("coupon_code", filters.couponCode);
-  if (filters.originContext) q = q.eq("origin_context", filters.originContext);
-
-  // limite defensivo
-  q = q.limit(2000);
-
-  const { data, error } = await q;
-  if (error) throw new Response(`orders query failed: ${error.message}`, { status: 500 });
-  return (data ?? []) as unknown as OrderRow[];
+    if (filters.orderType !== "all") q = q.eq("order_type", filters.orderType);
+    if (filters.paymentMethod) q = q.eq("payment_method", filters.paymentMethod);
+    if (filters.deliveryMethod) q = q.eq("delivery_method", filters.deliveryMethod);
+    if (filters.status) q = q.eq("status", filters.status);
+    if (filters.utmSource) q = q.eq("utm_source", filters.utmSource);
+    if (filters.utmMedium) q = q.eq("utm_medium", filters.utmMedium);
+    if (filters.utmCampaign) q = q.eq("utm_campaign", filters.utmCampaign);
+    if (filters.couponCode) q = q.eq("coupon_code", filters.couponCode);
+    if (filters.originContext) q = q.eq("origin_context", filters.originContext);
+    return q.returns<Record<string, unknown>[]>();
+  });
+  return data as unknown as OrderRow[];
 }
 
 async function fetchItemsCostForOrders(orderIds: string[]): Promise<ItemCostRow[]> {
@@ -308,14 +307,20 @@ async function fetchLeadsByCampaign(range: {
 }): Promise<Map<string, { total: number; hot: number; won: number; lost: number }>> {
   const out = new Map<string, { total: number; hot: number; won: number; lost: number }>();
   const supabaseAdmin = await getSupabaseAdmin();
-  const { data, error } = await supabaseAdmin
-    .from("leads")
-    .select("utm_campaign, status, score_temperature, created_at")
-    .gte("created_at", range.from.toISOString())
-    .lte("created_at", range.to.toISOString())
-    .not("utm_campaign", "is", null)
-    .limit(5000);
-  if (error || !data) return out;
+  let data: Record<string, unknown>[];
+  try {
+    data = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("leads")
+        .select("utm_campaign, status, score_temperature, created_at")
+        .gte("created_at", range.from.toISOString())
+        .lte("created_at", range.to.toISOString())
+        .not("utm_campaign", "is", null)
+        .range(fromIdx, toIdx),
+    );
+  } catch {
+    return out;
+  }
   for (const r of data as Array<{
     utm_campaign: string | null;
     status: string | null;
@@ -339,14 +344,20 @@ async function fetchAbandonedByCampaign(range: {
 }): Promise<Map<string, { abandoned: number; recovered: number; abandonedValue: number }>> {
   const out = new Map<string, { abandoned: number; recovered: number; abandonedValue: number }>();
   const supabaseAdmin = await getSupabaseAdmin();
-  const { data, error } = await supabaseAdmin
-    .from("abandoned_carts")
-    .select("utm_campaign, recovered_at, subtotal_amount, abandoned_at")
-    .gte("abandoned_at", range.from.toISOString())
-    .lte("abandoned_at", range.to.toISOString())
-    .not("utm_campaign", "is", null)
-    .limit(5000);
-  if (error || !data) return out;
+  let data: Record<string, unknown>[];
+  try {
+    data = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("abandoned_carts")
+        .select("utm_campaign, recovered_at, subtotal_amount, abandoned_at")
+        .gte("abandoned_at", range.from.toISOString())
+        .lte("abandoned_at", range.to.toISOString())
+        .not("utm_campaign", "is", null)
+        .range(fromIdx, toIdx),
+    );
+  } catch {
+    return out;
+  }
   for (const r of data as Array<{
     utm_campaign: string | null;
     recovered_at: string | null;
@@ -706,12 +717,14 @@ export const getOriginPerformance = createServerFn({ method: "POST" })
 
     // Lead/abandoned por origem (utm_source) — agregar separadamente
     const supabaseAdmin = await getSupabaseAdmin();
-    const { data: leadsData } = await supabaseAdmin
-      .from("leads")
-      .select("utm_source, utm_medium")
-      .gte("created_at", range.from.toISOString())
-      .lte("created_at", range.to.toISOString())
-      .limit(5000);
+    const leadsData = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("leads")
+        .select("utm_source, utm_medium")
+        .gte("created_at", range.from.toISOString())
+        .lte("created_at", range.to.toISOString())
+        .range(fromIdx, toIdx),
+    );
     const leadCount = new Map<string, number>();
     for (const r of leadsData ?? []) {
       const k = `${safeStr((r as { utm_source: string | null }).utm_source) ?? "sem atribuição"}|${
@@ -719,12 +732,14 @@ export const getOriginPerformance = createServerFn({ method: "POST" })
       }`;
       leadCount.set(k, (leadCount.get(k) ?? 0) + 1);
     }
-    const { data: abData } = await supabaseAdmin
-      .from("abandoned_carts")
-      .select("utm_source, utm_medium, recovered_at")
-      .gte("abandoned_at", range.from.toISOString())
-      .lte("abandoned_at", range.to.toISOString())
-      .limit(5000);
+    const abData = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("abandoned_carts")
+        .select("utm_source, utm_medium, recovered_at")
+        .gte("abandoned_at", range.from.toISOString())
+        .lte("abandoned_at", range.to.toISOString())
+        .range(fromIdx, toIdx),
+    );
     const abCount = new Map<string, { ab: number; rec: number }>();
     for (const r of abData ?? []) {
       const row = r as {
