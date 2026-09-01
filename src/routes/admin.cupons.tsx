@@ -30,6 +30,7 @@ import {
 } from "@/components/admin/datatable";
 import { useTableState } from "@/hooks/useTableState";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import {
   PAYMENT_CONDITION_VALUES,
   DELIVERY_SCOPE_VALUES,
@@ -99,11 +100,19 @@ function CuponsPage() {
     useTableState({ page: 1, pageSize: 25, sort: { column: "code", direction: "asc" } });
 
   const load = async () => {
-    const { data } = await supabase
-      .from("coupons")
-      .select("*")
-      .order("created_at", { ascending: false });
-    setList((data as any) ?? []);
+    try {
+      const rows = await fetchAllRows<any>((from, to) =>
+        supabase
+          .from("coupons")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(from, to),
+      );
+      setList(rows ?? []);
+    } catch (err) {
+      console.error("Falha ao carregar cupons", err);
+      setList([]);
+    }
   };
   useEffect(() => {
     load();
