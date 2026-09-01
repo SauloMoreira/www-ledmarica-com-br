@@ -503,11 +503,13 @@ export async function fetchPaidOrdersWithFiscalIssues(): Promise<
   Array<{ order_id: string; product_id: string; product_name: string; fiscal_status: string }>
 > {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: items } = await supabaseAdmin
-    .from("order_items")
-    .select("order_id, product_id, product_name, products!inner(fiscal_status)")
-    .in("products.fiscal_status", ["incompleto", "revisar"])
-    .limit(2000);
+  const items = await fetchAllRows<any>((fromIdx, toIdx) =>
+    supabaseAdmin
+      .from("order_items")
+      .select("order_id, product_id, product_name, products!inner(fiscal_status)")
+      .in("products.fiscal_status", ["incompleto", "revisar"])
+      .range(fromIdx, toIdx),
+  );
   if (!items || items.length === 0) return [];
   const orderIds = Array.from(new Set(items.map((i: any) => i.order_id).filter(Boolean)));
   const { data: orders } = await supabaseAdmin
