@@ -163,7 +163,7 @@ export const adminListUsers = createServerFn({ method: "POST" })
     }
 
     // 3. Pedidos: contagem + último por usuário
-    const orders = await fetchAllRows<{ user_id: string | null; created_at: string }>(
+    const orders = await fetchAllRows<{ user_id: string | null; created_at: string | null }>(
       (fromIdx, toIdx) =>
         supabaseAdmin
           .from("orders")
