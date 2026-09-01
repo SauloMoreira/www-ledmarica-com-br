@@ -224,35 +224,33 @@ async function fetchPaidOrders(
   range: { from: Date; to: Date },
 ): Promise<OrderRow[]> {
   const supabaseAdmin = await getSupabaseAdmin();
-  let q = supabaseAdmin
-    .from("orders")
-    .select(
-      "id, order_number, status, payment_status, payment_method, delivery_method, order_type, " +
-        "total, subtotal, discount, shipping_cost, coupon_code, company_id, company_name, " +
-        "utm_source, utm_medium, utm_campaign, utm_content, utm_term, origin_context, origin_page, " +
-        "mp_fee_amount, estimated_fee_amount, payment_fee_source, user_id, created_at, paid_at",
-    )
-    .gte("created_at", range.from.toISOString())
-    .lte("created_at", range.to.toISOString())
-    .in("payment_status", PAID)
-    .order("created_at", { ascending: false });
+  const data = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) => {
+    let q = supabaseAdmin
+      .from("orders")
+      .select(
+        "id, order_number, status, payment_status, payment_method, delivery_method, order_type, " +
+          "total, subtotal, discount, shipping_cost, coupon_code, company_id, company_name, " +
+          "utm_source, utm_medium, utm_campaign, utm_content, utm_term, origin_context, origin_page, " +
+          "mp_fee_amount, estimated_fee_amount, payment_fee_source, user_id, created_at, paid_at",
+      )
+      .gte("created_at", range.from.toISOString())
+      .lte("created_at", range.to.toISOString())
+      .in("payment_status", PAID)
+      .order("created_at", { ascending: false })
+      .range(fromIdx, toIdx);
 
-  if (filters.orderType !== "all") q = q.eq("order_type", filters.orderType);
-  if (filters.paymentMethod) q = q.eq("payment_method", filters.paymentMethod);
-  if (filters.deliveryMethod) q = q.eq("delivery_method", filters.deliveryMethod);
-  if (filters.status) q = q.eq("status", filters.status);
-  if (filters.utmSource) q = q.eq("utm_source", filters.utmSource);
-  if (filters.utmMedium) q = q.eq("utm_medium", filters.utmMedium);
-  if (filters.utmCampaign) q = q.eq("utm_campaign", filters.utmCampaign);
-  if (filters.couponCode) q = q.eq("coupon_code", filters.couponCode);
-  if (filters.originContext) q = q.eq("origin_context", filters.originContext);
-
-  // limite defensivo
-  q = q.limit(2000);
-
-  const { data, error } = await q;
-  if (error) throw new Response(`orders query failed: ${error.message}`, { status: 500 });
-  return (data ?? []) as unknown as OrderRow[];
+    if (filters.orderType !== "all") q = q.eq("order_type", filters.orderType);
+    if (filters.paymentMethod) q = q.eq("payment_method", filters.paymentMethod);
+    if (filters.deliveryMethod) q = q.eq("delivery_method", filters.deliveryMethod);
+    if (filters.status) q = q.eq("status", filters.status);
+    if (filters.utmSource) q = q.eq("utm_source", filters.utmSource);
+    if (filters.utmMedium) q = q.eq("utm_medium", filters.utmMedium);
+    if (filters.utmCampaign) q = q.eq("utm_campaign", filters.utmCampaign);
+    if (filters.couponCode) q = q.eq("coupon_code", filters.couponCode);
+    if (filters.originContext) q = q.eq("origin_context", filters.originContext);
+    return q;
+  });
+  return data as unknown as OrderRow[];
 }
 
 async function fetchItemsCostForOrders(orderIds: string[]): Promise<ItemCostRow[]> {
