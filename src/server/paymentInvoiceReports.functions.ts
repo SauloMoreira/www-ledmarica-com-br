@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -229,20 +230,28 @@ async function fetchOrdersRange(
   selectStr: string,
 ): Promise<RawOrder[]> {
   const supabaseAdmin = await getSupabaseAdmin();
-  let q = supabaseAdmin
-    .from("orders")
-    .select(selectStr)
-    .gte("created_at", range.from.toISOString())
-    .lte("created_at", range.to.toISOString())
-    .order("created_at", { ascending: false });
-  if (filters.orderType !== "all") q = q.eq("order_type", filters.orderType);
-  if (filters.paymentStatus) q = q.eq("payment_status", filters.paymentStatus);
-  if (filters.paymentMethod) q = q.eq("payment_method", filters.paymentMethod);
-  if (filters.status) q = q.eq("status", filters.status);
-  const { data, error } = await q;
-  if (error) throw new Response(`orders query failed: ${error.message}`, { status: 500 });
-  return (data ?? []) as unknown as RawOrder[];
+  const build = () => {
+    let q = supabaseAdmin
+      .from("orders")
+      .select(selectStr)
+      .gte("created_at", range.from.toISOString())
+      .lte("created_at", range.to.toISOString())
+      .order("created_at", { ascending: false });
+    if (filters.orderType !== "all") q = q.eq("order_type", filters.orderType);
+    if (filters.paymentStatus) q = q.eq("payment_status", filters.paymentStatus);
+    if (filters.paymentMethod) q = q.eq("payment_method", filters.paymentMethod);
+    if (filters.status) q = q.eq("status", filters.status);
+    return q;
+  };
+  try {
+    return (await fetchAllRows<unknown>((from, to) =>
+      build().range(from, to),
+    )) as unknown as RawOrder[];
+  } catch (e) {
+    throw new Response(`orders query failed: ${(e as Error).message}`, { status: 500 });
+  }
 }
+
 
 function customerOf(o: RawOrder): string {
   const snap = o.address_snapshot as { recipient?: string; name?: string } | null;
@@ -608,30 +617,32 @@ async function detectIncompleteFiscalItems(orderIds: string[]): Promise<Set<stri
   try {
     const supabaseAdmin = await getSupabaseAdmin();
     // Tenta inferir incompletos via products fiscal flags se houver
-    const { data: items } = await supabaseAdmin
-      .from("order_items")
-      .select("order_id, product_id")
-      .in("order_id", orderIds);
+    const items = await fetchAllRows<{ order_id: string; product_id: string | null }>((from, to) =>
+      supabaseAdmin
+        .from("order_items")
+        .select("order_id, product_id")
+        .in("order_id", orderIds)
+        .range(from, to),
+    );
     const productIds = Array.from(
-      new Set(
-        ((items ?? []) as Array<{ product_id: string | null }>)
-          .map((i) => i.product_id)
-          .filter(Boolean) as string[],
-      ),
+      new Set(items.map((i) => i.product_id).filter(Boolean) as string[]),
     );
     if (productIds.length === 0) return new Set();
-    const { data: products } = await supabaseAdmin
-      .from("products")
-      .select("id, ncm, cfop_default, commercial_unit, fiscal_status")
-      .in("id", productIds);
+    const products = await fetchAllRows<Record<string, unknown>>((from, to) =>
+      supabaseAdmin
+        .from("products")
+        .select("id, ncm, cfop_default, commercial_unit, fiscal_status")
+        .in("id", productIds)
+        .range(from, to),
+    );
     const incompleteProducts = new Set<string>();
-    for (const p of (products ?? []) as unknown as Array<Record<string, unknown>>) {
+    for (const p of products) {
       const missing =
         !p.ncm || !p.cfop_default || !p.commercial_unit || p.fiscal_status === "incomplete";
       if (missing) incompleteProducts.add(p.id as string);
     }
     const orderHasIncomplete = new Set<string>();
-    for (const it of (items ?? []) as Array<{ order_id: string; product_id: string | null }>) {
+    for (const it of items) {
       if (it.product_id && incompleteProducts.has(it.product_id)) {
         orderHasIncomplete.add(it.order_id);
       }

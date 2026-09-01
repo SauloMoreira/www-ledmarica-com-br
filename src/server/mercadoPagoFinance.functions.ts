@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 export type MpOverview = {
   rangeFrom: string;
@@ -58,14 +59,17 @@ export const getMpOverview = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<MpOverview> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const r = { from: data.from ?? defaultRange().from, to: data.to ?? defaultRange().to };
-    const { data: rows } = await supabaseAdmin
-      .from("orders")
-      .select(
-        "payment_status, mp_gross_amount, mp_fee_amount, mp_net_amount, estimated_fee_amount, estimated_net_amount, payment_fee_source, mp_last_webhook_at",
-      )
-      .eq("payment_provider", "mercadopago")
-      .gte("created_at", r.from)
-      .lte("created_at", r.to);
+    const rows = await fetchAllRows<Record<string, unknown>>((from, to) =>
+      supabaseAdmin
+        .from("orders")
+        .select(
+          "payment_status, mp_gross_amount, mp_fee_amount, mp_net_amount, estimated_fee_amount, estimated_net_amount, payment_fee_source, mp_last_webhook_at",
+        )
+        .eq("payment_provider", "mercadopago")
+        .gte("created_at", r.from)
+        .lte("created_at", r.to)
+        .range(from, to),
+    );
 
     const out: MpOverview = {
       rangeFrom: r.from,
@@ -86,7 +90,7 @@ export const getMpOverview = createServerFn({ method: "POST" })
       lastWebhookAt: null,
     };
 
-    for (const o of (rows ?? []) as Array<Record<string, unknown>>) {
+    for (const o of rows) {
       const status = String(o.payment_status ?? "");
       if (status === "paid" || status === "approved") out.totals.paid += 1;
       else if (status === "pending" || status === "in_process") out.totals.pending += 1;
