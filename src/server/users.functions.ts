@@ -100,28 +100,39 @@ export const adminListUsers = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
 
-    const limit = data.limit ?? 500;
+    // `data.limit` é mantido no contrato por compatibilidade, mas não impõe
+    // mais teto: a busca pagina todas as linhas (limite de 1000 do PostgREST).
+    const term = (data.search ?? "").trim();
 
     // 1. Perfis (filtro de role / status quando possível direto na query)
-    let q = supabaseAdmin
-      .from("profiles")
-      .select("id, name, email, phone, role, status, created_at")
-      .order("created_at", { ascending: false })
-      .limit(limit);
+    const profiles = await fetchAllRows<{
+      id: string;
+      name: string | null;
+      email: string | null;
+      phone: string | null;
+      role: string | null;
+      status: string | null;
+      created_at: string | null;
+    }>((fromIdx, toIdx) => {
+      let q = supabaseAdmin
+        .from("profiles")
+        .select("id, name, email, phone, role, status, created_at")
+        .order("created_at", { ascending: false })
+        .range(fromIdx, toIdx);
 
-    if (data.filter === "admins") q = q.eq("role", "admin");
-    if (data.filter === "blocked") q = q.in("status", ["blocked", "archived"]);
-    if (data.filter === "active") q = q.eq("status", "active");
+      if (data.filter === "admins") q = q.eq("role", "admin");
+      if (data.filter === "blocked") q = q.in("status", ["blocked", "archived"]);
+      if (data.filter === "active") q = q.eq("status", "active");
 
-    const term = (data.search ?? "").trim();
-    if (term) {
-      const s = `%${term}%`;
-      q = q.or(`name.ilike.${s},email.ilike.${s},phone.ilike.${s}`);
-    }
+      if (term) {
+        const s = `%${term}%`;
+        q = q.or(`name.ilike.${s},email.ilike.${s},phone.ilike.${s}`);
+      }
+      return q.returns<Record<string, unknown>[]>() as never;
+    });
 
-    const { data: profiles, error } = await q;
-    if (error) throw new Error(error.message);
     const rows = profiles ?? [];
+
     if (rows.length === 0) {
       return { users: [] as AdminUserRow[], total: 0 };
     }
