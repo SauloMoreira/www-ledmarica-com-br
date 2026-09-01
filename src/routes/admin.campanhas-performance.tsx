@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 export const Route = createFileRoute("/admin/campanhas-performance")({
   component: PerformancePage,
@@ -62,11 +63,20 @@ function PerformancePage() {
               .from("leads")
               .select("id", { count: "exact", head: true })
               .eq("utm_campaign", utm),
-            supabase
-              .from("abandoned_carts")
-              .select("id, status, subtotal_amount, recovered_at")
-              .eq("utm_campaign", utm),
-            supabase.from("orders").select("id, total, payment_status").eq("utm_campaign", utm),
+            fetchAllRows<any>((fromIdx, toIdx) =>
+              supabase
+                .from("abandoned_carts")
+                .select("id, status, subtotal_amount, recovered_at")
+                .eq("utm_campaign", utm)
+                .range(fromIdx, toIdx),
+            ).then((data) => ({ data })),
+            fetchAllRows<any>((fromIdx, toIdx) =>
+              supabase
+                .from("orders")
+                .select("id, total, payment_status")
+                .eq("utm_campaign", utm)
+                .range(fromIdx, toIdx),
+            ).then((data) => ({ data })),
             c.coupon_id
               ? supabase.from("coupons").select("used_count").eq("id", c.coupon_id).single()
               : Promise.resolve({ data: null }),

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { requireAdmin, requireAdminMfaSoft } from "@/integrations/supabase/admin-middleware";
 import { enforceRateLimit, getClientIdentifier } from "@/server/security/rateLimit";
 import { logAdminAction } from "@/server/security/auditLog";
@@ -336,12 +337,13 @@ export const adminDeleteInstitutionalPage = createServerFn({ method: "POST" })
 export const adminListContactMessages = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .handler(async () => {
-    const { data, error } = await supabaseAdmin
-      .from("contact_messages")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(500);
-    if (error) throw new Error(error.message);
+    const data = await fetchAllRows<any>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("contact_messages")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(fromIdx, toIdx),
+    );
     return { messages: data ?? [] };
   });
 
