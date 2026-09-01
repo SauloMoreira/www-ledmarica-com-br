@@ -340,11 +340,19 @@ export const getFinanceReportCards = createServerFn({ method: "POST" })
     let itemsWithoutCost = 0;
     if (paid.length > 0) {
       const ids = paid.map((o) => o.id);
-      const { data: items } = await supabaseAdmin
-        .from("order_items")
-        .select("order_id, qty, unit_cost, total_cost")
-        .in("order_id", ids);
-      for (const it of items ?? []) {
+      const items = await fetchAllRows<{
+        order_id: string;
+        qty: number | string | null;
+        unit_cost: number | string | null;
+        total_cost: number | string | null;
+      }>((from, to) =>
+        supabaseAdmin
+          .from("order_items")
+          .select("order_id, qty, unit_cost, total_cost")
+          .in("order_id", ids)
+          .range(from, to),
+      );
+      for (const it of items) {
         if (it.unit_cost == null) {
           itemsWithoutCost += 1;
           continue;
