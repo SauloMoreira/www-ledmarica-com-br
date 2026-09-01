@@ -339,14 +339,20 @@ async function fetchAbandonedByCampaign(range: {
 }): Promise<Map<string, { abandoned: number; recovered: number; abandonedValue: number }>> {
   const out = new Map<string, { abandoned: number; recovered: number; abandonedValue: number }>();
   const supabaseAdmin = await getSupabaseAdmin();
-  const { data, error } = await supabaseAdmin
-    .from("abandoned_carts")
-    .select("utm_campaign, recovered_at, subtotal_amount, abandoned_at")
-    .gte("abandoned_at", range.from.toISOString())
-    .lte("abandoned_at", range.to.toISOString())
-    .not("utm_campaign", "is", null)
-    .limit(5000);
-  if (error || !data) return out;
+  let data: Record<string, unknown>[];
+  try {
+    data = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("abandoned_carts")
+        .select("utm_campaign, recovered_at, subtotal_amount, abandoned_at")
+        .gte("abandoned_at", range.from.toISOString())
+        .lte("abandoned_at", range.to.toISOString())
+        .not("utm_campaign", "is", null)
+        .range(fromIdx, toIdx),
+    );
+  } catch {
+    return out;
+  }
   for (const r of data as Array<{
     utm_campaign: string | null;
     recovered_at: string | null;
