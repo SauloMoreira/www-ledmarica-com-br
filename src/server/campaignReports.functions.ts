@@ -308,14 +308,20 @@ async function fetchLeadsByCampaign(range: {
 }): Promise<Map<string, { total: number; hot: number; won: number; lost: number }>> {
   const out = new Map<string, { total: number; hot: number; won: number; lost: number }>();
   const supabaseAdmin = await getSupabaseAdmin();
-  const { data, error } = await supabaseAdmin
-    .from("leads")
-    .select("utm_campaign, status, score_temperature, created_at")
-    .gte("created_at", range.from.toISOString())
-    .lte("created_at", range.to.toISOString())
-    .not("utm_campaign", "is", null)
-    .limit(5000);
-  if (error || !data) return out;
+  let data: Record<string, unknown>[];
+  try {
+    data = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("leads")
+        .select("utm_campaign, status, score_temperature, created_at")
+        .gte("created_at", range.from.toISOString())
+        .lte("created_at", range.to.toISOString())
+        .not("utm_campaign", "is", null)
+        .range(fromIdx, toIdx),
+    );
+  } catch {
+    return out;
+  }
   for (const r of data as Array<{
     utm_campaign: string | null;
     status: string | null;
