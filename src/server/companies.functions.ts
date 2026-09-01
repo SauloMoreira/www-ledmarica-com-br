@@ -5,6 +5,7 @@ import { assertAal2 } from "./security/assertAdmin";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isValidCNPJ, onlyDigits } from "@/lib/cnpj";
 import { decideAutoApproval, lookupCnpj } from "./cnpjLookup";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 const cnpjSchema = z
   .string()
@@ -253,17 +254,18 @@ export const adminListCompanies = createServerFn({ method: "POST" })
       .maybeSingle();
     if (prof?.role !== "admin") throw new Error("Acesso negado");
 
-    let q = supabaseAdmin
-      .from("companies")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(200);
-    if (data.status) q = q.eq("status", data.status);
-    if (data.search && data.search.trim()) {
-      const s = `%${data.search.trim()}%`;
-      q = q.or(`legal_name.ilike.${s},trade_name.ilike.${s},cnpj.ilike.${s}`);
-    }
-    const { data: rows, error } = await q;
-    if (error) throw new Error(error.message);
+    const rows = await fetchAllRows<any>((from, to) => {
+      let q = supabaseAdmin
+        .from("companies")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(from, to);
+      if (data.status) q = q.eq("status", data.status);
+      if (data.search && data.search.trim()) {
+        const s = `%${data.search.trim()}%`;
+        q = q.or(`legal_name.ilike.${s},trade_name.ilike.${s},cnpj.ilike.${s}`);
+      }
+      return q;
+    });
     return { companies: rows ?? [] };
   });
