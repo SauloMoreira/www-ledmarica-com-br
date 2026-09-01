@@ -107,8 +107,8 @@ export const adminListUsers = createServerFn({ method: "POST" })
     // 1. Perfis (filtro de role / status quando possível direto na query)
     const profiles = await fetchAllRows<{
       id: string;
-      name: string | null;
-      email: string | null;
+      name: string;
+      email: string;
       phone: string | null;
       role: string;
       status: string;
