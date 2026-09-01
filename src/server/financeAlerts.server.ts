@@ -134,18 +134,20 @@ export async function fetchFinanceAlertCounts(): Promise<FinanceAlertCounts> {
 
     // ---------- Mercado Pago — taxa real x estimada x desconhecida ----------
     // (head:true não nos dá a comparação que precisamos; lemos só as colunas
-    // necessárias com limite defensivo de 2k linhas.)
+    // necessárias, paginando via fetchAllRows.)
     try {
-      const { data: mpRows } = await supabaseAdmin
-        .from("orders")
-        .select("mp_fee_amount, estimated_fee_amount")
-        .in("payment_status", ["paid", "approved"])
-        .gte("paid_at", since30dISO)
-        .limit(2000);
-      for (const r of (mpRows ?? []) as Array<{
+      const mpRows = await fetchAllRows<{
         mp_fee_amount: number | string | null;
         estimated_fee_amount: number | string | null;
-      }>) {
+      }>((from, to) =>
+        supabaseAdmin
+          .from("orders")
+          .select("mp_fee_amount, estimated_fee_amount")
+          .in("payment_status", ["paid", "approved"])
+          .gte("paid_at", since30dISO)
+          .range(from, to),
+      );
+      for (const r of mpRows) {
         const realFee = r.mp_fee_amount != null && Number(r.mp_fee_amount) > 0;
         const estFee = r.estimated_fee_amount != null && Number(r.estimated_fee_amount) > 0;
         if (!realFee && !estFee) out.mpPaidNoFee30d += 1;
