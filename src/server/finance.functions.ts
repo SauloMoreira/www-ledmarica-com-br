@@ -608,10 +608,13 @@ export const getFinanceQuickCounts = createServerFn({ method: "GET" })
     const min = settings.default_min_margin_percent;
 
     // Produtos ativos
-    const { data: products } = await supabaseAdmin
-      .from("products")
-      .select("id, price, sale_price, b2b_price, cost_price, min_margin_percent")
-      .eq("active", true);
+    const products = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("products")
+        .select("id, price, sale_price, b2b_price, cost_price, min_margin_percent")
+        .eq("active", true)
+        .range(fromIdx, toIdx),
+    );
 
     let withoutCost = 0;
     let belowMin = 0;
