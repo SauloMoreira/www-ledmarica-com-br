@@ -93,15 +93,23 @@ export const getAdminDashboard = createServerFn({ method: "POST" })
     // ============================================================
     // 1) Pedidos no período (created_at) — base para cards e gráficos
     // ============================================================
-    const { data: orders, error: ordersError } = await supabaseAdmin
-      .from("orders")
-      .select("id, total, status, payment_status, created_at, paid_at, updated_at")
-      .gte("created_at", start)
-      .lte("created_at", end);
-
-    if (ordersError) {
-      throw new Response(`orders query failed: ${ordersError.message}`, { status: 500 });
-    }
+    const orders = await fetchAllRows<{
+      id: string;
+      total: number | null;
+      status: string | null;
+      payment_status: string | null;
+      created_at: string | null;
+      paid_at: string | null;
+      updated_at: string | null;
+    }>((from, to) =>
+      supabaseAdmin
+        .from("orders")
+        .select("id, total, status, payment_status, created_at, paid_at, updated_at")
+        .gte("created_at", start)
+        .lte("created_at", end)
+        .order("created_at", { ascending: false })
+        .range(from, to),
+    );
 
     const allOrders = orders ?? [];
     const paidOrders = allOrders.filter((o) =>
