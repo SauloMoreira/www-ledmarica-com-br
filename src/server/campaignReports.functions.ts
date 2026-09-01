@@ -249,7 +249,7 @@ async function fetchPaidOrders(
     if (filters.utmCampaign) q = q.eq("utm_campaign", filters.utmCampaign);
     if (filters.couponCode) q = q.eq("coupon_code", filters.couponCode);
     if (filters.originContext) q = q.eq("origin_context", filters.originContext);
-    return q;
+    return q.returns<Record<string, unknown>[]>();
   });
   return data as unknown as OrderRow[];
 }

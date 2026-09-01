@@ -143,7 +143,7 @@ async function fetchPaidOrders(
     if (filters.paymentMethod) q = q.eq("payment_method", filters.paymentMethod);
     if (filters.deliveryMethod) q = q.eq("delivery_method", filters.deliveryMethod);
     if (filters.status) q = q.eq("status", filters.status);
-    return q;
+    return q.returns<Record<string, unknown>[]>();
   });
   return data as unknown as OrderRow[];
 }
