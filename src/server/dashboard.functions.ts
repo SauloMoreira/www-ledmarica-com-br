@@ -194,14 +194,18 @@ export const getAdminDashboard = createServerFn({ method: "POST" })
     let hasCategories = false;
 
     if (paidIds.length > 0) {
-      const { data: items, error: itemsError } = await supabaseAdmin
-        .from("order_items")
-        .select("product_id, product_name, qty, total_price")
-        .in("order_id", paidIds);
-
-      if (itemsError) {
-        throw new Response(`order_items query failed: ${itemsError.message}`, { status: 500 });
-      }
+      const items = await fetchAllRows<{
+        product_id: string | null;
+        product_name: string | null;
+        qty: number | null;
+        total_price: number | null;
+      }>((from, to) =>
+        supabaseAdmin
+          .from("order_items")
+          .select("product_id, product_name, qty, total_price")
+          .in("order_id", paidIds)
+          .range(from, to),
+      );
       const allItems = items ?? [];
 
       // top produtos
