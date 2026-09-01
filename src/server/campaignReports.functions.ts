@@ -716,12 +716,14 @@ export const getOriginPerformance = createServerFn({ method: "POST" })
 
     // Lead/abandoned por origem (utm_source) — agregar separadamente
     const supabaseAdmin = await getSupabaseAdmin();
-    const { data: leadsData } = await supabaseAdmin
-      .from("leads")
-      .select("utm_source, utm_medium")
-      .gte("created_at", range.from.toISOString())
-      .lte("created_at", range.to.toISOString())
-      .limit(5000);
+    const leadsData = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("leads")
+        .select("utm_source, utm_medium")
+        .gte("created_at", range.from.toISOString())
+        .lte("created_at", range.to.toISOString())
+        .range(fromIdx, toIdx),
+    );
     const leadCount = new Map<string, number>();
     for (const r of leadsData ?? []) {
       const k = `${safeStr((r as { utm_source: string | null }).utm_source) ?? "sem atribuição"}|${
