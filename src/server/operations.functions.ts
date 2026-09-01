@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 
 /**

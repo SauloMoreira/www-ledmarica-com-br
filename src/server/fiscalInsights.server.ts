@@ -1,4 +1,5 @@
 /**
+import { fetchAllRows } from "@/lib/fetchAllRows";
  * Helpers server-only para insights e listagens fiscais.
  * Importado dinamicamente para não vazar `client.server` no bundle do cliente.
  */
