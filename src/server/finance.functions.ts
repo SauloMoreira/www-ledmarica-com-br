@@ -251,14 +251,17 @@ export const getFinanceOverview = createServerFn({ method: "POST" })
     let estimatedCogs = 0;
     let itemsWithoutCost = 0;
     if (paid.length > 0) {
-      const { data: items, error: itErr } = await supabaseAdmin
-        .from("order_items")
-        .select("order_id, total_cost, cost_source")
-        .in(
-          "order_id",
-          paid.map((p) => p.id),
-        );
-      if (itErr) throw new Error(itErr.message);
+      const items = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+        supabaseAdmin
+          .from("order_items")
+          .select("order_id, total_cost, cost_source")
+          .in(
+            "order_id",
+            paid.map((p) => p.id),
+          )
+          .range(fromIdx, toIdx),
+      );
+
       for (const it of items ?? []) {
         if ((it as { cost_source?: string }).cost_source === "none") itemsWithoutCost += 1;
         estimatedCogs += Number((it as { total_cost?: number | null }).total_cost ?? 0);
