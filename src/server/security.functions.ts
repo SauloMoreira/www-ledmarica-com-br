@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 /**
  * Painel resumido da Central de Segurança.
@@ -247,12 +248,20 @@ export const getAdminAuditFilterOptions = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .handler(async () => {
     const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: rows, error } = await supabaseAdmin
-      .from("admin_audit_log")
-      .select("admin_id, admin_email, action, resource_type")
-      .gte("created_at", since)
-      .limit(5000);
-    if (error) throw new Error(error.message);
+    const rows = await fetchAllRows<{
+      admin_id: string | null;
+      admin_email: string | null;
+      action: string | null;
+      resource_type: string | null;
+    }>((from, to) =>
+      supabaseAdmin
+        .from("admin_audit_log")
+        .select("admin_id, admin_email, action, resource_type")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .range(from, to),
+    );
+
 
     const admins = new Map<string, { id: string; email: string | null }>();
     const actions = new Set<string>();
@@ -285,27 +294,28 @@ export const exportAdminAuditCsv = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const since = new Date(Date.now() - data.days * 24 * 60 * 60 * 1000).toISOString();
-    let q = supabaseAdmin
-      .from("admin_audit_log")
-      .select(
-        "created_at, admin_email, admin_id, action, resource_type, resource_id, description, ip, user_agent",
-      )
-      .gte("created_at", since)
-      .order("created_at", { ascending: false })
-      .limit(5000);
+    const rows = await fetchAllRows<Record<string, unknown>>((from, to) => {
+      let q = supabaseAdmin
+        .from("admin_audit_log")
+        .select(
+          "created_at, admin_email, admin_id, action, resource_type, resource_id, description, ip, user_agent",
+        )
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .range(from, to);
 
-    if (data.resourceType) q = q.eq("resource_type", data.resourceType);
-    if (data.action) q = q.eq("action", data.action);
-    if (data.adminId) q = q.eq("admin_id", data.adminId);
-    if (data.search && data.search.trim()) {
-      const term = data.search.trim().replace(/%/g, "");
-      q = q.or(
-        `description.ilike.%${term}%,admin_email.ilike.%${term}%,resource_id.ilike.%${term}%`,
-      );
-    }
+      if (data.resourceType) q = q.eq("resource_type", data.resourceType);
+      if (data.action) q = q.eq("action", data.action);
+      if (data.adminId) q = q.eq("admin_id", data.adminId);
+      if (data.search && data.search.trim()) {
+        const term = data.search.trim().replace(/%/g, "");
+        q = q.or(
+          `description.ilike.%${term}%,admin_email.ilike.%${term}%,resource_id.ilike.%${term}%`,
+        );
+      }
+      return q;
+    });
 
-    const { data: rows, error } = await q;
-    if (error) throw new Error(error.message);
 
     const escape = (v: unknown) => {
       if (v === null || v === undefined) return "";

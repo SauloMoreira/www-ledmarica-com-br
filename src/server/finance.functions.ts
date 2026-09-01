@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -203,20 +204,23 @@ export const getFinanceOverview = createServerFn({ method: "POST" })
     const settings = await loadSettings();
     const { from, to } = resolveRange(data.preset, data.from, data.to);
 
-    let q = supabaseAdmin
-      .from("orders")
-      .select(
-        "id, payment_status, total, subtotal, discount, shipping_cost, coupon_code, b2b_discount_total, order_type, payment_method, created_at, paid_at",
-      )
-      .gte("created_at", from)
-      .lte("created_at", to);
+    const orders = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) => {
+      let q = supabaseAdmin
+        .from("orders")
+        .select(
+          "id, payment_status, total, subtotal, discount, shipping_cost, coupon_code, b2b_discount_total, order_type, payment_method, created_at, paid_at",
+        )
+        .gte("created_at", from)
+        .lte("created_at", to)
+        .order("created_at", { ascending: false })
+        .range(fromIdx, toIdx);
 
-    if (data.orderType === "b2b") q = q.eq("order_type", "b2b");
-    else if (data.orderType === "b2c") q = q.eq("order_type", "b2c");
+      if (data.orderType === "b2b") q = q.eq("order_type", "b2b");
+      else if (data.orderType === "b2c") q = q.eq("order_type", "b2c");
+      return q;
+    });
 
-    const { data: orders, error } = await q;
-    if (error) throw new Error(error.message);
-    const list = (orders ?? []) as Array<{
+    const list = (orders ?? []) as unknown as Array<{
       id: string;
       payment_status: string | null;
       total: number | null;
@@ -227,6 +231,7 @@ export const getFinanceOverview = createServerFn({ method: "POST" })
       b2b_discount_total: number | null;
       payment_method: string | null;
     }>;
+
 
     const paid = list.filter((o) => o.payment_status === "paid" || o.payment_status === "approved");
     const ordersPaid = paid.length;
@@ -247,14 +252,17 @@ export const getFinanceOverview = createServerFn({ method: "POST" })
     let estimatedCogs = 0;
     let itemsWithoutCost = 0;
     if (paid.length > 0) {
-      const { data: items, error: itErr } = await supabaseAdmin
-        .from("order_items")
-        .select("order_id, total_cost, cost_source")
-        .in(
-          "order_id",
-          paid.map((p) => p.id),
-        );
-      if (itErr) throw new Error(itErr.message);
+      const items = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+        supabaseAdmin
+          .from("order_items")
+          .select("order_id, total_cost, cost_source")
+          .in(
+            "order_id",
+            paid.map((p) => p.id),
+          )
+          .range(fromIdx, toIdx),
+      );
+
       for (const it of items ?? []) {
         if ((it as { cost_source?: string }).cost_source === "none") itemsWithoutCost += 1;
         estimatedCogs += Number((it as { total_cost?: number | null }).total_cost ?? 0);
@@ -364,11 +372,14 @@ export const getFinanceMargin = createServerFn({ method: "POST" })
     const ids = list.map((p) => p.id);
     const sales = new Map<string, { qty: number; profit: number }>();
     if (ids.length > 0) {
-      const { data: items } = await supabaseAdmin
-        .from("order_items")
-        .select("product_id, qty, gross_margin_amount, orders!inner(payment_status)")
-        .in("product_id", ids)
-        .in("orders.payment_status", ["paid", "approved"]);
+      const items = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+        supabaseAdmin
+          .from("order_items")
+          .select("product_id, qty, gross_margin_amount, orders!inner(payment_status)")
+          .in("product_id", ids)
+          .in("orders.payment_status", ["paid", "approved"])
+          .range(fromIdx, toIdx),
+      );
       for (const it of (items ?? []) as Array<{
         product_id: string | null;
         qty: number | null;
@@ -598,10 +609,13 @@ export const getFinanceQuickCounts = createServerFn({ method: "GET" })
     const min = settings.default_min_margin_percent;
 
     // Produtos ativos
-    const { data: products } = await supabaseAdmin
-      .from("products")
-      .select("id, price, sale_price, b2b_price, cost_price, min_margin_percent")
-      .eq("active", true);
+    const products = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("products")
+        .select("id, price, sale_price, b2b_price, cost_price, min_margin_percent")
+        .eq("active", true)
+        .range(fromIdx, toIdx),
+    );
 
     let withoutCost = 0;
     let belowMin = 0;
@@ -643,12 +657,15 @@ export const getFinanceQuickCounts = createServerFn({ method: "GET" })
       const baseline = (fs as { alerts_baseline_at?: string } | null)?.alerts_baseline_at;
       if (baseline && baseline > sinceISO) sinceISO = baseline;
     } catch {}
-    const { data: missing } = await supabaseAdmin
-      .from("order_items")
-      .select("order_id, orders!inner(payment_status, paid_at)")
-      .eq("cost_source", "none")
-      .in("orders.payment_status", ["paid", "approved"])
-      .gte("orders.paid_at", sinceISO);
+    const missing = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("order_items")
+        .select("order_id, orders!inner(payment_status, paid_at)")
+        .eq("cost_source", "none")
+        .in("orders.payment_status", ["paid", "approved"])
+        .gte("orders.paid_at", sinceISO)
+        .range(fromIdx, toIdx),
+    );
     const orderIds = new Set<string>();
     for (const m of (missing ?? []) as Array<{ order_id: string }>) {
       orderIds.add(m.order_id);

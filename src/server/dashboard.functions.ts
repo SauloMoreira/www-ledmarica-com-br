@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 /**
  * Server function de agregações para o dashboard administrativo.
@@ -92,15 +93,23 @@ export const getAdminDashboard = createServerFn({ method: "POST" })
     // ============================================================
     // 1) Pedidos no período (created_at) — base para cards e gráficos
     // ============================================================
-    const { data: orders, error: ordersError } = await supabaseAdmin
-      .from("orders")
-      .select("id, total, status, payment_status, created_at, paid_at, updated_at")
-      .gte("created_at", start)
-      .lte("created_at", end);
-
-    if (ordersError) {
-      throw new Response(`orders query failed: ${ordersError.message}`, { status: 500 });
-    }
+    const orders = await fetchAllRows<{
+      id: string;
+      total: number | null;
+      status: string | null;
+      payment_status: string | null;
+      created_at: string | null;
+      paid_at: string | null;
+      updated_at: string | null;
+    }>((from, to) =>
+      supabaseAdmin
+        .from("orders")
+        .select("id, total, status, payment_status, created_at, paid_at, updated_at")
+        .gte("created_at", start)
+        .lte("created_at", end)
+        .order("created_at", { ascending: false })
+        .range(from, to),
+    );
 
     const allOrders = orders ?? [];
     const paidOrders = allOrders.filter((o) =>
@@ -185,14 +194,18 @@ export const getAdminDashboard = createServerFn({ method: "POST" })
     let hasCategories = false;
 
     if (paidIds.length > 0) {
-      const { data: items, error: itemsError } = await supabaseAdmin
-        .from("order_items")
-        .select("product_id, product_name, qty, total_price")
-        .in("order_id", paidIds);
-
-      if (itemsError) {
-        throw new Response(`order_items query failed: ${itemsError.message}`, { status: 500 });
-      }
+      const items = await fetchAllRows<{
+        product_id: string | null;
+        product_name: string | null;
+        qty: number | null;
+        total_price: number | null;
+      }>((from, to) =>
+        supabaseAdmin
+          .from("order_items")
+          .select("product_id, product_name, qty, total_price")
+          .in("order_id", paidIds)
+          .range(from, to),
+      );
       const allItems = items ?? [];
 
       // top produtos

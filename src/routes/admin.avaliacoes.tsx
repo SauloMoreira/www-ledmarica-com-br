@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Star, MessageCircle, EyeOff, Eye } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/avaliacoes")({
@@ -31,14 +32,15 @@ function AdminReviewsPage() {
   const { data: reviews, isLoading } = useQuery({
     queryKey: ["admin-product-reviews"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("product_reviews")
-        .select(
-          "id, rating, title, comment, is_hidden, created_at, profiles(name), products(name, slug), product_review_messages(id, author_type, message, created_at, profiles(name))",
-        )
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
+      return await fetchAllRows<any>((from, to) =>
+        supabase
+          .from("product_reviews")
+          .select(
+            "id, rating, title, comment, is_hidden, created_at, profiles(name), products(name, slug), product_review_messages(id, author_type, message, created_at, profiles(name))",
+          )
+          .order("created_at", { ascending: false })
+          .range(from, to),
+      );
     },
   });
 

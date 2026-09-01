@@ -30,6 +30,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { toast } from "sonner";
 import {
   LEAD_STATUS_OPTIONS,
@@ -139,10 +140,16 @@ function LeadsPage() {
 
   const load = async () => {
     setLoading(true);
-    let q = supabase.from("leads").select("*").order("created_at", { ascending: false });
-    if (filterStatus && filterStatus !== "all") q = q.eq("status", filterStatus);
-    const { data } = await q;
-    setLeads((data as any) ?? []);
+    const rows = await fetchAllRows<any>((from, to) => {
+      let q = supabase
+        .from("leads")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(from, to);
+      if (filterStatus && filterStatus !== "all") q = q.eq("status", filterStatus);
+      return q;
+    });
+    setLeads(rows as any);
     setLoading(false);
   };
   useEffect(() => {
