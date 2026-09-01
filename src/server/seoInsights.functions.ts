@@ -475,14 +475,16 @@ export const getSeoInsights = createServerFn({ method: "GET" })
       .map((c: any) => checkCategory(c, productsActiveByCat.get(c.id) ?? 0));
 
     // Produtos ativos
-    const { data: prodData } = await supabaseAdmin
-      .from("products")
-      .select(
-        "id, name, slug, sku, price, description, seo_title, seo_description, seo_keywords, images, active, category_id",
-      )
-      .eq("active", true)
-      .order("updated_at", { ascending: false })
-      .limit(productLimit);
+    const prodData = await fetchAllRows<any>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("products")
+        .select(
+          "id, name, slug, sku, price, description, seo_title, seo_description, seo_keywords, images, active, category_id",
+        )
+        .eq("active", true)
+        .order("updated_at", { ascending: false })
+        .range(fromIdx, toIdx),
+    );
 
     const products = (prodData ?? []).map((p: any) =>
       checkProduct(p, p.category_id ? (catMap.get(p.category_id) ?? null) : null),
