@@ -545,13 +545,15 @@ export const getAdminOperations = createServerFn({ method: "GET" })
     const productQuality = { activeBelow70: 0, featuredBelow70: 0, ruim: 0, missingTech: 0 };
     try {
       const { computeProductQuality } = await import("@/lib/productQuality");
-      const { data } = await supabaseAdmin
-        .from("products")
-        .select(
-          "id, name, tags, featured, description, specs, seo_title, seo_description, slug, ncm, weight_kg, height_cm, width_cm, length_cm, cost_price, category_id, images, product_images(alt_text, original_url), product_attributes(attribute_key, attribute_value, attribute_unit, is_visible)",
-        )
-        .eq("active", true)
-        .limit(1000);
+      const data = await fetchAllRows<any>((fromIdx, toIdx) =>
+        supabaseAdmin
+          .from("products")
+          .select(
+            "id, name, tags, featured, description, specs, seo_title, seo_description, slug, ncm, weight_kg, height_cm, width_cm, length_cm, cost_price, category_id, images, product_images(alt_text, original_url), product_attributes(attribute_key, attribute_value, attribute_unit, is_visible)",
+          )
+          .eq("active", true)
+          .range(fromIdx, toIdx),
+      );
       for (const p of (data ?? []) as any[]) {
         const q = computeProductQuality(p);
         if (q.score < 70) productQuality.activeBelow70++;
