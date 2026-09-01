@@ -7,6 +7,8 @@
  * Campanhas/UTM ficam para etapa posterior.
  */
 
+import { fetchAllRows } from "@/lib/fetchAllRows";
+
 export type FinanceAlertCounts = {
   // Margem / custo
   productsWithoutCost: number;
@@ -83,15 +85,17 @@ export async function fetchFinanceAlertCounts(): Promise<FinanceAlertCounts> {
 
     // Pedidos pagos (últimos 30 dias) com algum item de margem negativa
     try {
-      const { data: negItems } = await supabaseAdmin
-        .from("order_items")
-        .select("order_id, orders!inner(payment_status, paid_at)")
-        .lt("gross_margin_amount", 0)
-        .eq("orders.payment_status", "paid")
-        .gte("orders.paid_at", negMarginSinceISO)
-        .limit(2000);
+      const negItems = await fetchAllRows<{ order_id: string }>((from, to) =>
+        supabaseAdmin
+          .from("order_items")
+          .select("order_id, orders!inner(payment_status, paid_at)")
+          .lt("gross_margin_amount", 0)
+          .eq("orders.payment_status", "paid")
+          .gte("orders.paid_at", negMarginSinceISO)
+          .range(from, to),
+      );
       const ids = new Set<string>();
-      for (const r of (negItems ?? []) as Array<{ order_id: string }>) {
+      for (const r of negItems) {
         ids.add(r.order_id);
       }
       out.ordersPaidNegativeMargin = ids.size;
@@ -132,18 +136,20 @@ export async function fetchFinanceAlertCounts(): Promise<FinanceAlertCounts> {
 
     // ---------- Mercado Pago — taxa real x estimada x desconhecida ----------
     // (head:true não nos dá a comparação que precisamos; lemos só as colunas
-    // necessárias com limite defensivo de 2k linhas.)
+    // necessárias, paginando via fetchAllRows.)
     try {
-      const { data: mpRows } = await supabaseAdmin
-        .from("orders")
-        .select("mp_fee_amount, estimated_fee_amount")
-        .in("payment_status", ["paid", "approved"])
-        .gte("paid_at", since30dISO)
-        .limit(2000);
-      for (const r of (mpRows ?? []) as Array<{
+      const mpRows = await fetchAllRows<{
         mp_fee_amount: number | string | null;
         estimated_fee_amount: number | string | null;
-      }>) {
+      }>((from, to) =>
+        supabaseAdmin
+          .from("orders")
+          .select("mp_fee_amount, estimated_fee_amount")
+          .in("payment_status", ["paid", "approved"])
+          .gte("paid_at", since30dISO)
+          .range(from, to),
+      );
+      for (const r of mpRows) {
         const realFee = r.mp_fee_amount != null && Number(r.mp_fee_amount) > 0;
         const estFee = r.estimated_fee_amount != null && Number(r.estimated_fee_amount) > 0;
         if (!realFee && !estFee) out.mpPaidNoFee30d += 1;
