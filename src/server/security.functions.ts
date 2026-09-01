@@ -247,12 +247,20 @@ export const getAdminAuditFilterOptions = createServerFn({ method: "POST" })
   .middleware([requireAdmin])
   .handler(async () => {
     const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: rows, error } = await supabaseAdmin
-      .from("admin_audit_log")
-      .select("admin_id, admin_email, action, resource_type")
-      .gte("created_at", since)
-      .limit(5000);
-    if (error) throw new Error(error.message);
+    const rows = await fetchAllRows<{
+      admin_id: string | null;
+      admin_email: string | null;
+      action: string | null;
+      resource_type: string | null;
+    }>((from, to) =>
+      supabaseAdmin
+        .from("admin_audit_log")
+        .select("admin_id, admin_email, action, resource_type")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .range(from, to),
+    );
+
 
     const admins = new Map<string, { id: string; email: string | null }>();
     const actions = new Set<string>();
