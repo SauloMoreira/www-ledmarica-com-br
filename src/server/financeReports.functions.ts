@@ -226,28 +226,36 @@ async function fetchOrders(
   range: { from: Date; to: Date },
 ): Promise<OrderRow[]> {
   const supabaseAdmin = await getSupabaseAdmin();
-  let q = supabaseAdmin
-    .from("orders")
-    .select(
-      "id, order_number, status, payment_status, payment_method, delivery_method, order_type, " +
-        "subtotal, discount, shipping_cost, total, b2b_discount_total, coupon_code, " +
-        "mp_fee_amount, estimated_fee_amount, mp_net_amount, estimated_net_amount, payment_fee_source, " +
-        "company_name, company_cnpj, address_snapshot, created_at, paid_at, invoice_status",
-    )
-    .gte("created_at", range.from.toISOString())
-    .lte("created_at", range.to.toISOString())
-    .order("created_at", { ascending: false });
+  const build = () => {
+    let q = supabaseAdmin
+      .from("orders")
+      .select(
+        "id, order_number, status, payment_status, payment_method, delivery_method, order_type, " +
+          "subtotal, discount, shipping_cost, total, b2b_discount_total, coupon_code, " +
+          "mp_fee_amount, estimated_fee_amount, mp_net_amount, estimated_net_amount, payment_fee_source, " +
+          "company_name, company_cnpj, address_snapshot, created_at, paid_at, invoice_status",
+      )
+      .gte("created_at", range.from.toISOString())
+      .lte("created_at", range.to.toISOString())
+      .order("created_at", { ascending: false });
 
-  if (filters.orderType !== "all") q = q.eq("order_type", filters.orderType);
-  if (filters.paymentStatus) q = q.eq("payment_status", filters.paymentStatus);
-  if (filters.paymentMethod) q = q.eq("payment_method", filters.paymentMethod);
-  if (filters.deliveryMethod) q = q.eq("delivery_method", filters.deliveryMethod);
-  if (filters.status) q = q.eq("status", filters.status);
+    if (filters.orderType !== "all") q = q.eq("order_type", filters.orderType);
+    if (filters.paymentStatus) q = q.eq("payment_status", filters.paymentStatus);
+    if (filters.paymentMethod) q = q.eq("payment_method", filters.paymentMethod);
+    if (filters.deliveryMethod) q = q.eq("delivery_method", filters.deliveryMethod);
+    if (filters.status) q = q.eq("status", filters.status);
+    return q;
+  };
 
-  const { data, error } = await q;
-  if (error) throw new Response(`orders query failed: ${error.message}`, { status: 500 });
-  return (data ?? []) as unknown as OrderRow[];
+  try {
+    return (await fetchAllRows<unknown>((from, to) =>
+      build().range(from, to),
+    )) as unknown as OrderRow[];
+  } catch (e) {
+    throw new Response(`orders query failed: ${(e as Error).message}`, { status: 500 });
+  }
 }
+
 
 function netOf(o: {
   total: number | string | null;

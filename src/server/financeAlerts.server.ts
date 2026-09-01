@@ -7,6 +7,8 @@
  * Campanhas/UTM ficam para etapa posterior.
  */
 
+import { fetchAllRows } from "@/lib/fetchAllRows";
+
 export type FinanceAlertCounts = {
   // Margem / custo
   productsWithoutCost: number;
