@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 /**
  * Server function de agregações para o dashboard administrativo.
