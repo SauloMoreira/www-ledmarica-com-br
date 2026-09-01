@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/campanhas")({ component: CampanhasPage });
@@ -227,7 +228,9 @@ function CampanhasPage() {
       supabase.from("marketing_campaigns").select("*").order("created_at", { ascending: false }),
       supabase.from("coupons").select("id, code").order("code"),
       supabase.from("home_banners").select("id, title").order("sort_order"),
-      supabase.from("products").select("id, name").order("name").limit(500),
+      fetchAllRows<any>((fromIdx, toIdx) =>
+        supabase.from("products").select("id, name").order("name").range(fromIdx, toIdx),
+      ).then((data) => ({ data })),
       supabase.from("categories").select("id, name").order("name"),
       supabase.from("product_bundles").select("id, name").eq("is_active", true).order("name"),
       supabase.from("whatsapp_templates").select("id, name, body").eq("active", true).order("name"),
@@ -258,12 +261,15 @@ function CampanhasPage() {
       const [leads, carts, orders] = await Promise.all([
         supabase.from("leads").select("id", { count: "exact", head: true }).eq("utm_campaign", utmCampaign),
         supabase.from("abandoned_carts").select("id", { count: "exact", head: true }).eq("utm_campaign", utmCampaign),
-        supabase
-          .from("orders")
-          .select("id, status, payment_status, total")
-          .eq("utm_campaign", utmCampaign),
+        fetchAllRows<any>((fromIdx, toIdx) =>
+          supabase
+            .from("orders")
+            .select("id, status, payment_status, total")
+            .eq("utm_campaign", utmCampaign)
+            .range(fromIdx, toIdx),
+        ),
       ]);
-      const ordersData = (orders.data as any[]) ?? [];
+      const ordersData = (orders as any[]) ?? [];
       const paid = ordersData.filter((o) =>
         ["paid", "approved"].includes(String(o.payment_status ?? "").toLowerCase()),
       );

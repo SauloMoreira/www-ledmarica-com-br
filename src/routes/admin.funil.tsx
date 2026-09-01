@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import {
   LEAD_STATUSES,
@@ -49,18 +50,20 @@ function FunilKanbanPage() {
 
   async function load() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("leads")
-      .select(
-        "id,name,phone,email,status,origin,estimated_value,score,score_temperature,score_reason,created_at,updated_at",
-      )
-      .order("score", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false })
-      .limit(500);
-    if (error) {
-      toast.error("Erro ao carregar leads");
-    } else {
+    try {
+      const data = await fetchAllRows<any>((fromIdx, toIdx) =>
+        supabase
+          .from("leads")
+          .select(
+            "id,name,phone,email,status,origin,estimated_value,score,score_temperature,score_reason,created_at,updated_at",
+          )
+          .order("score", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .range(fromIdx, toIdx),
+      );
       setLeads((data ?? []) as LeadRow[]);
+    } catch {
+      toast.error("Erro ao carregar leads");
     }
     setLoading(false);
   }

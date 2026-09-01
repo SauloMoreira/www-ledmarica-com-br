@@ -30,6 +30,7 @@ import {
 } from "@/components/admin/datatable";
 import { useTableState } from "@/hooks/useTableState";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { toast } from "sonner";
 
 const searchSchema = z.object({
@@ -80,11 +81,14 @@ function CategoriasPage() {
     useTableState({ page: 1, pageSize: 25, sort: { column: "sort_order", direction: "asc" } });
 
   const load = async () => {
-    const { data } = await supabase
-      .from("categories")
-      .select("*")
-      .order("sort_order")
-      .order("name");
+    const data = await fetchAllRows<any>((fromIdx, toIdx) =>
+      supabase
+        .from("categories")
+        .select("*")
+        .order("sort_order")
+        .order("name")
+        .range(fromIdx, toIdx),
+    );
     setCats((data as any) ?? []);
   };
   useEffect(() => {
