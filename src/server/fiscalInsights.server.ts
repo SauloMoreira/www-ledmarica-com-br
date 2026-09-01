@@ -162,11 +162,13 @@ export async function fetchFiscalQuickCounts(): Promise<FiscalQuickCounts> {
 
   let paidOrdersWithFiscalIssues = 0;
   try {
-    const { data: items } = await supabaseAdmin
-      .from("order_items")
-      .select("order_id, product_id, products!inner(fiscal_status, active)")
-      .in("products.fiscal_status", ["incompleto", "revisar"])
-      .limit(5000);
+    const items = await fetchAllRows<any>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("order_items")
+        .select("order_id, product_id, products!inner(fiscal_status, active)")
+        .in("products.fiscal_status", ["incompleto", "revisar"])
+        .range(fromIdx, toIdx),
+    );
     const orderIds = Array.from(
       new Set((items ?? []).map((it: any) => it.order_id).filter(Boolean)),
     );
