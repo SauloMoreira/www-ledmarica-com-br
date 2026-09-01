@@ -653,12 +653,15 @@ export const getFinanceQuickCounts = createServerFn({ method: "GET" })
       const baseline = (fs as { alerts_baseline_at?: string } | null)?.alerts_baseline_at;
       if (baseline && baseline > sinceISO) sinceISO = baseline;
     } catch {}
-    const { data: missing } = await supabaseAdmin
-      .from("order_items")
-      .select("order_id, orders!inner(payment_status, paid_at)")
-      .eq("cost_source", "none")
-      .in("orders.payment_status", ["paid", "approved"])
-      .gte("orders.paid_at", sinceISO);
+    const missing = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("order_items")
+        .select("order_id, orders!inner(payment_status, paid_at)")
+        .eq("cost_source", "none")
+        .in("orders.payment_status", ["paid", "approved"])
+        .gte("orders.paid_at", sinceISO)
+        .range(fromIdx, toIdx),
+    );
     const orderIds = new Set<string>();
     for (const m of (missing ?? []) as Array<{ order_id: string }>) {
       orderIds.add(m.order_id);
