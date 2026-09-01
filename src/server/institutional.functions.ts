@@ -344,8 +344,6 @@ export const adminListContactMessages = createServerFn({ method: "POST" })
         .order("created_at", { ascending: false })
         .range(fromIdx, toIdx),
     );
-    const error = null as { message: string } | null;
-    if (error) throw new Error(error.message);
     return { messages: data ?? [] };
   });
 

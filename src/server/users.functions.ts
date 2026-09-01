@@ -110,9 +110,9 @@ export const adminListUsers = createServerFn({ method: "POST" })
       name: string | null;
       email: string | null;
       phone: string | null;
-      role: string | null;
-      status: string | null;
-      created_at: string | null;
+      role: string;
+      status: string;
+      created_at: string;
     }>((fromIdx, toIdx) => {
       let q = supabaseAdmin
         .from("profiles")
