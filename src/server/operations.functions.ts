@@ -205,13 +205,15 @@ export const getAdminOperations = createServerFn({ method: "GET" })
           (financeS as { default_min_margin_percent?: number | string | null } | null)
             ?.default_min_margin_percent,
         ) || 25;
-      const { data: prodList } = await supabaseAdmin
-        .from("products")
-        .select(
-          "id, price, sale_price, cost_price, min_margin_percent, b2b_enabled, b2b_price, b2b_min_qty",
-        )
-        .eq("active", true)
-        .limit(2000);
+      const prodList = await fetchAllRows<any>((fromIdx, toIdx) =>
+        supabaseAdmin
+          .from("products")
+          .select(
+            "id, price, sale_price, cost_price, min_margin_percent, b2b_enabled, b2b_price, b2b_min_qty",
+          )
+          .eq("active", true)
+          .range(fromIdx, toIdx),
+      );
       for (const p of (prodList ?? []) as Array<{
         id: string;
         price: number | null;
