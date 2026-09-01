@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -374,11 +375,18 @@ export const getFinanceReportCards = createServerFn({ method: "POST" })
     let prevCogs = 0;
     if (prevPaid.length > 0) {
       const ids = prevPaid.map((o) => o.id);
-      const { data: items } = await supabaseAdmin
-        .from("order_items")
-        .select("order_id, qty, unit_cost, total_cost")
-        .in("order_id", ids);
-      for (const it of items ?? []) {
+      const items = await fetchAllRows<{
+        qty: number | string | null;
+        unit_cost: number | string | null;
+        total_cost: number | string | null;
+      }>((from, to) =>
+        supabaseAdmin
+          .from("order_items")
+          .select("order_id, qty, unit_cost, total_cost")
+          .in("order_id", ids)
+          .range(from, to),
+      );
+      for (const it of items) {
         if (it.unit_cost == null) continue;
         prevCogs += Number(it.total_cost ?? Number(it.unit_cost) * Number(it.qty ?? 0));
       }
