@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Star, MessageCircle, EyeOff, Eye } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/avaliacoes")({
