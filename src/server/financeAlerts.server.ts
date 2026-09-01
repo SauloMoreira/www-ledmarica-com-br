@@ -83,15 +83,17 @@ export async function fetchFinanceAlertCounts(): Promise<FinanceAlertCounts> {
 
     // Pedidos pagos (últimos 30 dias) com algum item de margem negativa
     try {
-      const { data: negItems } = await supabaseAdmin
-        .from("order_items")
-        .select("order_id, orders!inner(payment_status, paid_at)")
-        .lt("gross_margin_amount", 0)
-        .eq("orders.payment_status", "paid")
-        .gte("orders.paid_at", negMarginSinceISO)
-        .limit(2000);
+      const negItems = await fetchAllRows<{ order_id: string }>((from, to) =>
+        supabaseAdmin
+          .from("order_items")
+          .select("order_id, orders!inner(payment_status, paid_at)")
+          .lt("gross_margin_amount", 0)
+          .eq("orders.payment_status", "paid")
+          .gte("orders.paid_at", negMarginSinceISO)
+          .range(from, to),
+      );
       const ids = new Set<string>();
-      for (const r of (negItems ?? []) as Array<{ order_id: string }>) {
+      for (const r of negItems) {
         ids.add(r.order_id);
       }
       out.ordersPaidNegativeMargin = ids.size;
