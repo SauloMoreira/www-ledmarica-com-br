@@ -144,14 +144,16 @@ export async function fetchFiscalQuickCounts(): Promise<FiscalQuickCounts> {
 
   let productsNoWeightOrDims = 0;
   try {
-    const { data } = await supabaseAdmin
-      .from("products")
-      .select(
-        "id, weight_kg, net_weight, gross_weight, width_cm, height_cm, length_cm, active, fiscal_status",
-      )
-      .eq("active", true)
-      .neq("fiscal_status", "nao_aplicavel")
-      .limit(2000);
+    const data = await fetchAllRows<any>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("products")
+        .select(
+          "id, weight_kg, net_weight, gross_weight, width_cm, height_cm, length_cm, active, fiscal_status",
+        )
+        .eq("active", true)
+        .neq("fiscal_status", "nao_aplicavel")
+        .range(fromIdx, toIdx),
+    );
     productsNoWeightOrDims = (data ?? []).filter((p: any) => {
       const w = Number(p.weight_kg ?? p.net_weight ?? p.gross_weight ?? 0);
       const dimsOk =
