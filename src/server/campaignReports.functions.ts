@@ -729,12 +729,14 @@ export const getOriginPerformance = createServerFn({ method: "POST" })
       }`;
       leadCount.set(k, (leadCount.get(k) ?? 0) + 1);
     }
-    const { data: abData } = await supabaseAdmin
-      .from("abandoned_carts")
-      .select("utm_source, utm_medium, recovered_at")
-      .gte("abandoned_at", range.from.toISOString())
-      .lte("abandoned_at", range.to.toISOString())
-      .limit(5000);
+    const abData = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) =>
+      supabaseAdmin
+        .from("abandoned_carts")
+        .select("utm_source, utm_medium, recovered_at")
+        .gte("abandoned_at", range.from.toISOString())
+        .lte("abandoned_at", range.to.toISOString())
+        .range(fromIdx, toIdx),
+    );
     const abCount = new Map<string, { ab: number; rec: number }>();
     for (const r of abData ?? []) {
       const row = r as {
