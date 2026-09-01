@@ -203,20 +203,23 @@ export const getFinanceOverview = createServerFn({ method: "POST" })
     const settings = await loadSettings();
     const { from, to } = resolveRange(data.preset, data.from, data.to);
 
-    let q = supabaseAdmin
-      .from("orders")
-      .select(
-        "id, payment_status, total, subtotal, discount, shipping_cost, coupon_code, b2b_discount_total, order_type, payment_method, created_at, paid_at",
-      )
-      .gte("created_at", from)
-      .lte("created_at", to);
+    const orders = await fetchAllRows<Record<string, unknown>>((fromIdx, toIdx) => {
+      let q = supabaseAdmin
+        .from("orders")
+        .select(
+          "id, payment_status, total, subtotal, discount, shipping_cost, coupon_code, b2b_discount_total, order_type, payment_method, created_at, paid_at",
+        )
+        .gte("created_at", from)
+        .lte("created_at", to)
+        .order("created_at", { ascending: false })
+        .range(fromIdx, toIdx);
 
-    if (data.orderType === "b2b") q = q.eq("order_type", "b2b");
-    else if (data.orderType === "b2c") q = q.eq("order_type", "b2c");
+      if (data.orderType === "b2b") q = q.eq("order_type", "b2b");
+      else if (data.orderType === "b2c") q = q.eq("order_type", "b2c");
+      return q;
+    });
 
-    const { data: orders, error } = await q;
-    if (error) throw new Error(error.message);
-    const list = (orders ?? []) as Array<{
+    const list = (orders ?? []) as unknown as Array<{
       id: string;
       payment_status: string | null;
       total: number | null;
@@ -227,6 +230,7 @@ export const getFinanceOverview = createServerFn({ method: "POST" })
       b2b_discount_total: number | null;
       payment_method: string | null;
     }>;
+
 
     const paid = list.filter((o) => o.payment_status === "paid" || o.payment_status === "approved");
     const ordersPaid = paid.length;
