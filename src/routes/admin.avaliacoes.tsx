@@ -32,14 +32,15 @@ function AdminReviewsPage() {
   const { data: reviews, isLoading } = useQuery({
     queryKey: ["admin-product-reviews"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("product_reviews")
-        .select(
-          "id, rating, title, comment, is_hidden, created_at, profiles(name), products(name, slug), product_review_messages(id, author_type, message, created_at, profiles(name))",
-        )
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
+      return await fetchAllRows<any>((from, to) =>
+        supabase
+          .from("product_reviews")
+          .select(
+            "id, rating, title, comment, is_hidden, created_at, profiles(name), products(name, slug), product_review_messages(id, author_type, message, created_at, profiles(name))",
+          )
+          .order("created_at", { ascending: false })
+          .range(from, to),
+      );
     },
   });
 
