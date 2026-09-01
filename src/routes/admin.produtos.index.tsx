@@ -27,6 +27,7 @@ import {
   type DataTableColumn,
 } from "@/components/admin/datatable";
 import { useTableState } from "@/hooks/useTableState";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 const QUICK_FILTERS = [
   "all",
@@ -122,27 +123,33 @@ function ProdutosList() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: productsData }, { data: imagesData }, { data: attrs }] = await Promise.all([
-      supabase.rpc("admin_list_products"),
-      supabase
-        .from("product_images")
-        .select("product_id, url_thumb, url_card, original_url, is_primary, sort_order, alt_text"),
-      supabase
-        .from("product_attributes")
-        .select(
-          "product_id, attribute_key, attribute_label, attribute_value, attribute_unit, is_visible, is_filterable",
-        )
-        .limit(20000),
+    const [productsData, imagesData, attrs] = await Promise.all([
+      fetchAllRows<any>((from, to) => supabase.rpc("admin_list_products").range(from, to)),
+      fetchAllRows<any>((from, to) =>
+        supabase
+          .from("product_images")
+          .select("product_id, url_thumb, url_card, original_url, is_primary, sort_order, alt_text")
+          .range(from, to),
+      ),
+      fetchAllRows<any>((from, to) =>
+        supabase
+          .from("product_attributes")
+          .select(
+            "product_id, attribute_key, attribute_label, attribute_value, attribute_unit, is_visible, is_filterable",
+          )
+          .range(from, to),
+      ),
     ]);
     const imagesByProduct = new Map<string, any[]>();
-    (imagesData ?? []).forEach((img: any) => {
+    imagesData.forEach((img: any) => {
       if (!imagesByProduct.has(img.product_id)) imagesByProduct.set(img.product_id, []);
       imagesByProduct.get(img.product_id)!.push(img);
     });
-    const data = (productsData ?? []).map((p: any) => ({
+    const data = productsData.map((p: any) => ({
       ...p,
       product_images: imagesByProduct.get(p.id) ?? [],
     }));
+
 
     // Mapa de aliases: a tabela product_attributes pode ter chaves em pt-BR
     // (potencia_w, tensao_v, etc.) ou na forma canônica em inglês (power, voltage).
@@ -167,7 +174,7 @@ function ProdutosList() {
     };
     const attrKeyMap = new Map<string, Set<string>>();
     const attrListMap = new Map<string, any[]>();
-    (attrs ?? []).forEach((a: any) => {
+    attrs.forEach((a: any) => {
       const v = (a.attribute_value ?? "").toString().trim();
       if (!v) return;
       const rawKey = (a.attribute_key ?? "").toString().toLowerCase();

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import {
   computeCommercialReview,
   type CommercialReviewResult,
@@ -273,17 +274,21 @@ async function buildEnriched() {
   const [defMin, settings] = await Promise.all([loadDefaultMinMargin(), loadStockSettings()]);
   const salesMap = await loadSalesAggregates(settings.salesWindow);
 
-  const { data: products, error } = await supabaseAdmin
-    .from("products")
-    .select(
-      "id, name, sku, slug, active, category_id, brand, price, sale_price, cost_price, min_margin_percent, b2b_enabled, b2b_price, b2b_min_qty, stock_qty, categories:category_id(name)",
-    )
-    .eq("active", true)
-    .limit(5000);
-
-  if (error) {
-    throw new Error(`Falha ao carregar produtos: ${error.message}`);
+  let products: unknown[];
+  try {
+    products = await fetchAllRows((from, to) =>
+      supabaseAdmin
+        .from("products")
+        .select(
+          "id, name, sku, slug, active, category_id, brand, price, sale_price, cost_price, min_margin_percent, b2b_enabled, b2b_price, b2b_min_qty, stock_qty, categories:category_id(name)",
+        )
+        .eq("active", true)
+        .range(from, to),
+    );
+  } catch (e) {
+    throw new Error(`Falha ao carregar produtos: ${(e as Error).message}`);
   }
+
 
   type Raw = {
     id: string;
@@ -305,7 +310,7 @@ async function buildEnriched() {
   };
 
   const enriched: CommercialReviewRow[] = [];
-  for (const raw of (products ?? []) as Raw[]) {
+  for (const raw of products as Raw[]) {
     const review = computeCommercialReview(
       {
         id: raw.id,
@@ -538,17 +543,19 @@ export const getCommercialReviewFilterOptions = createServerFn({ method: "GET" }
   .middleware([requireAdmin])
   .handler(async (): Promise<CommercialFilterOptions> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: cats }, { data: brandsData }] = await Promise.all([
+    const [{ data: cats }, brandsData] = await Promise.all([
       supabaseAdmin.from("categories").select("id, name").order("name"),
-      supabaseAdmin
-        .from("products")
-        .select("brand")
-        .eq("active", true)
-        .not("brand", "is", null)
-        .limit(2000),
+      fetchAllRows<{ brand: string | null }>((from, to) =>
+        supabaseAdmin
+          .from("products")
+          .select("brand")
+          .eq("active", true)
+          .not("brand", "is", null)
+          .range(from, to),
+      ),
     ]);
     const brandSet = new Set<string>();
-    for (const b of (brandsData ?? []) as Array<{ brand: string | null }>) {
+    for (const b of brandsData) {
       const v = (b.brand ?? "").trim();
       if (v) brandSet.add(v);
     }
