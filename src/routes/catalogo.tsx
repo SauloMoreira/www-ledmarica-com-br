@@ -58,6 +58,7 @@ const searchSchema = z.object({
 });
 
 import { buildSeo, SITE_URL } from "@/lib/seo";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 type CatalogSearch = z.infer<typeof searchSchema>;
 

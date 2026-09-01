@@ -47,14 +47,17 @@ export const listProductQuality = createServerFn({ method: "GET" })
       };
     }> => {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data, error } = await supabaseAdmin
-        .from("products")
-        .select(PRODUCT_QUALITY_SELECT)
-        .order("active", { ascending: false })
-        .order("updated_at", { ascending: false })
-        .limit(1000);
-
-      if (error) {
+      let data: any[];
+      try {
+        data = await fetchAllRows<any>((from, to) =>
+          supabaseAdmin
+            .from("products")
+            .select(PRODUCT_QUALITY_SELECT)
+            .order("active", { ascending: false })
+            .order("updated_at", { ascending: false })
+            .range(from, to),
+        );
+      } catch (error) {
         console.error("listProductQuality error", error);
         return {
           rows: [],
@@ -74,6 +77,7 @@ export const listProductQuality = createServerFn({ method: "GET" })
           },
         };
       }
+
 
       const isHiddenTest = (p: any) => {
         const n = (p.name ?? "").toLowerCase().trim();

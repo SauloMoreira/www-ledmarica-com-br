@@ -174,7 +174,7 @@ function ProdutosList() {
     };
     const attrKeyMap = new Map<string, Set<string>>();
     const attrListMap = new Map<string, any[]>();
-    (attrs ?? []).forEach((a: any) => {
+    attrs.forEach((a: any) => {
       const v = (a.attribute_value ?? "").toString().trim();
       if (!v) return;
       const rawKey = (a.attribute_key ?? "").toString().toLowerCase();

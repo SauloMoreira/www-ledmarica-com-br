@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import {
   computeCommercialReview,
   type CommercialReviewResult,
@@ -309,7 +310,7 @@ async function buildEnriched() {
   };
 
   const enriched: CommercialReviewRow[] = [];
-  for (const raw of (products ?? []) as Raw[]) {
+  for (const raw of products as Raw[]) {
     const review = computeCommercialReview(
       {
         id: raw.id,
@@ -542,17 +543,19 @@ export const getCommercialReviewFilterOptions = createServerFn({ method: "GET" }
   .middleware([requireAdmin])
   .handler(async (): Promise<CommercialFilterOptions> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: cats }, { data: brandsData }] = await Promise.all([
+    const [{ data: cats }, brandsData] = await Promise.all([
       supabaseAdmin.from("categories").select("id, name").order("name"),
-      supabaseAdmin
-        .from("products")
-        .select("brand")
-        .eq("active", true)
-        .not("brand", "is", null)
-        .limit(2000),
+      fetchAllRows<{ brand: string | null }>((from, to) =>
+        supabaseAdmin
+          .from("products")
+          .select("brand")
+          .eq("active", true)
+          .not("brand", "is", null)
+          .range(from, to),
+      ),
     ]);
     const brandSet = new Set<string>();
-    for (const b of (brandsData ?? []) as Array<{ brand: string | null }>) {
+    for (const b of brandsData) {
       const v = (b.brand ?? "").trim();
       if (v) brandSet.add(v);
     }
