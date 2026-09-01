@@ -425,11 +425,13 @@ export const getAdminOperations = createServerFn({ method: "GET" })
     let abandonedTotalValue = 0;
     let abandonedB2bCount = 0;
     try {
-      const { data: ac } = await supabaseAdmin
-        .from("abandoned_carts")
-        .select("subtotal_amount, company_id")
-        .in("status", ["novo", "contato_enviado"])
-        .limit(500);
+      const ac = await fetchAllRows<any>((fromIdx, toIdx) =>
+        supabaseAdmin
+          .from("abandoned_carts")
+          .select("subtotal_amount, company_id")
+          .in("status", ["novo", "contato_enviado"])
+          .range(fromIdx, toIdx),
+      );
       (ac ?? []).forEach((c) => {
         const v = Number(c.subtotal_amount ?? 0);
         abandonedTotalValue += v;
