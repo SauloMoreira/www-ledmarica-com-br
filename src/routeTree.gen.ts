@@ -20,6 +20,7 @@ import { Route as MeiosDePagamentoRouteImport } from './routes/meios-de-pagament
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as EsqueciSenhaRouteImport } from './routes/esqueci-senha'
 import { Route as DevolucaoRouteImport } from './routes/devolucao'
+import { Route as DescadastroRouteImport } from './routes/descadastro'
 import { Route as ContatoRouteImport } from './routes/contato'
 import { Route as ContaRouteImport } from './routes/conta'
 import { Route as CondicoesDeUsoRouteImport } from './routes/condicoes-de-uso'
@@ -93,6 +94,8 @@ import { Route as AdminFinanceiroConfiguracoesRouteImport } from './routes/admin
 import { Route as AdminConteudoHomepageRouteImport } from './routes/admin.conteudo.homepage'
 import { Route as AdminComunicacaoEmailsIndexRouteImport } from './routes/admin.comunicacao.emails.index'
 import { Route as ApiPublicMercadopagoWebhookRouteImport } from './routes/api/public/mercadopago.webhook'
+import { Route as ApiPublicInternalCronDispatchRouteImport } from './routes/api/public/internal/cron-dispatch'
+import { Route as ApiPublicEmailUnsubscribeRouteImport } from './routes/api/public/email/unsubscribe'
 import { Route as AdminComunicacaoEmailsTypeRouteImport } from './routes/admin.comunicacao.emails.$type'
 
 const TrocaRoute = TrocaRouteImport.update({
@@ -148,6 +151,11 @@ const EsqueciSenhaRoute = EsqueciSenhaRouteImport.update({
 const DevolucaoRoute = DevolucaoRouteImport.update({
   id: '/devolucao',
   path: '/devolucao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DescadastroRoute = DescadastroRouteImport.update({
+  id: '/descadastro',
+  path: '/descadastro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContatoRoute = ContatoRouteImport.update({
@@ -528,6 +536,18 @@ const ApiPublicMercadopagoWebhookRoute =
     path: '/api/public/mercadopago/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicInternalCronDispatchRoute =
+  ApiPublicInternalCronDispatchRouteImport.update({
+    id: '/api/public/internal/cron-dispatch',
+    path: '/api/public/internal/cron-dispatch',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicEmailUnsubscribeRoute =
+  ApiPublicEmailUnsubscribeRouteImport.update({
+    id: '/api/public/email/unsubscribe',
+    path: '/api/public/email/unsubscribe',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AdminComunicacaoEmailsTypeRoute =
   AdminComunicacaoEmailsTypeRouteImport.update({
     id: '/admin/comunicacao/emails/$type',
@@ -548,6 +568,7 @@ export interface FileRoutesByFullPath {
   '/condicoes-de-uso': typeof CondicoesDeUsoRoute
   '/conta': typeof ContaRouteWithChildren
   '/contato': typeof ContatoRoute
+  '/descadastro': typeof DescadastroRoute
   '/devolucao': typeof DevolucaoRoute
   '/esqueci-senha': typeof EsqueciSenhaRoute
   '/login': typeof LoginRoute
@@ -619,6 +640,8 @@ export interface FileRoutesByFullPath {
   '/admin/pedidos/': typeof AdminPedidosIndexRoute
   '/admin/produtos/': typeof AdminProdutosIndexRoute
   '/admin/comunicacao/emails/$type': typeof AdminComunicacaoEmailsTypeRoute
+  '/api/public/email/unsubscribe': typeof ApiPublicEmailUnsubscribeRoute
+  '/api/public/internal/cron-dispatch': typeof ApiPublicInternalCronDispatchRoute
   '/api/public/mercadopago/webhook': typeof ApiPublicMercadopagoWebhookRoute
   '/admin/comunicacao/emails/': typeof AdminComunicacaoEmailsIndexRoute
 }
@@ -634,6 +657,7 @@ export interface FileRoutesByTo {
   '/compra-rapida': typeof CompraRapidaRoute
   '/condicoes-de-uso': typeof CondicoesDeUsoRoute
   '/contato': typeof ContatoRoute
+  '/descadastro': typeof DescadastroRoute
   '/devolucao': typeof DevolucaoRoute
   '/esqueci-senha': typeof EsqueciSenhaRoute
   '/login': typeof LoginRoute
@@ -704,6 +728,8 @@ export interface FileRoutesByTo {
   '/admin/pedidos': typeof AdminPedidosIndexRoute
   '/admin/produtos': typeof AdminProdutosIndexRoute
   '/admin/comunicacao/emails/$type': typeof AdminComunicacaoEmailsTypeRoute
+  '/api/public/email/unsubscribe': typeof ApiPublicEmailUnsubscribeRoute
+  '/api/public/internal/cron-dispatch': typeof ApiPublicInternalCronDispatchRoute
   '/api/public/mercadopago/webhook': typeof ApiPublicMercadopagoWebhookRoute
   '/admin/comunicacao/emails': typeof AdminComunicacaoEmailsIndexRoute
 }
@@ -721,6 +747,7 @@ export interface FileRoutesById {
   '/condicoes-de-uso': typeof CondicoesDeUsoRoute
   '/conta': typeof ContaRouteWithChildren
   '/contato': typeof ContatoRoute
+  '/descadastro': typeof DescadastroRoute
   '/devolucao': typeof DevolucaoRoute
   '/esqueci-senha': typeof EsqueciSenhaRoute
   '/login': typeof LoginRoute
@@ -792,6 +819,8 @@ export interface FileRoutesById {
   '/admin/pedidos/': typeof AdminPedidosIndexRoute
   '/admin/produtos/': typeof AdminProdutosIndexRoute
   '/admin/comunicacao/emails/$type': typeof AdminComunicacaoEmailsTypeRoute
+  '/api/public/email/unsubscribe': typeof ApiPublicEmailUnsubscribeRoute
+  '/api/public/internal/cron-dispatch': typeof ApiPublicInternalCronDispatchRoute
   '/api/public/mercadopago/webhook': typeof ApiPublicMercadopagoWebhookRoute
   '/admin/comunicacao/emails/': typeof AdminComunicacaoEmailsIndexRoute
 }
@@ -810,6 +839,7 @@ export interface FileRouteTypes {
     | '/condicoes-de-uso'
     | '/conta'
     | '/contato'
+    | '/descadastro'
     | '/devolucao'
     | '/esqueci-senha'
     | '/login'
@@ -881,6 +911,8 @@ export interface FileRouteTypes {
     | '/admin/pedidos/'
     | '/admin/produtos/'
     | '/admin/comunicacao/emails/$type'
+    | '/api/public/email/unsubscribe'
+    | '/api/public/internal/cron-dispatch'
     | '/api/public/mercadopago/webhook'
     | '/admin/comunicacao/emails/'
   fileRoutesByTo: FileRoutesByTo
@@ -896,6 +928,7 @@ export interface FileRouteTypes {
     | '/compra-rapida'
     | '/condicoes-de-uso'
     | '/contato'
+    | '/descadastro'
     | '/devolucao'
     | '/esqueci-senha'
     | '/login'
@@ -966,6 +999,8 @@ export interface FileRouteTypes {
     | '/admin/pedidos'
     | '/admin/produtos'
     | '/admin/comunicacao/emails/$type'
+    | '/api/public/email/unsubscribe'
+    | '/api/public/internal/cron-dispatch'
     | '/api/public/mercadopago/webhook'
     | '/admin/comunicacao/emails'
   id:
@@ -982,6 +1017,7 @@ export interface FileRouteTypes {
     | '/condicoes-de-uso'
     | '/conta'
     | '/contato'
+    | '/descadastro'
     | '/devolucao'
     | '/esqueci-senha'
     | '/login'
@@ -1053,6 +1089,8 @@ export interface FileRouteTypes {
     | '/admin/pedidos/'
     | '/admin/produtos/'
     | '/admin/comunicacao/emails/$type'
+    | '/api/public/email/unsubscribe'
+    | '/api/public/internal/cron-dispatch'
     | '/api/public/mercadopago/webhook'
     | '/admin/comunicacao/emails/'
   fileRoutesById: FileRoutesById
@@ -1070,6 +1108,7 @@ export interface RootRouteChildren {
   CondicoesDeUsoRoute: typeof CondicoesDeUsoRoute
   ContaRoute: typeof ContaRouteWithChildren
   ContatoRoute: typeof ContatoRoute
+  DescadastroRoute: typeof DescadastroRoute
   DevolucaoRoute: typeof DevolucaoRoute
   EsqueciSenhaRoute: typeof EsqueciSenhaRoute
   LoginRoute: typeof LoginRoute
@@ -1130,6 +1169,8 @@ export interface RootRouteChildren {
   AdminInstitutionalPagesIndexRoute: typeof AdminInstitutionalPagesIndexRoute
   AdminProdutosIndexRoute: typeof AdminProdutosIndexRoute
   AdminComunicacaoEmailsTypeRoute: typeof AdminComunicacaoEmailsTypeRoute
+  ApiPublicEmailUnsubscribeRoute: typeof ApiPublicEmailUnsubscribeRoute
+  ApiPublicInternalCronDispatchRoute: typeof ApiPublicInternalCronDispatchRoute
   ApiPublicMercadopagoWebhookRoute: typeof ApiPublicMercadopagoWebhookRoute
   AdminComunicacaoEmailsIndexRoute: typeof AdminComunicacaoEmailsIndexRoute
 }
@@ -1211,6 +1252,13 @@ declare module '@tanstack/react-router' {
       path: '/devolucao'
       fullPath: '/devolucao'
       preLoaderRoute: typeof DevolucaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/descadastro': {
+      id: '/descadastro'
+      path: '/descadastro'
+      fullPath: '/descadastro'
+      preLoaderRoute: typeof DescadastroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contato': {
@@ -1724,6 +1772,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMercadopagoWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/internal/cron-dispatch': {
+      id: '/api/public/internal/cron-dispatch'
+      path: '/api/public/internal/cron-dispatch'
+      fullPath: '/api/public/internal/cron-dispatch'
+      preLoaderRoute: typeof ApiPublicInternalCronDispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/email/unsubscribe': {
+      id: '/api/public/email/unsubscribe'
+      path: '/api/public/email/unsubscribe'
+      fullPath: '/api/public/email/unsubscribe'
+      preLoaderRoute: typeof ApiPublicEmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/comunicacao/emails/$type': {
       id: '/admin/comunicacao/emails/$type'
       path: '/admin/comunicacao/emails/$type'
@@ -1807,6 +1869,7 @@ const rootRouteChildren: RootRouteChildren = {
   CondicoesDeUsoRoute: CondicoesDeUsoRoute,
   ContaRoute: ContaRouteWithChildren,
   ContatoRoute: ContatoRoute,
+  DescadastroRoute: DescadastroRoute,
   DevolucaoRoute: DevolucaoRoute,
   EsqueciSenhaRoute: EsqueciSenhaRoute,
   LoginRoute: LoginRoute,
@@ -1867,6 +1930,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminInstitutionalPagesIndexRoute: AdminInstitutionalPagesIndexRoute,
   AdminProdutosIndexRoute: AdminProdutosIndexRoute,
   AdminComunicacaoEmailsTypeRoute: AdminComunicacaoEmailsTypeRoute,
+  ApiPublicEmailUnsubscribeRoute: ApiPublicEmailUnsubscribeRoute,
+  ApiPublicInternalCronDispatchRoute: ApiPublicInternalCronDispatchRoute,
   ApiPublicMercadopagoWebhookRoute: ApiPublicMercadopagoWebhookRoute,
   AdminComunicacaoEmailsIndexRoute: AdminComunicacaoEmailsIndexRoute,
 }
