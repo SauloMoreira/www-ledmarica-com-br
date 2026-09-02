@@ -8,7 +8,29 @@ e versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.1.0] — 2026-09-02
+
+**Tipo:** nova funcionalidade (automação de e-mails)
+**Classificação:** Média (e-mails transacionais/promocionais + novos jobs pg_cron)
+
+### Adicionado
+- **Lembretes de pagamento** (`payment_reminder_2h`, `payment_reminder_24h`) para
+  pedidos `pending` ainda não pagos (2h–24h e 24h–72h). Idempotentes por
+  `order_id + type` em `email_events`, respeitando `is_active`/`auto_send`.
+- **Recuperação de carrinho abandonado** (`abandoned_cart_recovery`): envio único
+  por carrinho, com link de descadastro e atualização para `contato_enviado`.
+- **Opt-out**: tabela `email_unsubscribes`, rota `/api/public/email/unsubscribe`
+  e página pública `/descadastro` (noindex). Checado antes de e-mails promocionais.
+- **Disparo periódico**: rota `POST /api/public/internal/cron-dispatch` protegida
+  por segredo (`internal_config.cron_secret` ou `INTERNAL_CRON_SECRET`), acionada
+  por dois jobs pg_cron horários via `pg_net`.
+
+### Alterado
+- `detect_abandoned_carts` agora preenche nome, e-mail e telefone do cliente logado.
+- `email_events` ganhou `abandoned_cart_id`.
+
 ## [1.0.10] — 2026-08-31
+
 
 **Tipo:** correção de segurança (RLS / exposição de rascunho)
 **ChangeControl:** CC-2026-013

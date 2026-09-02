@@ -10,7 +10,10 @@ export type EmailMessageType =
   | "order_shipped"
   | "order_delivered"
   | "order_cancelled"
-  | "order_refunded";
+  | "order_refunded"
+  | "payment_reminder_2h"
+  | "payment_reminder_24h"
+  | "abandoned_cart_recovery";
 
 export interface OrderEmailItem {
   name: string;
@@ -35,6 +38,8 @@ export interface OrderEmailParams {
   retryUrl?: string | null;
   trackingCode?: string | null;
   cancelledReason?: string | null;
+  /** Link de descadastro — usado apenas em e-mails promocionais (carrinho abandonado). */
+  unsubscribeUrl?: string | null;
   messageType: EmailMessageType;
   deliveryMethod?: "delivery" | "pickup" | "local_delivery" | string;
   pickup?: {
@@ -190,6 +195,52 @@ function getContent(p: OrderEmailParams): TemplateContent {
         showItems: true,
       };
     }
+    case "payment_reminder_2h":
+      return {
+        subject: `Falta pouco para concluir seu pedido ${num}`,
+        preheader: "Seu pedido está reservado aguardando o pagamento.",
+        headline: "Seu pedido está esperando por você",
+        intro:
+          `Notamos que o pagamento do seu pedido ${num} ainda não foi concluído. ` +
+          `Não se preocupe: os itens continuam reservados e você pode finalizar o pagamento quando quiser.`,
+        ctaLabel: "Concluir pagamento",
+        ctaUrl: p.orderUrl,
+        secondaryCta: p.supportWhatsapp
+          ? { label: "Falar com atendimento", url: p.supportWhatsapp }
+          : undefined,
+        showItems: true,
+      };
+    case "payment_reminder_24h":
+      return {
+        subject: `Seu pedido ${num} ainda aguarda pagamento`,
+        preheader: "Podemos ajudar a finalizar sua compra?",
+        headline: "Ainda dá tempo de finalizar sua compra",
+        intro:
+          `O pagamento do pedido ${num} continua pendente. ` +
+          `Se tiver qualquer dificuldade com o pagamento ou dúvida sobre os produtos, ` +
+          `nossa equipe está pronta para ajudar.`,
+        ctaLabel: "Concluir pagamento",
+        ctaUrl: p.orderUrl,
+        secondaryCta: p.supportWhatsapp
+          ? { label: "Falar com atendimento", url: p.supportWhatsapp }
+          : undefined,
+        showItems: true,
+      };
+    case "abandoned_cart_recovery":
+      return {
+        subject: "Você esqueceu alguns itens no carrinho",
+        preheader: "Seus itens continuam salvos na loja.",
+        headline: "Seu carrinho está te esperando",
+        intro:
+          "Guardamos os itens que você selecionou. É só voltar ao carrinho para finalizar a compra — " +
+          "e se precisar de ajuda para escolher, nossa equipe está à disposição.",
+        ctaLabel: "Voltar ao carrinho",
+        ctaUrl: p.orderUrl,
+        secondaryCta: p.supportWhatsapp
+          ? { label: "Falar com atendimento", url: p.supportWhatsapp }
+          : undefined,
+        showItems: true,
+      };
     case "order_refunded": {
       const storeUrl = p.orderUrl.split("/pedido/")[0] || p.orderUrl;
       return {
@@ -348,6 +399,10 @@ export function buildOrderEmailTemplate(p: OrderEmailParams): {
     ? `<a href="${esc(c.secondaryCta.url)}" style="display:inline-block;margin-left:8px;padding:12px 22px;border:1px solid #d4d4d8;color:#333;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">${esc(c.secondaryCta.label)}</a>`
     : "";
 
+  const unsubscribeLine = p.unsubscribeUrl
+    ? `<p style="font-size:11px;color:#999;margin-top:20px;">Não quer mais receber lembretes como este? <a href="${esc(p.unsubscribeUrl)}" style="color:#777;">Cancelar o recebimento</a>.</p>`
+    : "";
+
   const supportLine = p.supportEmail
     ? `<p style="font-size:12px;color:#888;margin-top:24px;">Precisa de ajuda? Escreva para <a href="mailto:${esc(p.supportEmail)}" style="color:#555;">${esc(p.supportEmail)}</a>.</p>`
     : "";
@@ -374,6 +429,7 @@ export function buildOrderEmailTemplate(p: OrderEmailParams): {
         ${pickupBlock}
         ${localBlock}
         ${supportLine}
+        ${unsubscribeLine}
       </td></tr>
       <tr><td style="padding:18px 28px;background:#fafafa;border-top:1px solid #eee;font-size:11px;color:#999;text-align:center;">
         © ${new Date().getFullYear()} ${esc(p.storeName)}. Este é um e-mail transacional referente ao seu pedido.
@@ -418,7 +474,7 @@ ${c.intro.replace(/<[^>]+>/g, "")}
 
 ${c.ctaLabel}: ${c.ctaUrl}${itemsTxt}${pickupTxt}${localTxt}
 
-— ${p.storeName}`;
+— ${p.storeName}${p.unsubscribeUrl ? `\n\nPara não receber mais estes lembretes: ${p.unsubscribeUrl}` : ""}`;
 
   return { subject: c.subject, html, text };
 }
