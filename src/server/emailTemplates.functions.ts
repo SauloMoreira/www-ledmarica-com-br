@@ -25,6 +25,10 @@ const ALL_TYPES = [
   "order_delivered",
   "order_cancelled",
   "order_refunded",
+  "payment_reminder_2h",
+  "payment_reminder_24h",
+  "abandoned_cart_recovery",
+
 ] as const satisfies readonly EmailMessageType[];
 
 const TypeSchema = z.enum(ALL_TYPES);
