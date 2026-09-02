@@ -403,9 +403,15 @@ export function buildOrderEmailTemplate(p: OrderEmailParams): {
     ? `<p style="font-size:11px;color:#999;margin-top:20px;">Não quer mais receber lembretes como este? <a href="${esc(p.unsubscribeUrl)}" style="color:#777;">Cancelar o recebimento</a>.</p>`
     : "";
 
+  const footerNote =
+    p.messageType === "abandoned_cart_recovery"
+      ? `Você recebeu este e-mail porque iniciou uma compra em ${esc(p.storeName)} e ainda não finalizou.`
+      : "Este é um e-mail transacional referente ao seu pedido.";
+
   const supportLine = p.supportEmail
     ? `<p style="font-size:12px;color:#888;margin-top:24px;">Precisa de ajuda? Escreva para <a href="mailto:${esc(p.supportEmail)}" style="color:#555;">${esc(p.supportEmail)}</a>.</p>`
     : "";
+
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
