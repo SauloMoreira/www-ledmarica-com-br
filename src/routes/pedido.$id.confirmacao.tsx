@@ -90,16 +90,7 @@ type CustomerOrder = {
 };
 
 function statusMessage(status: string, paymentStatus: string | null) {
-  if (status === "shipped" || status === "out_for_delivery") {
-    return {
-      tone: "info" as const,
-      title: "Seu pedido foi enviado",
-      text: "Acompanhe a entrega pelo código de rastreio.",
-    };
-  }
-  if (status === "delivered" || status === "completed") {
-    return { tone: "success" as const, title: "Pedido concluído", text: "Obrigado pela compra!" };
-  }
+  // Cancelamento é definitivo e prevalece sobre qualquer estado de pagamento.
   if (status === "cancelled") {
     return {
       tone: "error" as const,
@@ -107,11 +98,15 @@ function statusMessage(status: string, paymentStatus: string | null) {
       text: "Este pedido foi cancelado.",
     };
   }
-  if (paymentStatus === "paid" || paymentStatus === "approved") {
+  // Pagamento não resolvido tem prioridade sobre o status logístico do pedido:
+  // um pedido pode ter sido marcado como "enviado"/"entregue" por engano
+  // operacional mesmo sem o pagamento ter sido concluído, e o cliente precisa
+  // ver isso com clareza (e poder pagar) em vez de uma mensagem de sucesso.
+  if (paymentStatus === "preference_created") {
     return {
-      tone: "success" as const,
-      title: "Pagamento aprovado!",
-      text: "Seu pedido está sendo preparado.",
+      tone: "warn" as const,
+      title: "Pagamento não concluído",
+      text: "Seu pedido foi registrado, mas o pagamento ainda não foi feito. Finalize agora para não perder a reserva do estoque.",
     };
   }
   if (paymentStatus === "pending" || paymentStatus === "in_process") {
@@ -126,6 +121,23 @@ function statusMessage(status: string, paymentStatus: string | null) {
       tone: "error" as const,
       title: "Pagamento não aprovado",
       text: "Você pode tentar realizar o pagamento novamente.",
+    };
+  }
+  if (status === "shipped" || status === "out_for_delivery") {
+    return {
+      tone: "info" as const,
+      title: "Seu pedido foi enviado",
+      text: "Acompanhe a entrega pelo código de rastreio.",
+    };
+  }
+  if (status === "delivered" || status === "completed") {
+    return { tone: "success" as const, title: "Pedido concluído", text: "Obrigado pela compra!" };
+  }
+  if (paymentStatus === "paid" || paymentStatus === "approved") {
+    return {
+      tone: "success" as const,
+      title: "Pagamento aprovado!",
+      text: "Seu pedido está sendo preparado.",
     };
   }
   return {
@@ -312,7 +324,9 @@ function OrderTrackingPage() {
   const steps = timelineSteps(order.status, order.paymentStatus, order.deliveryMethod);
   const trackUrl = trackingUrlFor(order.shippingCarrier, order.trackingCode);
   const isPaymentPending =
-    order.paymentStatus === "pending" || order.paymentStatus === "in_process";
+    order.paymentStatus === "pending" ||
+    order.paymentStatus === "in_process" ||
+    order.paymentStatus === "preference_created";
   const isPaymentRejected = order.paymentStatus === "rejected" || order.paymentStatus === "failed";
   const supportPhone = (import.meta.env.VITE_SUPPORT_WHATSAPP ?? "").toString().replace(/\D/g, "");
   const whatsUrl = supportPhone
@@ -629,13 +643,15 @@ function OrderTrackingPage() {
               <span className="text-foreground">
                 {order.paymentStatus === "paid" || order.paymentStatus === "approved"
                   ? "Aprovado"
-                  : order.paymentStatus === "pending" || order.paymentStatus === "in_process"
-                    ? "Pendente"
-                    : order.paymentStatus === "rejected" || order.paymentStatus === "failed"
-                      ? "Recusado"
-                      : order.paymentStatus === "refunded"
-                        ? "Reembolsado"
-                        : "—"}
+                  : order.paymentStatus === "preference_created"
+                    ? "Aguardando pagamento"
+                    : order.paymentStatus === "pending" || order.paymentStatus === "in_process"
+                      ? "Pendente"
+                      : order.paymentStatus === "rejected" || order.paymentStatus === "failed"
+                        ? "Recusado"
+                        : order.paymentStatus === "refunded"
+                          ? "Reembolsado"
+                          : "—"}
               </span>
             </p>
             {order.paidAt && (
