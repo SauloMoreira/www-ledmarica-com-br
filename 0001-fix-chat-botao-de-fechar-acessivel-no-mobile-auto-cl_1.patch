@@ -1,0 +1,136 @@
+From aead5d40c1b3cc4fe1628881a436c55de175a28d Mon Sep 17 00:00:00 2001
+From: Saulo C Moreira <saulocmoreira@gmail.com>
+Date: Sat, 12 Sep 2026 03:21:15 +0000
+Subject: [PATCH] fix(chat): botao de fechar acessivel no mobile + auto-close
+ por inatividade
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Causa raiz do X 'sumido' no mobile: o painel do chat (ChatWidget.tsx)
+usa 'inset-x-2 top-2 bottom-2' no mobile, ou seja, cobre quase a tela
+inteira, e tinha o MESMO z-index (z-50) do botao flutuante que mostra
+o icone X. Como o painel e renderizado depois do botao no JSX, ele
+fica por cima na pilha de empilhamento e o botao de fechar, mesmo
+existindo, ficava coberto/inalcancavel atras do painel — sem nenhum
+outro jeito de fechar o chat pelo cabecalho.
+
+Correcoes:
+- Adicionado um botao 'X' de fechar dentro do cabecalho do painel
+  (sempre visivel, com alvo de toque de 44px, dentro da area do
+  proprio painel — nao depende de z-index para funcionar).
+- Botao flutuante elevado para z-[60] (acima do painel, z-50), como
+  reforco: mesmo sem o X do cabecalho, ele passa a ficar clicavel.
+- Fechar com Esc, padrao esperado em paineis flutuantes/modais.
+- Auto-close apos 5s sem nenhuma interacao (toque, clique, digitacao
+  ou rolagem dentro do painel), pausado enquanto a IA esta respondendo
+  ou o cliente preenche o formulario de contato (para nao fechar em
+  cima de uma resposta ou descartar dados que a pessoa ja digitou).
+---
+ src/components/store/ChatWidget.tsx | 69 ++++++++++++++++++++++++++++-
+ 1 file changed, 68 insertions(+), 1 deletion(-)
+
+diff --git a/src/components/store/ChatWidget.tsx b/src/components/store/ChatWidget.tsx
+index 59dd5e0..e802862 100644
+--- a/src/components/store/ChatWidget.tsx
++++ b/src/components/store/ChatWidget.tsx
+@@ -147,6 +147,63 @@ export function ChatWidget() {
+     localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
+   };
+ 
++  const closeChat = () => {
++    setOpen(false);
++    localStorage.setItem(STORAGE_KEY, "0");
++  };
++
++  // Refs "espelho" do estado, para o timer de inatividade ler o valor mais
++  // recente sem precisar recriar o setTimeout a cada resposta da IA.
++  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
++  const loadingRef = useRef(loading);
++  const handoffStepRef = useRef(handoffStep);
++
++  useEffect(() => {
++    loadingRef.current = loading;
++  }, [loading]);
++
++  useEffect(() => {
++    handoffStepRef.current = handoffStep;
++  }, [handoffStep]);
++
++  // Fecha o widget sozinho após 5s sem nenhuma interação (toque, clique,
++  // digitação ou rolagem), exceto enquanto a IA está respondendo ou o
++  // cliente está preenchendo o formulário de contato — nesses casos o
++  // timer é adiado para não fechar em cima de uma resposta ou apagar o
++  // que a pessoa já digitou.
++  const AUTO_CLOSE_MS = 5000;
++
++  const resetInactivityTimer = () => {
++    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
++    if (!open) return;
++    closeTimerRef.current = setTimeout(() => {
++      if (loadingRef.current || handoffStepRef.current === "form") {
++        resetInactivityTimer();
++        return;
++      }
++      closeChat();
++    }, AUTO_CLOSE_MS);
++  };
++
++  useEffect(() => {
++    resetInactivityTimer();
++    return () => {
++      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
++    };
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [open, messages, loading, handoffStep, input, handoffName, handoffPhone]);
++
++  // Permite fechar com Esc — comportamento padrão esperado para
++  // painéis flutuantes/modais.
++  useEffect(() => {
++    if (!open) return;
++    const onKeyDown = (e: KeyboardEvent) => {
++      if (e.key === "Escape") closeChat();
++    };
++    window.addEventListener("keydown", onKeyDown);
++    return () => window.removeEventListener("keydown", onKeyDown);
++  }, [open]);
++
+   const startHandoffOffer = () => {
+     setHandoffStep("offer");
+     setMessages((p) => [
+@@ -303,7 +360,7 @@ export function ChatWidget() {
+         aria-label={open ? "Fechar chat" : "Abrir chat"}
+         style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)" }}
+         className={cn(
+-          "fixed right-4 sm:right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-105 hover:brightness-110",
++          "fixed right-4 sm:right-6 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-105 hover:brightness-110",
+           open && "rotate-90",
+         )}
+       >
+@@ -315,6 +372,8 @@ export function ChatWidget() {
+         <div
+           className="fixed inset-x-2 bottom-2 top-2 z-50 flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl animate-in fade-in slide-in-from-bottom-4 sm:inset-auto sm:bottom-24 sm:right-6 sm:top-auto sm:h-[34rem] sm:w-[calc(100vw-3rem)] sm:max-w-sm"
+           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
++          onPointerDownCapture={resetInactivityTimer}
++          onKeyDownCapture={resetInactivityTimer}
+         >
+           <div className="flex items-center gap-3 border-b border-border bg-primary px-4 py-3 text-primary-foreground">
+             <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-primary-foreground/20 ring-2 ring-primary-foreground/30">
+@@ -328,6 +387,14 @@ export function ChatWidget() {
+               <p className="font-display text-sm font-semibold">Atendimento Led Maricá</p>
+               <p className="text-xs opacity-80">Resposta na hora • IA</p>
+             </div>
++            <button
++              type="button"
++              onClick={closeChat}
++              aria-label="Fechar chat"
++              className="-m-1 shrink-0 rounded-full p-3 text-primary-foreground/90 transition-colors hover:bg-primary-foreground/15 active:bg-primary-foreground/25"
++            >
++              <X className="h-5 w-5" />
++            </button>
+           </div>
+ 
+           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-muted/30 p-4">
+-- 
+2.43.0
+
