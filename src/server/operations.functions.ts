@@ -116,7 +116,12 @@ export const getAdminOperations = createServerFn({ method: "GET" })
     );
     const ordersAwaitingPayment = await safeCount(
       () => supabaseAdmin.from("orders"),
-      (q) => q.in("payment_status", ["pending", "in_process", "preference_created"]),
+      // Exclui pedidos cancelados/reembolsados: eles nunca mais vão ser pagos,
+      // então não representam um pedido "aguardando" pagamento de verdade.
+      (q) =>
+        q
+          .in("payment_status", ["pending", "in_process", "preference_created"])
+          .not("status", "in", "(cancelled,refunded)"),
     );
 
     // ============================================================
