@@ -3,6 +3,8 @@ export const ORDER_STATUS_LABELS: Record<string, string> = {
   awaiting_payment: "Aguardando pagamento",
   confirmed: "Confirmado",
   paid: "Pago",
+  approved: "Aprovado",
+  preference_created: "Link de pagamento gerado",
   preparing: "Em preparação",
   shipped: "Enviado",
   out_for_delivery: "Saiu para entrega",
@@ -22,7 +24,15 @@ export const ORDER_STATUS_OPTIONS = [
   "cancelled",
 ] as const;
 
-export const PAYMENT_STATUS_OPTIONS = ["pending", "paid", "failed", "refunded"] as const;
+export const PAYMENT_STATUS_OPTIONS = [
+  "pending",
+  "preference_created",
+  "approved",
+  "paid",
+  "failed",
+  "cancelled",
+  "refunded",
+] as const;
 
 export function orderStatusLabel(status: string | null | undefined): string {
   if (!status) return "—";
