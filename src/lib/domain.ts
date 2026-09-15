@@ -86,6 +86,26 @@ export const STORE_WHATSAPP = "5521982126467";
 export const STORE_NAME = "Led Maricá";
 
 /**
+ * Dias úteis que a loja leva, em média, para separar e postar um pedido
+ * após a confirmação do pagamento. O prazo retornado pela Melhor Envio
+ * (`ShippingService.days`) é só o trânsito da transportadora, contado a
+ * partir da postagem — não inclui esse tempo de separação. Somamos os
+ * dois para mostrar ao cliente um prazo total realista (compra →
+ * recebimento) e evitar prometer uma entrega mais rápida do que a loja
+ * de fato consegue cumprir.
+ */
+export const ORDER_HANDLING_DAYS = 2;
+
+/** Prazo total (dias úteis) mostrado ao cliente: separação + trânsito da transportadora. */
+export function totalDeliveryDays(carrierTransitDays: number): number {
+  return ORDER_HANDLING_DAYS + Math.max(0, carrierTransitDays);
+}
+
+export function formatBusinessDays(days: number): string {
+  return `${days} ${days === 1 ? "dia útil" : "dias úteis"}`;
+}
+
+/**
  * Calcula se o carrinho atingiu a regra de frete grátis.
  * Regra: somente produtos elegíveis contam para o subtotal mínimo.
  */
