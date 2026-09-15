@@ -116,8 +116,7 @@ export const lookupLocalDeliveryZone = createServerFn({ method: "POST" })
   });
 
 // ============================================================
-// Cálculo de frete — STUB local
-// TODO: substituir pela chamada real ao Melhor Envio quando token disponível
+// Cálculo de frete — cotação real (Melhor Envio) com fallback estimado
 // ============================================================
 export const calculateShipping = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
@@ -125,6 +124,12 @@ export const calculateShipping = createServerFn({ method: "POST" })
       .object({
         zipCode: z.string().transform((v) => v.replace(/\D/g, "")),
         subtotal: z.number().min(0),
+        // Itens reais do carrinho — usados para buscar peso/dimensões de cada
+        // produto no banco. Preferido sobre weightKg (mais preciso).
+        items: z
+          .array(z.object({ productId: z.string(), qty: z.number().min(1) }))
+          .optional(),
+        // Fallback legado, usado só se `items` não vier ou não resolver nenhum produto.
         weightKg: z.number().min(0).default(1),
         // Subtotal somado APENAS dos itens marcados como elegíveis a frete grátis.
         // Se omitido (compatibilidade), assume 0 — não libera frete grátis.
@@ -137,12 +142,14 @@ export const calculateShipping = createServerFn({ method: "POST" })
       return { services: [], estimated: true as const, error: "CEP deve ter 8 dígitos" };
     }
     const { quoteShippingServices } = await import("@/server/shippingQuote.server");
-    const services = quoteShippingServices({
+    const { services, estimated } = await quoteShippingServices({
       zipCode: data.zipCode,
+      items: data.items,
       weightKg: data.weightKg,
       eligibleSubtotal: data.eligibleSubtotal,
+      insuranceValue: data.subtotal,
     });
-    return { services, estimated: true as const };
+    return { services, estimated };
   });
 
 // ============================================================
@@ -590,9 +597,12 @@ export const createOrder = createServerFn({ method: "POST" })
         (acc, l) => acc + (eligibleIds.has(l.productId) ? l.appliedUnitPrice * l.qty : 0),
         0,
       );
-      const check = validateChosenShipping({
+      const orderSubtotal = lines.reduce((acc, l) => acc + l.appliedUnitPrice * l.qty, 0);
+      const check = await validateChosenShipping({
         zipCode: data.address?.zipCode ?? "",
+        items: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
         eligibleSubtotal,
+        insuranceValue: orderSubtotal,
         chosen: {
           carrier: data.shipping?.carrier ?? null,
           service: data.shipping?.service ?? null,
