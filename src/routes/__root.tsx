@@ -161,6 +161,15 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     scripts: [
       { type: "application/ld+json", children: ORG_JSONLD },
       {
+        // Google Consent Mode v2 — precisa rodar ANTES de qualquer tag do Google
+        // (GA4/Google Ads), mesmo antes do usuário decidir sobre os cookies.
+        // Sem isso, o rastreador de tags do Google não encontra o gtag na página
+        // enquanto o consentimento não é dado, e a campanha fica "não detectada".
+        // O consentimento real de coleta continua negado até o usuário aceitar —
+        // isso só garante que a tag existe e é detectável, respeitando a LGPD.
+        children: `(function(){window.dataLayer=window.dataLayer||[];function gtag(){window.dataLayer.push(arguments)}window.gtag=window.gtag||gtag;gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',wait_for_update:500});})();`,
+      },
+      {
         children: `(function(){var l=document.createElement("link");l.rel="stylesheet";l.href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap";l.media="print";l.onload=function(){l.media="all"};document.head.appendChild(l)})()`,
       },
     ],
