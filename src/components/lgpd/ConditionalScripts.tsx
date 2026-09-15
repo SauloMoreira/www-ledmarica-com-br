@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
 import { useCookieStore } from "@/stores/cookieStore";
 import { supabase } from "@/integrations/supabase/client";
+import { updateConsentMode } from "@/lib/tracking";
+
+// Provedores do Google suportam Consent Mode v2: a tag pode (e deve) ser
+// carregada sempre, em toda visita — é o próprio Google quem decide, via
+// gtag('consent', ...), se grava cookie/coleta dado real ou só registra um
+// "ping" anônimo. Isso é o que faz o Google Ads/Analytics *detectar* a tag
+// instalada, mesmo antes do usuário decidir sobre os cookies. Os demais
+// provedores (Meta, TikTok, Clarity) não têm um modo equivalente amplamente
+// suportado, então continuam só carregando após consentimento explícito.
+const GOOGLE_CONSENT_MODE_PROVIDERS: Provider[] = ["ga4", "google_ads"];
 
 type Provider = "ga4" | "gtm" | "meta_pixel" | "tiktok_pixel" | "clarity" | "google_ads";
 type ConsentCategory = "analytics" | "marketing";
@@ -148,9 +158,24 @@ export function ConditionalScripts() {
     };
   }, []);
 
+  // Tags do Google: carregam sempre, independente de consentimento — o
+  // Consent Mode v2 (default "denied" definido no <head>) já garante que
+  // nenhum dado real é coletado até o usuário aceitar. Isso é o que faz a
+  // tag ficar "detectável" pelo Google Ads/Analytics em qualquer visita.
+  useEffect(() => {
+    if (!integrations || typeof document === "undefined") return;
+    for (const row of integrations) {
+      if (!GOOGLE_CONSENT_MODE_PROVIDERS.includes(row.provider)) continue;
+      loadProvider(row);
+    }
+  }, [integrations]);
+
+  // Demais provedores (Meta, TikTok, Clarity): continuam só carregando
+  // depois de consentimento explícito na categoria correspondente.
   useEffect(() => {
     if (!consented || !integrations || typeof document === "undefined") return;
     for (const row of integrations) {
+      if (GOOGLE_CONSENT_MODE_PROVIDERS.includes(row.provider)) continue;
       const allowed =
         (row.consent_category === "analytics" && preferences.analytics) ||
         (row.consent_category === "marketing" && preferences.marketing);
@@ -159,6 +184,15 @@ export function ConditionalScripts() {
     }
     if (preferences.personalization) window.__LM_PERSONALIZATION = true;
   }, [consented, preferences, integrations]);
+
+  // Propaga a decisão do usuário para o Google Consent Mode v2 assim que ele
+  // aceita/rejeita/ajusta as preferências — atualiza o dataLayer já criado
+  // pelo script inline do <head>, liberando (ou não) a coleta real de dados
+  // nas tags do Google que já estão carregadas na página.
+  useEffect(() => {
+    if (!consented) return;
+    updateConsentMode({ analytics: preferences.analytics, marketing: preferences.marketing });
+  }, [consented, preferences.analytics, preferences.marketing]);
 
   return null;
 }
