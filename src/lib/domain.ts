@@ -81,9 +81,20 @@ export function snapQty(
 export const formatBRL = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-export const FREE_SHIPPING_THRESHOLD = 199;
 export const STORE_WHATSAPP = "5521982126467";
 export const STORE_NAME = "Led Maricá";
+
+// Loja física — usados na seção "Visite nossa loja" e nos selos de confiança
+// da home. Mantidos aqui como fonte única para não divergir entre componentes.
+export const STORE_PHONE_DISPLAY = "(21) 3731-2324";
+export const STORE_ADDRESS =
+  "Rod. Ernani do Amaral Peixoto, 28354, Loja 5/6/7 — Mumbuca, Maricá/RJ, 24913-700";
+export const STORE_HOURS = "Seg a sáb, 8h às 18h";
+export const GOOGLE_RATING = 4.6;
+export const GOOGLE_REVIEW_COUNT = 213;
+/** Link estável do Google Maps para a loja — usa busca por nome + endereço (não depende de place_id). */
+export const GOOGLE_MAPS_URL =
+  "https://www.google.com/maps/search/?api=1&query=Led+Marica+Rod.+Ernani+do+Amaral+Peixoto+28354+Marica+RJ";
 
 /**
  * Dias úteis que a loja leva, em média, para separar e postar um pedido
@@ -105,18 +116,10 @@ export function formatBusinessDays(days: number): string {
   return `${days} ${days === 1 ? "dia útil" : "dias úteis"}`;
 }
 
-/**
- * Calcula se o carrinho atingiu a regra de frete grátis.
- * Regra: somente produtos elegíveis contam para o subtotal mínimo.
- */
-export function calcFreeShippingProgress(
-  items: Array<{ price: number; qty: number; freeShippingEligible?: boolean }>,
-) {
-  const eligibleSubtotal = items
-    .filter((i) => i.freeShippingEligible)
-    .reduce((acc, i) => acc + i.price * i.qty, 0);
-  const hasEligibleItems = items.some((i) => i.freeShippingEligible);
-  const qualifies = hasEligibleItems && eligibleSubtotal >= FREE_SHIPPING_THRESHOLD;
-  const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - eligibleSubtotal);
-  return { eligibleSubtotal, hasEligibleItems, qualifies, remaining };
-}
+// NOTA: a promoção de frete grátis por valor mínimo de compra está
+// desativada (set/2026) — não é aplicada no checkout, então foi removida de
+// toda a UI (badges, carrinho, chat) para não prometer algo que não se
+// cumpre. O campo `Product.free_shipping_eligible` continua existindo no
+// modelo de dados (uso interno/admin), mas nenhuma tela pública o exibe.
+// Se a promoção for reativada, recriar aqui a função de progresso
+// (`calcFreeShippingProgress`) e os limiares antes de voltar a exibi-la.
