@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ShoppingCart, Truck, Shield, ChevronRight, Check, Zap } from "lucide-react";
+import { ShoppingCart, Truck, Shield, ChevronRight, Check, Zap, Store, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { StoreLayout } from "@/components/layout/StoreLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -113,7 +113,7 @@ const productQueryOptions = (slug: string) => ({
   queryKey: ["product", slug],
   queryFn: async () => {
     // Uma única ida ao banco: produto + imagens via embedding do PostgREST.
-    // Duas queries sequenciais dobravam o tempo de resposta do SSR (resourceLoadDelay).
+    // Duas queries sequenciais dobram o tempo de resposta do SSR (resourceLoadDelay).
     const { data, error } = await supabase
       .from("products")
       .select(
@@ -137,7 +137,6 @@ const productQueryOptions = (slug: string) => ({
     return { ...(product as ProductWithSeo), product_images: imgs };
   },
 });
-
 
 export const Route = createFileRoute("/produto/$slug")({
   loader: async ({ params, context }) => {
@@ -184,7 +183,7 @@ export const Route = createFileRoute("/produto/$slug")({
     // LCP: a imagem principal da galeria já é conhecida no servidor — emitimos o
     // preload para o navegador descobri-la antes da hidratação.
     const lcpPrimary = ogPrimary;
-    const lcpSrc = lcpPrimary ? (pickUrl(lcpPrimary, "full") ?? lcpPrimary.original_url) : null;
+    const lcpSrc = lcppPrimary ? (pickUrl(lcpPrimary, "full") ?? lcpPrimary.original_url) : null;
     if (lcpSrc) {
       (seo.links as Array<Record<string, string>>).push({
         rel: "preload",
@@ -223,7 +222,6 @@ export const Route = createFileRoute("/produto/$slug")({
   ),
 });
 
-
 function ProductPage() {
   const { slug } = Route.useParams();
   const cart = useCart();
@@ -242,7 +240,8 @@ function ProductPage() {
   // competirem com o LCP da galeria.
   const [belowFoldReady, setBelowFoldReady] = useState(false);
   useEffect(() => {
-    const hasRic = typeof window !== "undefined" && typeof window.requestIdleCallback === "function";
+    const hasRic =
+      typeof window !== "undefined" && typeof window.requestIdleCallback === "function";
     if (hasRic) {
       const id = window.requestIdleCallback(() => setBelowFoldReady(true), { timeout: 1500 });
       return () => window.cancelIdleCallback(id);
@@ -386,13 +385,12 @@ function ProductPage() {
               <span className="text-[10px] uppercase tracking-wider bg-success-tint text-success border border-success/20 px-2 py-1 rounded font-medium">
                 NF garantida
               </span>
-              {product.free_shipping_eligible ? (
+              <span className="text-[10px] uppercase tracking-wider bg-primary-tint text-primary border border-primary-border px-2 py-1 rounded font-medium">
+                Retirada grátis em Maricá
+              </span>
+              {product.free_shipping_eligible && (
                 <span className="text-[10px] uppercase tracking-wider bg-success-tint text-success border border-success/20 px-2 py-1 rounded font-medium">
                   Frete grátis acima de R$ 199
-                </span>
-              ) : (
-                <span className="text-[10px] uppercase tracking-wider bg-primary-tint text-primary border border-primary-border px-2 py-1 rounded font-medium">
-                  Entrega local Maricá
                 </span>
               )}
               {product.tags.map((t) => (
@@ -453,23 +451,37 @@ function ProductPage() {
               </button>
             </div>
 
-            <div className="bg-card border border-border rounded-lg p-3 space-y-2">
-              {(product as any).free_shipping_eligible ? (
+            <div className="bg-primary-tint/40 border border-primary-border rounded-lg p-3 space-y-2">
+              <div className="flex items-start gap-2.5 text-xs">
+                <Store className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <span className="text-foreground">
+                  <strong>Retire grátis na loja</strong> em Maricá/RJ — pronto no mesmo dia
+                </span>
+              </div>
+              <div className="flex items-start gap-2.5 text-xs">
+                <MapPin className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <span className="text-foreground">
+                  <strong>Entrega local em Maricá</strong> a partir de R$ 15,00 · até 1 dia útil
+                </span>
+              </div>
+              {product.free_shipping_eligible ? (
                 <div className="flex items-start gap-2.5 text-xs">
                   <Truck className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
                   <span className="text-muted-foreground">
-                    <strong className="text-foreground">Frete grátis</strong> em pedidos acima de R$
-                    199,00 (produto participante)
+                    <strong className="text-foreground">Frete grátis</strong> para todo o Brasil em
+                    pedidos acima de R$ 199,00 (produto participante)
                   </span>
                 </div>
               ) : (
                 <div className="flex items-start gap-2.5 text-xs">
                   <Truck className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                   <span className="text-muted-foreground">
-                    Este produto não participa da campanha de frete grátis.
+                    Envio para todo o Brasil — frete calculado no carrinho pelo seu CEP
                   </span>
                 </div>
               )}
+            </div>
+            <div className="bg-card border border-border rounded-lg p-3 space-y-2">
               <div className="flex items-start gap-2.5 text-xs">
                 <Shield className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                 <span className="text-muted-foreground">
