@@ -1,6 +1,16 @@
 import { Link } from "@tanstack/react-router";
 
-import { X, Trash2, Plus, Minus, ShoppingBag, AlertCircle, Package } from "lucide-react";
+import {
+  X,
+  Trash2,
+  Plus,
+  Minus,
+  ShoppingBag,
+  AlertCircle,
+  Package,
+  Store,
+  MapPin,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCart, validateB2bLine } from "@/stores/cartStore";
 import { Button } from "@/components/ui/button";
@@ -231,6 +241,16 @@ export function CartDrawer() {
                       </span>
                     </div>
                   )}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <Store className="w-3.5 h-3.5 text-primary" />
+                      Retire grátis na loja
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-primary" />
+                      Entrega local em Maricá a partir de R$ 15
+                    </span>
+                  </div>
                   {hasB2bIssue ? (
                     <Button className="w-full h-11" disabled>
                       Finalizar pedido
