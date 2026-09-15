@@ -628,7 +628,6 @@ function B2bProductCard({ product, index }: { product: Product; index: number })
           {product.b2b_qty_multiple && product.b2b_qty_multiple > 1 && (
             <Badge>Múltiplo de {product.b2b_qty_multiple}</Badge>
           )}
-          {product.free_shipping_eligible && <Badge tone="success">Frete grátis</Badge>}
         </div>
 
         <div className="mt-auto flex items-end justify-between gap-3">
