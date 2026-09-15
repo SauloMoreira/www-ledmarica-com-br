@@ -7,13 +7,6 @@ import {
   Shield,
   MessageSquareText,
   ArrowRight,
-  Lightbulb,
-  Zap,
-  Cable,
-  Plug,
-  Sun,
-  LayoutGrid,
-  Wrench,
   Package,
   Tag,
   Flame,
@@ -121,18 +114,6 @@ export const Route = createFileRoute("/")({
   },
   component: HomePage,
 });
-
-const ICONS: Record<string, any> = {
-  Lightbulb,
-  Zap,
-  Cable,
-  Plug,
-  Sun,
-  LayoutGrid,
-  Wrench,
-  Package,
-};
-
 
 function isExternalLink(url?: string | null) {
   if (!url) return false;
@@ -479,7 +460,7 @@ function HomePage() {
           key: c.id,
           slug: c.slug,
           name: c.name,
-          icon: ICONS[c.icon ?? "Package"] ?? Package,
+          icon: getLucideIcon(c.icon, Package),
           imageUrl: null,
         }));
 
@@ -855,15 +836,28 @@ function HomePage() {
 
   const renderFeaturedCategories = () => (
     <section key="featured_categories" className="container mx-auto px-4 py-8">
-      <div className="flex items-end justify-between mb-6">
+      <div className="flex items-end justify-between mb-4 md:mb-6">
         <div>
           <div className="label-meta mb-2">Categorias</div>
           <h2 className="font-display font-bold text-2xl tracking-tight">
             Encontre por departamento
           </h2>
         </div>
+        <Link
+          to="/catalogo"
+          className="hidden md:inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline shrink-0"
+        >
+          Ver todas
+          <ArrowRight className="w-4 h-4" />
+        </Link>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+
+      {/* Mobile: trilho horizontal com scroll-snap — evita a parede de cards que
+          empurrava o resto da home para baixo do fold. A partir de md, volta
+          para grade fixa (tela grande já mostra tudo sem precisar rolar). */}
+      <div
+        className="flex md:grid md:grid-cols-4 lg:grid-cols-6 gap-3 overflow-x-auto md:overflow-visible snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      >
         {featuredCategoriesToRender.map((c) => {
           const Icon = c.icon;
           return (
@@ -871,7 +865,7 @@ function HomePage() {
               key={c.key}
               to="/catalogo"
               search={{ cat: c.slug } as any}
-              className="group flex flex-col items-center text-center p-5 bg-card border border-border rounded-xl hover:border-primary hover:shadow-elevated transition-all"
+              className="group flex shrink-0 snap-start w-[92px] md:w-auto flex-col items-center text-center p-3 md:p-5 bg-card border border-border rounded-xl hover:border-primary hover:shadow-elevated transition-all"
             >
               {c.imageUrl ? (
                 <img
@@ -881,17 +875,33 @@ function HomePage() {
                   height={48}
                   loading="lazy"
                   decoding="async"
-                  className="w-12 h-12 rounded-full object-cover mb-3"
+                  className="w-11 h-11 md:w-12 md:h-12 rounded-full object-cover mb-2 md:mb-3"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-primary-tint flex items-center justify-center mb-3 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                <div className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-primary-tint flex items-center justify-center mb-2 md:mb-3 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                   <Icon className="w-5 h-5 text-primary group-hover:text-primary-foreground" />
                 </div>
               )}
-              <div className="text-xs font-medium leading-tight">{c.name}</div>
+              <div className="text-[11px] md:text-xs font-medium leading-tight line-clamp-2">
+                {c.name}
+              </div>
             </Link>
           );
         })}
+
+        {/* Escape-hatch: sempre visível ao final do trilho/grade, para quem
+            quer pular direto para o catálogo completo sem rolar tudo. */}
+        <Link
+          to="/catalogo"
+          className="group flex shrink-0 snap-start w-[92px] md:w-auto flex-col items-center justify-center text-center p-3 md:p-5 bg-primary-tint/40 border border-dashed border-primary/40 rounded-xl hover:border-primary hover:bg-primary-tint transition-all"
+        >
+          <div className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-background border border-primary/30 flex items-center justify-center mb-2 md:mb-3 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+            <ArrowRight className="w-5 h-5 text-primary group-hover:text-primary-foreground" />
+          </div>
+          <div className="text-[11px] md:text-xs font-semibold leading-tight text-primary">
+            Ver todas
+          </div>
+        </Link>
       </div>
     </section>
   );
