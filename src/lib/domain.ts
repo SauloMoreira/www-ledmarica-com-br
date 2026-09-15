@@ -89,7 +89,7 @@ export const STORE_NAME = "Led Maricá";
 export const STORE_PHONE_DISPLAY = "(21) 3731-2324";
 export const STORE_ADDRESS =
   "Rod. Ernani do Amaral Peixoto, 28354, Loja 5/6/7 — Mumbuca, Maricá/RJ, 24913-700";
-export const STORE_HOURS = "Seg a sáb, 8h às 18h";
+export const STORE_HOURS = "Seg a sex, 8h às 18h · Sáb, 8h às 12h";
 export const GOOGLE_RATING = 4.6;
 export const GOOGLE_REVIEW_COUNT = 213;
 /** Link estável do Google Maps para a loja — usa busca por nome + endereço (não depende de place_id). */
