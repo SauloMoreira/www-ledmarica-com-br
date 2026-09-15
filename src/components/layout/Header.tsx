@@ -67,12 +67,16 @@ export function Header() {
           <Button
             variant="outline"
             size="sm"
+            title="Nossa IA responde na hora e encaminha para um atendente humano no WhatsApp quando você precisar"
             className="hidden md:inline-flex h-9 gap-1.5 border-primary/30 text-primary hover:bg-primary-tint hover:text-primary"
             onClick={() => {
               if (typeof window !== "undefined") window.dispatchEvent(new Event("open-chat"));
             }}
           >
             <Sparkles className="w-3.5 h-3.5" /> Falar com IA
+            <span className="hidden xl:inline text-[11px] font-normal opacity-70">
+              (com humano no WhatsApp)
+            </span>
           </Button>
           {isAdmin && (
             <Link to={"/admin" as any} aria-label="Admin">
