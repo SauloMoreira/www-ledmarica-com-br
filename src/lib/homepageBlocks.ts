@@ -366,9 +366,9 @@ export const DEFAULT_HOMEPAGE_SECTION_ORDER: Array<{
   {
     section_key: "institutional_block",
     title: "Bloco institucional",
-    description: "Bloco institucional / sobre a loja (em breve).",
+    description: "Selo de avaliação no Google e dados da loja física (endereço, mapa, telefone, horário).",
     sort_order: 100,
-    is_active: false,
+    is_active: true,
   },
   {
     section_key: "main_cta",
