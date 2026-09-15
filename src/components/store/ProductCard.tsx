@@ -41,8 +41,10 @@ export function ProductCard({
     });
   };
 
-  // Apenas a 1ª imagem ganha prioridade alta para não competir com o LCP do banner
-  const isAboveFold = index === 0;
+  // As primeiras posições (1ª leva visível antes de rolar, tipicamente 4 por linha)
+  // carregam eager para não aparecer em branco por lazy-load; a 1ª ganha prioridade alta
+  // para não competir com o LCP do banner.
+  const isAboveFold = index < 4;
   return (
     <div>
       <Link
@@ -61,7 +63,7 @@ export function ProductCard({
               width={400}
               height={400}
               loading={isAboveFold ? "eager" : "lazy"}
-              fetchPriority={isAboveFold ? "high" : "auto"}
+              fetchPriority={index === 0 ? "high" : "auto"}
               decoding="async"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
@@ -134,11 +136,6 @@ export function ProductCard({
           )}
           {product.stock_qty === 0 && (
             <div className="text-[10px] text-destructive font-medium mt-2">Esgotado</div>
-          )}
-          {product.free_shipping_eligible && product.stock_qty > 0 && (
-            <div className="text-[10px] text-success font-medium mt-2 leading-tight">
-              🚚 Frete grátis acima de R$ 199,00
-            </div>
           )}
         </div>
       </Link>
