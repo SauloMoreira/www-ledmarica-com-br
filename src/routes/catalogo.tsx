@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Truck,
   MessageCircle,
   Tag,
 } from "lucide-react";
@@ -20,7 +19,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import type { Product, Category } from "@/lib/domain";
-import { FREE_SHIPPING_THRESHOLD, formatBRL } from "@/lib/domain";
 import { trackSearch } from "@/lib/tracking";
 import { searchProducts, getCatalogAttributeFacets } from "@/server/productSearch.functions";
 import { getPublicAttributeLabels } from "@/server/productAttributeLabels.functions";
@@ -310,9 +308,7 @@ function CatalogPage() {
     ? `Resultados para "${search.q}"`
     : search.oferta
       ? "Ofertas da semana"
-      : search.shipping === "free"
-        ? "Produtos elegíveis a frete grátis"
-        : sortValue === "best_sellers"
+      : sortValue === "best_sellers"
           ? "Destaques da loja"
           : search.cat
             ? (categories?.find((c) => c.slug === search.cat)?.name ?? "Produtos")
@@ -327,7 +323,6 @@ function CatalogPage() {
   const hasActiveFilters = !!(
     search.cat ||
     search.oferta ||
-    search.shipping ||
     search.sort ||
     search.q ||
     search.marca ||
@@ -369,34 +364,6 @@ function CatalogPage() {
             {pageTitle}
           </h1>
           {pageSubtitle && <p className="text-sm text-muted-foreground mb-4">{pageSubtitle}</p>}
-
-          {search.shipping === "free" && (
-            <div
-              role="note"
-              aria-label="Regra da promoção de frete grátis"
-              className="mb-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 sm:p-5 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">
-                <Truck className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm sm:text-base text-amber-900 leading-snug dark:text-amber-100">
-                  Frete grátis para compras acima de{" "}
-                  <strong className="font-semibold text-amber-900 dark:text-amber-50">
-                    {formatBRL(FREE_SHIPPING_THRESHOLD)}
-                  </strong>{" "}
-                  em{" "}
-                  <span className="inline-flex items-center rounded-md bg-amber-200/70 px-1.5 py-0.5 text-xs font-medium text-amber-900 align-baseline dark:bg-amber-500/25 dark:text-amber-100">
-                    produtos participantes
-                  </span>
-                  .
-                </p>
-                <p className="mt-1 text-xs text-amber-800/80 dark:text-amber-200/80">
-                  A promoção é aplicada automaticamente no carrinho quando a regra for atendida.
-                </p>
-              </div>
-            </div>
-          )}
 
           {hasActiveFilters && (
             <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -465,18 +432,6 @@ function CatalogPage() {
                   className="inline-flex items-center gap-1.5 text-xs bg-accent/10 text-accent-foreground px-2.5 py-1 rounded-full hover:bg-accent/20"
                 >
                   Oferta <X className="w-3 h-3" />
-                </button>
-              )}
-              {search.shipping === "free" && (
-                <button
-                  onClick={() =>
-                    navigate({
-                      search: (s: any) => ({ ...s, shipping: undefined, page: 1 }) as any,
-                    })
-                  }
-                  className="inline-flex items-center gap-1.5 text-xs bg-accent/10 text-accent-foreground px-2.5 py-1 rounded-full hover:bg-accent/20"
-                >
-                  Frete grátis <X className="w-3 h-3" />
                 </button>
               )}
               {sortValue === "best_sellers" && (
@@ -671,24 +626,6 @@ function CatalogPage() {
                   />
                   Em promoção
                 </label>
-                <label className="flex items-center gap-2 text-sm cursor-pointer mt-2">
-                  <input
-                    type="checkbox"
-                    checked={search.shipping === "free"}
-                    onChange={(e) =>
-                      navigate({
-                        search: (s: any) =>
-                          ({
-                            ...s,
-                            shipping: e.target.checked ? "free" : undefined,
-                            page: 1,
-                          }) as any,
-                      })
-                    }
-                    className="rounded border-border"
-                  />
-                  Frete grátis
-                </label>
               </div>
 
               {(facetsData?.facets?.length ?? 0) > 0 && (
@@ -854,7 +791,7 @@ function CatalogPage() {
               name: pageTitle,
               url: `${SITE_URL}/catalogo`,
               description:
-                "Catálogo de material elétrico e iluminação LED da Led Maricá. Lâmpadas, disjuntores, cabos, refletores e muito mais. Frete grátis acima de R$199.",
+                "Catálogo de material elétrico e iluminação LED da Led Maricá. Lâmpadas, disjuntores, cabos, refletores e muito mais. Retirada grátis na loja em Maricá.",
               mainEntity: {
                 "@type": "ItemList",
                 itemListElement: products.slice(0, 24).map((p, i) => ({
