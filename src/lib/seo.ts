@@ -4,7 +4,7 @@
 export const SITE_NAME = "Led Maricá";
 export const SITE_URL = "https://www.ledmarica.com.br";
 export const SITE_DESCRIPTION =
-  "Material elétrico e iluminação LED com qualidade e preço justo em Maricá/RJ. Lâmpadas, disjuntores, cabos, refletores e muito mais. Frete grátis acima de R$199.";
+  "Material elétrico e iluminação LED com qualidade e preço justo em Maricá/RJ. Lâmpadas, disjuntores, cabos, refletores e muito mais. Retirada grátis na loja em Maricá.";
 
 export interface SeoInput {
   title?: string;
