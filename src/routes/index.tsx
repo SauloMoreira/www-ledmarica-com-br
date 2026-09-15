@@ -1081,15 +1081,6 @@ function HomePage() {
                   Ver no mapa
                 </a>
               </Button>
-              <Button variant="outline" asChild>
-                <a
-                  href={`https://wa.me/${STORE_WHATSAPP}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Falar no WhatsApp
-                </a>
-              </Button>
             </div>
           </div>
           <div className="min-h-[280px] md:min-h-0">
