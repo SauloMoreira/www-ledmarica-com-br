@@ -233,14 +233,34 @@ export async function quoteShippingServices(args: {
   const zip = (args.zipCode || "").replace(/\D/g, "");
   if (!/^\d{8}$/.test(zip)) return { services: [], estimated: true };
 
+  // Resolvido uma única vez e reaproveitado tanto na cotação real quanto no
+  // fallback — evita que o preview (calculateShipping, que recebe um
+  // weightKg aproximado do client) e a revalidação (createOrder, que chama
+  // só com `items`) caiam em pesos diferentes e produzam cotações
+  // divergentes (checkout rejeitado com "Valor de frete inválido").
+  let resolvedPkg: { weightKg: number; heightCm: number; widthCm: number; lengthCm: number };
   try {
     const pkg = args.items?.length ? await resolveCartPackage(args.items) : null;
-    const resolvedPkg = pkg ?? {
+    resolvedPkg = pkg ?? {
       weightKg: Math.max(MIN_WEIGHT_KG, args.weightKg ?? 1),
       heightCm: MIN_DIM_CM,
       widthCm: MIN_DIM_CM,
       lengthCm: MIN_DIM_CM,
     };
+  } catch (e) {
+    console.warn(
+      "[frete] Falha ao resolver peso/dimensões do carrinho, usando fallback:",
+      e instanceof Error ? e.message : e,
+    );
+    resolvedPkg = {
+      weightKg: Math.max(MIN_WEIGHT_KG, args.weightKg ?? 1),
+      heightCm: MIN_DIM_CM,
+      widthCm: MIN_DIM_CM,
+      lengthCm: MIN_DIM_CM,
+    };
+  }
+
+  try {
     const services = await fetchMelhorEnvioQuotes({
       toZip: zip,
       pkg: resolvedPkg,
@@ -253,7 +273,7 @@ export async function quoteShippingServices(args: {
       e instanceof Error ? e.message : e,
     );
     return {
-      services: quoteShippingServicesStub({ zipCode: zip, weightKg: args.weightKg }),
+      services: quoteShippingServicesStub({ zipCode: zip, weightKg: resolvedPkg.weightKg }),
       estimated: true,
     };
   }
