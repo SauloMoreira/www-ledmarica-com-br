@@ -34,6 +34,36 @@ const MELHOR_ENVIO_BASE_URL =
 const MIN_WEIGHT_KG = 0.1;
 const MIN_DIM_CM = 11; // menor caixa aceita nos Correios (envelope/caixa mínima)
 
+/**
+ * Transportadoras cujo ponto de postagem foi confirmado a pé, dentro do
+ * Centro de Maricá: Ponto Parceiro Pegaki "Gaspar Negócios" (Av. Roberto da
+ * Silveira, 139 - Centro, seg-sex 08h-18h) aceita envios de Correios, Jadlog,
+ * Loggi, Buslog, LATAM Cargo e J&T Express nesse único endereço.
+ *
+ * A API do Melhor Envio cotava também Azul Cargo Express e Total Express,
+ * mas nenhuma das duas é aceita nesse ponto — postar com elas exigiria achar
+ * (e visitar) uma agência própria em outra cidade, o que não é operacionalmente
+ * viável. Por isso essas cotações são descartadas aqui antes de chegar ao
+ * checkout: só oferecemos ao cliente frete que a loja consegue de fato
+ * despachar sem sair de Maricá.
+ *
+ * Se um novo ponto de coleta/agência for confirmado (ou o atual parar de
+ * aceitar alguma transportadora), atualize esta lista.
+ */
+const ALLOWED_CARRIER_PATTERNS: RegExp[] = [
+  /correios/i,
+  /jadlog/i,
+  /loggi/i,
+  /buslog/i,
+  /latam/i,
+  /\bjet\b/i, // nome retornado pela API do Melhor Envio: "JeT"
+  /\bj\s*&\s*t\b/i, // variante "J&T" / "J&T Express", caso a API mude o nome
+];
+
+function isCarrierDispatchableFromMarica(carrierName: string): boolean {
+  return ALLOWED_CARRIER_PATTERNS.some((re) => re.test(carrierName));
+}
+
 // ============================================================
 // STUB determinístico (fallback) — baseado no DDD do CEP
 // ============================================================
@@ -210,6 +240,9 @@ async function fetchMelhorEnvioQuotes(args: {
         days: Number(q.delivery_time ?? 5),
       }))
       .filter((s) => Number.isFinite(s.price) && s.price > 0)
+      // Só oferece transportadoras com ponto de postagem confirmado em
+      // Maricá — ver comentário de ALLOWED_CARRIER_PATTERNS acima.
+      .filter((s) => isCarrierDispatchableFromMarica(s.carrier))
       .sort((a, b) => a.price - b.price);
 
     if (!services.length) throw new Error("Nenhuma transportadora retornou cotação válida");
