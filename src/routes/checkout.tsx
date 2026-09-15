@@ -10,7 +10,6 @@ import {
   Truck,
   CreditCard,
   QrCode,
-
   ShoppingBag,
   Store,
   Building2,
@@ -30,7 +29,6 @@ import {
   applyCoupon,
   createOrder,
   getAutoCouponForContext,
-
   lookupLocalDeliveryZone,
 } from "@/server/checkout.functions";
 import { getCartBundlePreview } from "@/server/cartBundlePreview.functions";
@@ -105,6 +103,7 @@ function CheckoutPage() {
   const [shippingOptions, setShippingOptions] = useState<ShippingService[]>([]);
   const [shippingLoading, setShippingLoading] = useState(false);
   const [selectedShipping, setSelectedShipping] = useState<ShippingService | null>(null);
+  const [shippingEstimated, setShippingEstimated] = useState(true);
 
   // Cupom
   const [couponInput, setCouponInput] = useState("");
@@ -117,7 +116,6 @@ function CheckoutPage() {
   // Forma de pagamento pretendida (obrigatória para finalizar)
   const [paymentChoice, setPaymentChoice] = useState<"pix" | "other" | null>(null);
   const [paymentChoiceLoading, setPaymentChoiceLoading] = useState(false);
-
 
   const [notes, setNotes] = useState("");
 
@@ -175,7 +173,6 @@ function CheckoutPage() {
     () => Math.max(0, subtotal - couponDiscountApplied - bundleDiscountPreview + shippingCost),
     [subtotal, couponDiscountApplied, bundleDiscountPreview, shippingCost],
   );
-
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
@@ -295,12 +292,21 @@ function CheckoutPage() {
         }
       }
 
+      // Peso/dimensões reais vêm do servidor (tabela products) a partir do
+      // productId — weightKg abaixo é só um fallback de segurança.
+      const items = cart.items.map((i) => ({ productId: i.productId, qty: i.qty }));
       const weight = cart.items.reduce((s, i) => s + i.qty * 0.5, 0);
       const eligibleSubtotal = cart.items
         .filter((i) => i.freeShippingEligible)
         .reduce((s, i) => s + i.price * i.qty, 0);
       const r = await calculateShipping({
-        data: { zipCode: cleanZip, subtotal, weightKg: Math.max(0.5, weight), eligibleSubtotal },
+        data: {
+          zipCode: cleanZip,
+          subtotal,
+          items,
+          weightKg: Math.max(0.5, weight),
+          eligibleSubtotal,
+        },
       });
       if ("error" in r && r.error) {
         toast.error(r.error);
@@ -324,6 +330,7 @@ function CheckoutPage() {
       services.push(...r.services);
 
       setShippingOptions(services);
+      setShippingEstimated("estimated" in r ? Boolean(r.estimated) : true);
       // Pré-seleciona frete local se disponível, senão a primeira opção
       setSelectedShipping(services[0] ?? null);
       setDeliveryMethod(services[0]?.id === "local-zone" ? "local_delivery" : "delivery");
@@ -437,7 +444,6 @@ function CheckoutPage() {
       setPaymentChoiceLoading(false);
     }
   }
-
 
   async function handleSelectPayment(choice: "pix" | "other") {
     if (paymentChoiceLoading) return;
@@ -842,8 +848,9 @@ function CheckoutPage() {
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground mt-4">
-                  💡 Estimativa baseada em região. Frete real será confirmado após integração com
-                  Melhor Envio.
+                  {shippingEstimated
+                    ? "💡 Estimativa baseada em região — não foi possível cotar em tempo real agora. O valor final é revalidado com segurança antes do pagamento."
+                    : "✅ Cotação em tempo real com os Correios via Melhor Envio."}
                 </p>
                 <div className="flex gap-3 mt-6">
                   <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
@@ -1023,7 +1030,6 @@ function CheckoutPage() {
                   </div>
                 </section>
 
-
                 <section className="mb-5">
                   <Label htmlFor="notes">Observações (opcional)</Label>
                   <textarea
@@ -1049,7 +1055,6 @@ function CheckoutPage() {
                     disabled={submitting || !paymentChoice || paymentChoiceLoading}
                     className="flex-1 h-12"
                   >
-
                     {submitting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
