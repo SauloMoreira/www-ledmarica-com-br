@@ -18,6 +18,9 @@ import {
   Tag,
   Flame,
   Star,
+  MapPin,
+  Phone,
+  Clock,
 } from "lucide-react";
 import { getLucideIcon } from "@/lib/iconMap";
 import { StoreLayout } from "@/components/layout/StoreLayout";
@@ -26,7 +29,15 @@ import { HeroCarousel, type HeroBanner } from "@/components/store/HeroCarousel";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import type { Product, Category } from "@/lib/domain";
-import { FREE_SHIPPING_THRESHOLD, formatBRL } from "@/lib/domain";
+import {
+  GOOGLE_MAPS_URL,
+  GOOGLE_RATING,
+  GOOGLE_REVIEW_COUNT,
+  STORE_ADDRESS,
+  STORE_HOURS,
+  STORE_PHONE_DISPLAY,
+  STORE_WHATSAPP,
+} from "@/lib/domain";
 import { imageUrlsFromProductImages } from "@/lib/productImages";
 import { fetchHomepageSettings, isPromoBarVisible } from "@/lib/homepageContent";
 import {
@@ -59,7 +70,7 @@ export const Route = createFileRoute("/")({
     const seo = buildSeo({
       title: "Material Elétrico e Iluminação LED em Maricá/RJ",
       description:
-        "Lâmpadas LED, disjuntores, cabos, refletores e tomadas com entrega rápida. Atendimento com IA 24h. Frete grátis acima de R$199.",
+        "Lâmpadas LED, disjuntores, cabos, refletores e tomadas com entrega rápida. Atendimento com IA 24h, com encaminhamento para nossa equipe no WhatsApp. Retirada grátis na loja em Maricá.",
       url: "/",
     });
     // Preload the first banner's mobile image for LCP
@@ -344,12 +355,11 @@ function HomePage() {
       tone: "from-amber-400 to-yellow-500",
     },
     {
-      key: "fb-frete",
+      key: "fb-retirada",
       icon: Truck,
-      title: "Frete grátis",
-      desc: `Acima de ${formatBRL(FREE_SHIPPING_THRESHOLD)}`,
+      title: "Retirada grátis",
+      desc: "Na loja em Maricá, hoje",
       to: "/catalogo",
-      searchParams: { shipping: "free" },
       tone: "from-emerald-500 to-teal-500",
     },
     {
@@ -409,10 +419,18 @@ function HomePage() {
   };
   const BENEFITS_FALLBACK: BenefitCardItem[] = [
     {
+      key: "fb-rating",
+      icon: Star,
+      title: `${GOOGLE_RATING.toFixed(1).replace(".", ",")}★ no Google`,
+      desc: `${GOOGLE_REVIEW_COUNT} avaliações de clientes`,
+      href: GOOGLE_MAPS_URL,
+      newTab: true,
+    },
+    {
       key: "fb-ia",
       icon: Sparkles,
       title: "IA 24h",
-      desc: "Atendimento inteligente sempre disponível",
+      desc: "Atendimento inteligente, com nossa equipe no WhatsApp quando você precisar",
     },
     {
       key: "fb-truck",
@@ -751,7 +769,7 @@ function HomePage() {
   const renderBenefits = () => (
     <section key="benefits_cards" className="container mx-auto px-4 py-10" aria-label="Benefícios">
       <h2 className="sr-only">Benefícios</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {benefitsToRender.map((d) => {
           const inner = (
             <>
@@ -1018,7 +1036,114 @@ function HomePage() {
         limit={6}
       />
     ),
-    institutional_block: () => null,
+    institutional_block: () => (
+      <section
+        key="institutional_block"
+        className="container mx-auto px-4 py-10"
+        aria-label="Nossa loja física em Maricá"
+      >
+        <div className="rounded-2xl border border-border bg-card overflow-hidden grid md:grid-cols-2 shadow-soft">
+          <div className="p-6 sm:p-8 flex flex-col justify-center gap-4">
+            <div>
+              <div className="label-meta mb-2">Loja física em Maricá/RJ</div>
+              <h2 className="font-display font-bold text-2xl mb-2">Visite a Led Maricá</h2>
+              <a
+                href={GOOGLE_MAPS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+              >
+                <Star className="w-4 h-4 fill-current" />
+                {GOOGLE_RATING.toFixed(1).replace(".", ",")} · {GOOGLE_REVIEW_COUNT} avaliações no
+                Google
+              </a>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-start gap-2.5">
+                <MapPin className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <span className="text-muted-foreground">{STORE_ADDRESS}</span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <Clock className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <span className="text-muted-foreground">{STORE_HOURS}</span>
+              </div>
+              <a
+                href={`tel:+55${STORE_WHATSAPP}`}
+                className="flex items-start gap-2.5 text-foreground hover:text-primary transition-colors w-fit"
+              >
+                <Phone className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                {STORE_PHONE_DISPLAY}
+              </a>
+            </div>
+            <div className="flex flex-wrap gap-3 pt-1">
+              <Button asChild>
+                <a href={GOOGLE_MAPS_URL} target="_blank" rel="noopener noreferrer">
+                  Ver no mapa
+                </a>
+              </Button>
+              <Button variant="outline" asChild>
+                <a
+                  href={`https://wa.me/${STORE_WHATSAPP}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Falar no WhatsApp
+                </a>
+              </Button>
+            </div>
+          </div>
+          <div className="min-h-[280px] md:min-h-0">
+            <iframe
+              title="Localização da Led Maricá no mapa"
+              src={`https://www.google.com/maps?q=${encodeURIComponent(STORE_ADDRESS)}&output=embed`}
+              className="w-full h-full border-0"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+        </div>
+
+        {/* Depoimentos reais — avaliações públicas do Google, atualizadas em set/2026 */}
+        <div className="mt-6">
+          <p className="label-meta mb-3">O que dizem no Google</p>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {[
+              {
+                name: "Danillo Sant'Ana",
+                meta: "Guia Local · 148 avaliações",
+                quote:
+                  "Atendimento excelente. Muitos itens à disposição. Loja linda e com preços incríveis.",
+              },
+              {
+                name: "Adriano Pires",
+                meta: "Guia Local · 347 avaliações",
+                quote: "Enorme variedade de produtos, atendimento nota 10 e preços excelentes!!",
+              },
+              {
+                name: "Alexandre Drubi",
+                meta: "Guia Local · 89 avaliações",
+                quote: "Sempre sou muito bem atendido!!",
+              },
+            ].map((t) => (
+              <div
+                key={t.name}
+                className="rounded-xl border border-border bg-card p-4 flex flex-col gap-2 shadow-soft"
+              >
+                <div className="flex items-center gap-0.5 text-accent" aria-hidden="true">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className="w-3.5 h-3.5 fill-current" />
+                  ))}
+                </div>
+                <p className="text-sm text-foreground leading-relaxed">“{t.quote}”</p>
+                <p className="text-xs text-muted-foreground mt-auto">
+                  {t.name} · {t.meta}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    ),
     main_cta: renderMainCta,
     newsletter_signup: () => <NewsletterSignup key="newsletter_signup" />,
   };
