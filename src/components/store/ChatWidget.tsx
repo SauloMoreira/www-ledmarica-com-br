@@ -85,7 +85,7 @@ function getOrCreateSession(): string {
 const WELCOME: Msg = {
   role: "assistant",
   content:
-    "Olá! Sou o **Ledinho**, assistente da **Led Maricá** ⚡\n\nPosso te ajudar a encontrar produtos, tirar dúvidas técnicas ou fazer um orçamento. Como posso ajudar?",
+    "Olá! Sou o **Ledinho**, assistente da **Led Maricá** ⚡\n\nPosso te ajudar a encontrar produtos, tirar dúvidas técnicas ou fazer um orçamento. E se preferir falar com uma pessoa, é só pedir que eu te encaminho para nossa equipe no WhatsApp. Como posso ajudar?",
 };
 
 export function ChatWidget() {
@@ -385,7 +385,7 @@ export function ChatWidget() {
             </div>
             <div className="flex-1">
               <p className="font-display text-sm font-semibold">Atendimento Led Maricá</p>
-              <p className="text-xs opacity-80">Resposta na hora • IA</p>
+              <p className="text-xs opacity-80">IA 24h • encaminha para humano no WhatsApp</p>
             </div>
             <button
               type="button"
