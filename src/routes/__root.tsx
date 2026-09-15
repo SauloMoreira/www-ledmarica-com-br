@@ -92,7 +92,7 @@ const CSP_POLICY = [
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "connect-src 'self' https://*.supabase.co https://*.supabase.in https://api.mercadopago.com https://ai.gateway.lovable.dev https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://stats.g.doubleclick.net https://www.facebook.com https://*.facebook.com https://analytics.tiktok.com https://*.tiktok.com https://www.clarity.ms https://*.clarity.ms",
-  "frame-src 'self' https://www.mercadopago.com https://www.mercadopago.com.br https://td.doubleclick.net https://www.facebook.com",
+  "frame-src 'self' https://www.mercadopago.com https://www.mercadopago.com.br https://td.doubleclick.net https://www.facebook.com https://www.google.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self' https://www.mercadopago.com https://www.mercadopago.com.br",
