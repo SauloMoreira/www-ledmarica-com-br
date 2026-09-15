@@ -183,7 +183,7 @@ export const Route = createFileRoute("/produto/$slug")({
     // LCP: a imagem principal da galeria já é conhecida no servidor — emitimos o
     // preload para o navegador descobri-la antes da hidratação.
     const lcpPrimary = ogPrimary;
-    const lcpSrc = lcppPrimary ? (pickUrl(lcpPrimary, "full") ?? lcpPrimary.original_url) : null;
+    const lcpSrc = lcpPrimary ? (pickUrl(lcpPrimary, "full") ?? lcpPrimary.original_url) : null;
     if (lcpSrc) {
       (seo.links as Array<Record<string, string>>).push({
         rel: "preload",
