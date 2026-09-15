@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/stores/cartStore";
-import { formatBRL } from "@/lib/domain";
+import { formatBRL, formatBusinessDays, ORDER_HANDLING_DAYS, totalDeliveryDays } from "@/lib/domain";
 import {
   lookupCep,
   calculateShipping,
@@ -831,9 +831,21 @@ function CheckoutPage() {
                             <span className="text-muted-foreground font-normal">· {s.carrier}</span>
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {s.id === "local-zone"
-                              ? localZone?.eta || "Entrega no mesmo dia / D+1"
-                              : `Entrega em até ${s.days} ${s.days === 1 ? "dia útil" : "dias úteis"}`}
+                            {s.id === "local-zone" ? (
+                              localZone?.eta || "Entrega no mesmo dia / D+1"
+                            ) : (
+                              <>
+                                <span className="font-medium text-foreground/80">
+                                  Chega em até {formatBusinessDays(totalDeliveryDays(s.days))}
+                                </span>
+                                <br />
+                                <span>
+                                  até {formatBusinessDays(ORDER_HANDLING_DAYS)} para separar o
+                                  pedido + até {formatBusinessDays(s.days)} de transporte com{" "}
+                                  {s.carrier}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                         <div className="font-display font-bold">
@@ -964,7 +976,9 @@ function CheckoutPage() {
                           ? localZone?.eta
                             ? ` (${localZone.eta})`
                             : ""
-                          : ` (${selectedShipping?.days}d)`}
+                          : selectedShipping
+                            ? ` (até ${totalDeliveryDays(selectedShipping.days)}d)`
+                            : ""}
                       </p>
                     </>
                   )}
