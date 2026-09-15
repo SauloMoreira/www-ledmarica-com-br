@@ -13,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { StoreLayout } from "@/components/layout/StoreLayout";
 import { Button } from "@/components/ui/button";
 import { useCart, validateB2bLine } from "@/stores/cartStore";
-import { formatBRL, calcFreeShippingProgress } from "@/lib/domain";
+import { formatBRL } from "@/lib/domain";
 import { useCartPricing, maskCnpj } from "@/hooks/useCartPricing";
 import { describeB2bReason } from "@/lib/b2bPricingShared";
 import { CartUpsell } from "@/components/store/CartUpsell";
@@ -53,14 +53,9 @@ function CartPage() {
     .filter((r) => r.status === "eligible_preview")
     .reduce((acc, r) => acc + r.estimated_discount, 0);
 
-  const freeShip = calcFreeShippingProgress(
-    cart.items.map((i) => ({
-      price: i.price,
-      qty: i.qty,
-      freeShippingEligible: i.freeShippingEligible,
-    })),
-  );
-  const shipping = freeShip.qualifies ? 0 : 25;
+  // Estimativa exibida só no resumo do carrinho — o valor real de frete é
+  // calculado (Melhor Envio) ou zerado (retirada na loja) já no checkout.
+  const shipping = 25;
   const total = Math.max(0, subtotalApplied - bundlePreviewSavings + shipping);
 
   const hasB2b = cart.hasB2bItems();
@@ -251,20 +246,11 @@ function CartPage() {
               )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Frete (estimado)</span>
-                <span className="font-medium">
-                  {shipping === 0 ? (
-                    <span className="text-success">Grátis</span>
-                  ) : (
-                    formatBRL(shipping)
-                  )}
-                </span>
+                <span className="font-medium">{formatBRL(shipping)}</span>
               </div>
-              {freeShip.hasEligibleItems && !freeShip.qualifies && (
-                <p className="text-xs text-muted-foreground">
-                  Faltam <strong>{formatBRL(freeShip.remaining)}</strong> em produtos
-                  participantes para frete grátis.
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                Valor final calculado pelo seu CEP no checkout — ou grátis na retirada na loja.
+              </p>
               <div className="border-t border-border pt-3 flex justify-between items-end">
                 <span className="font-medium">Total</span>
                 <span className="font-display font-extrabold text-2xl text-primary">
