@@ -149,7 +149,7 @@ export const Route = createFileRoute("/produto/$slug")({
     const finalPrice = p.sale_price ?? p.price;
     const baseDesc =
       p.description?.trim() ||
-      `${p.name} — disponível na Led Maricá com entrega rápida em Maricá/RJ. Frete grátis acima de R$199.`;
+      `${p.name} — disponível na Led Maricá com retirada grátis e entrega rápida em Maricá/RJ.`;
     const description = clamp(p.seo_description || baseDesc, 160);
     const rawTitle = p.seo_title || `${p.name}${p.brand ? " — " + p.brand : ""}`;
     const title = clamp(rawTitle, 47);
@@ -388,11 +388,6 @@ function ProductPage() {
               <span className="text-[10px] uppercase tracking-wider bg-primary-tint text-primary border border-primary-border px-2 py-1 rounded font-medium">
                 Retirada grátis em Maricá
               </span>
-              {product.free_shipping_eligible && (
-                <span className="text-[10px] uppercase tracking-wider bg-success-tint text-success border border-success/20 px-2 py-1 rounded font-medium">
-                  Frete grátis acima de R$ 199
-                </span>
-              )}
               {product.tags.map((t) => (
                 <span
                   key={t}
@@ -464,22 +459,12 @@ function ProductPage() {
                   <strong>Entrega local em Maricá</strong> a partir de R$ 15,00 · até 1 dia útil
                 </span>
               </div>
-              {product.free_shipping_eligible ? (
-                <div className="flex items-start gap-2.5 text-xs">
-                  <Truck className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
-                  <span className="text-muted-foreground">
-                    <strong className="text-foreground">Frete grátis</strong> para todo o Brasil em
-                    pedidos acima de R$ 199,00 (produto participante)
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-start gap-2.5 text-xs">
-                  <Truck className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <span className="text-muted-foreground">
-                    Envio para todo o Brasil — frete calculado no carrinho pelo seu CEP
-                  </span>
-                </div>
-              )}
+              <div className="flex items-start gap-2.5 text-xs">
+                <Truck className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <span className="text-muted-foreground">
+                  Envio para todo o Brasil — frete calculado no carrinho pelo seu CEP
+                </span>
+              </div>
             </div>
             <div className="bg-card border border-border rounded-lg p-3 space-y-2">
               <div className="flex items-start gap-2.5 text-xs">
