@@ -29,6 +29,26 @@ const TIKTOK_EVENT_MAP: Record<string, string> = {
   lead_captured: "SubmitForm",
 };
 
+/**
+ * Google Consent Mode v2 — atualiza o estado de consentimento já registrado
+ * no dataLayer (o valor padrão "denied" é definido inline no <head>, antes de
+ * qualquer script carregar). Chamado sempre que o usuário decide sobre os
+ * cookies (aceitar tudo, rejeitar, ou salvar preferências granulares).
+ */
+export function updateConsentMode(prefs: { analytics: boolean; marketing: boolean }) {
+  if (typeof window === "undefined" || typeof window.gtag !== "function") return;
+  try {
+    window.gtag("consent", "update", {
+      analytics_storage: prefs.analytics ? "granted" : "denied",
+      ad_storage: prefs.marketing ? "granted" : "denied",
+      ad_user_data: prefs.marketing ? "granted" : "denied",
+      ad_personalization: prefs.marketing ? "granted" : "denied",
+    });
+  } catch {
+    /* noop */
+  }
+}
+
 export function trackEvent(event: string, data?: Record<string, any>) {
   if (typeof window === "undefined") return;
   const { preferences, consented } = useCookieStore.getState();
