@@ -14,7 +14,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useCart, validateB2bLine } from "@/stores/cartStore";
 import { Button } from "@/components/ui/button";
-import { formatBRL, FREE_SHIPPING_THRESHOLD, calcFreeShippingProgress } from "@/lib/domain";
+import { formatBRL } from "@/lib/domain";
 import { getCartBundlePreview } from "@/server/cartBundlePreview.functions";
 
 export function CartDrawer() {
@@ -33,14 +33,6 @@ export function CartDrawer() {
   const eligibleBundles = (bundleRows ?? []).filter((r) => r.status === "eligible_preview");
   const bundleSavings = eligibleBundles.reduce((acc, r) => acc + r.estimated_discount, 0);
   const subtotalWithBundles = Math.max(0, subtotal - bundleSavings);
-  const freeShip = calcFreeShippingProgress(
-    cart.items.map((i) => ({
-      price: i.price,
-      qty: i.qty,
-      freeShippingEligible: i.freeShippingEligible,
-    })),
-  );
-  const progress = Math.min(100, (freeShip.eligibleSubtotal / FREE_SHIPPING_THRESHOLD) * 100);
   const b2bIssues = cart.items
     .map((i) => ({ item: i, validation: validateB2bLine(i) }))
     .filter((r) => !r.validation.ok) as Array<{
@@ -91,28 +83,6 @@ export function CartDrawer() {
               </div>
             ) : (
               <>
-                {/* Progress frete grátis — só renderiza com itens elegíveis */}
-                {freeShip.hasEligibleItems && (
-                  <div className="px-5 py-3 bg-primary-tint border-b border-primary-border">
-                    {freeShip.qualifies ? (
-                      <p className="text-xs text-success font-medium mb-1.5">
-                        🎉 Você ganhou frete grátis!
-                      </p>
-                    ) : (
-                      <p className="text-xs text-primary font-medium mb-1.5">
-                        Faltam <strong>{formatBRL(freeShip.remaining)}</strong> em produtos
-                        participantes para frete grátis
-                      </p>
-                    )}
-                    <div className="h-1.5 bg-primary-foreground/40 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary transition-all"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
                 <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                   {cart.items.map((item) => {
                     const v = validateB2bLine(item);
