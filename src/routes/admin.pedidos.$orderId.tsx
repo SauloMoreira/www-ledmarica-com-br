@@ -263,6 +263,36 @@ function OrderDetailPage() {
                 value={customer?.created_at ? fmtDate(customer.created_at) : "—"}
               />
             </div>
+            {(order as any).order_type === "b2b" && (
+              <>
+                <Separator className="my-3" />
+                <div className="text-sm">
+                  <p className="font-semibold mb-2 flex items-center gap-2">
+                    <span className="inline-block px-2 py-0.5 rounded bg-violet-100 text-violet-900 text-[10px] uppercase tracking-wide font-bold">
+                      Pedido B2B
+                    </span>
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Field label="Empresa" value={(order as any).company_name ?? "—"} />
+                    <Field
+                      label="CNPJ"
+                      value={
+                        (order as any).company_cnpj
+                          ? String((order as any).company_cnpj).replace(
+                              /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
+                              "$1.$2.$3/$4-$5",
+                            )
+                          : "—"
+                      }
+                    />
+                    <Field
+                      label="Responsável pela empresa"
+                      value={(order as any).company_contact_name ?? "—"}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
             <Separator className="my-3" />
             {(order as any).delivery_method === "pickup" ? (
               <div className="text-sm">
