@@ -29,6 +29,17 @@ const SyncInput = z.object({
     .max(200),
 });
 
+const ContactInput = z
+  .object({
+    sessionId: z.string().min(8).max(80),
+    name: z.string().trim().max(120).optional(),
+    email: z.string().trim().email().max(180).optional(),
+    phone: z.string().trim().min(10).max(13).optional(),
+  })
+  .refine((v) => Boolean(v.email || v.phone), {
+    message: "email ou phone é obrigatório",
+  });
+
 /**
  * Substitui o snapshot de `cart_items` do usuário/sessão pelo estado atual
  * do carrinho no client. "Replace" (delete + insert) em vez de upsert
@@ -58,6 +69,39 @@ export const syncCart = createServerFn({ method: "POST" })
       return { ok: true as const };
     } catch (e) {
       console.warn("[cart] syncCart exception", e instanceof Error ? e.message : e);
+      return { ok: false as const };
+    }
+  });
+
+/**
+ * Captura opcional de e-mail/WhatsApp oferecida no carrinho, ANTES do
+ * checkout — é o que dá a `detect_abandoned_carts` alguém pra avisar quando
+ * o cliente some antes de chegar na etapa de dados do pedido. Guardado em
+ * `guest_cart_contacts`, uma tabela sem nenhuma policy pública (RLS
+ * habilitada, zero policies): só este server function, com a service role,
+ * lê ou escreve nela — o client nunca consegue listar contatos de terceiros.
+ */
+export const saveCartContact = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => ContactInput.parse(input))
+  .handler(async ({ data }) => {
+    try {
+      const { error } = await supabaseAdmin.from("guest_cart_contacts").upsert(
+        {
+          session_id: data.sessionId,
+          name: data.name || null,
+          email: data.email || null,
+          phone: data.phone || null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "session_id" },
+      );
+      if (error) {
+        console.warn("[cart] saveCartContact upsert error", error.message);
+        return { ok: false as const };
+      }
+      return { ok: true as const };
+    } catch (e) {
+      console.warn("[cart] saveCartContact exception", e instanceof Error ? e.message : e);
       return { ok: false as const };
     }
   });
