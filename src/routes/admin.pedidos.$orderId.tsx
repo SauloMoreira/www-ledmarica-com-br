@@ -248,6 +248,17 @@ function OrderDetailPage() {
               <Field label="E-mail" value={customer?.email ?? "—"} />
               <Field label="Telefone" value={customer?.phone ?? "—"} />
               <Field
+                label="CPF"
+                value={
+                  (order as any).customer_cpf
+                    ? String((order as any).customer_cpf).replace(
+                        /(\d{3})(\d{3})(\d{3})(\d{2})/,
+                        "$1.$2.$3-$4",
+                      )
+                    : "—"
+                }
+              />
+              <Field
                 label="Cliente desde"
                 value={customer?.created_at ? fmtDate(customer.created_at) : "—"}
               />
@@ -275,6 +286,13 @@ function OrderDetailPage() {
                   {snap?.recipient && (
                     <p className="mt-1">
                       Retirada por: <span className="text-foreground">{snap.recipient}</span>
+                    </p>
+                  )}
+                  {snap?.street && (
+                    <p className="mt-1">
+                      Endereço fiscal: {snap.street}, {snap.number}
+                      {snap.complement && ` (${snap.complement})`} — {snap.neighborhood},{" "}
+                      {snap.city}/{snap.state} — CEP {snap.zip_code}
                     </p>
                   )}
                 </div>
