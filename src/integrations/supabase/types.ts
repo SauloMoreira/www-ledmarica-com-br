@@ -2558,6 +2558,7 @@ export type Database = {
           company_name: string | null
           coupon_code: string | null
           created_at: string | null
+          customer_cpf: string | null
           delivery_method: string
           discount: number
           estimated_delivery: string | null
@@ -2651,6 +2652,7 @@ export type Database = {
           company_name?: string | null
           coupon_code?: string | null
           created_at?: string | null
+          customer_cpf?: string | null
           delivery_method?: string
           discount?: number
           estimated_delivery?: string | null
@@ -2744,6 +2746,7 @@ export type Database = {
           company_name?: string | null
           coupon_code?: string | null
           created_at?: string | null
+          customer_cpf?: string | null
           delivery_method?: string
           discount?: number
           estimated_delivery?: string | null
@@ -3614,6 +3617,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string | null
+          cpf: string | null
           email: string
           id: string
           name: string
@@ -3625,6 +3629,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
+          cpf?: string | null
           email: string
           id: string
           name: string
@@ -3636,6 +3641,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string | null
+          cpf?: string | null
           email?: string
           id?: string
           name?: string
