@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { couponConditionMetPrePayment } from "@/lib/couponConditions";
+import { onlyDigits as onlyDigitsCpf, isValidCPF } from "@/lib/cpf";
 
 // ============================================================
 // ViaCEP — público, sem token
@@ -260,6 +261,14 @@ export const getAutoCouponForContext = createServerFn({ method: "POST" })
 // Criar pedido (RLS aplicada como o usuário)
 // ============================================================
 const CreateOrderInput = z.object({
+  // CPF é obrigatório para TODO pedido (delivery, frete local ou retirada):
+  // a nota fiscal exige o documento do cliente independente de como o
+  // produto chega até ele. Validado por dígito verificador (mesmo padrão
+  // de rigor do CNPJ B2B) — nunca aceitamos um CPF apenas "bem formatado".
+  cpf: z
+    .string()
+    .transform((v) => onlyDigitsCpf(v))
+    .pipe(z.string().refine((v) => isValidCPF(v), "CPF inválido")),
   items: z
     .array(
       z.object({
@@ -504,24 +513,32 @@ export const createOrder = createServerFn({ method: "POST" })
     const isPickup = data.deliveryMethod === "pickup";
     const isLocal = data.deliveryMethod === "local_delivery";
 
-    // Validações específicas por método
+    // Validações específicas por método.
+    // IMPORTANTE: endereço COMPLETO é obrigatório em TODO pedido, inclusive
+    // retirada na loja — a nota fiscal exige o endereço do destinatário
+    // independente da forma de entrega (retirar na loja não dispensa o
+    // endereço fiscal do cliente).
     if (isPickup) {
       if (!data.address?.recipient) {
         return { ok: false as const, error: "Informe o nome para retirada." };
       }
-    } else {
-      if (
-        !data.address?.street ||
-        !data.address?.number ||
-        !data.address?.city ||
-        !data.address?.state ||
-        !data.address?.zipCode
-      ) {
-        return { ok: false as const, error: "Endereço de entrega incompleto." };
-      }
-      if (!isLocal && !data.shipping) {
-        return { ok: false as const, error: "Selecione uma opção de frete." };
-      }
+    }
+    if (
+      !data.address?.street ||
+      !data.address?.number ||
+      !data.address?.city ||
+      !data.address?.state ||
+      !data.address?.zipCode
+    ) {
+      return {
+        ok: false as const,
+        error: isPickup
+          ? "Endereço para nota fiscal incompleto."
+          : "Endereço de entrega incompleto.",
+      };
+    }
+    if (!isPickup && !isLocal && !data.shipping) {
+      return { ok: false as const, error: "Selecione uma opção de frete." };
     }
 
     // Validar e RECALCULAR frete local no servidor (nunca confiar no cliente)
@@ -657,10 +674,10 @@ export const createOrder = createServerFn({ method: "POST" })
       };
     }
 
-    // Salvar endereço (opcional) — em entrega/local_delivery
+    // Salvar endereço (opcional) — inclusive em retirada, já que agora
+    // sempre coletamos o endereço completo (uso fiscal).
     let addressId: string | null = null;
     if (
-      !isPickup &&
       data.address?.saveAddress &&
       data.address.street &&
       data.address.number &&
@@ -700,6 +717,11 @@ export const createOrder = createServerFn({ method: "POST" })
         total,
         coupon_code: appliedCouponCode,
         intended_payment_method: data.intendedPaymentMethod ?? null,
+        // Snapshot imutável do CPF no momento da compra — igual ao padrão já
+        // usado para company_cnpj (B2B) e address_snapshot: o pedido guarda
+        // o dado como era na hora, mesmo que o cliente troque o CPF salvo
+        // no perfil depois.
+        customer_cpf: data.cpf,
 
         shipping_carrier: shippingCarrier,
         shipping_service: shippingService,
@@ -797,6 +819,15 @@ export const createOrder = createServerFn({ method: "POST" })
 
     if (itemsErr) {
       return { ok: false as const, error: itemsErr.message };
+    }
+
+    // Persiste o CPF no perfil para pré-preencher a próxima compra — nunca
+    // deve derrubar o pedido já criado se falhar (ex.: CPF já usado em outra
+    // conta, bloqueado pelo índice único parcial).
+    try {
+      await supabase.from("profiles").update({ cpf: data.cpf } as never).eq("id", userId);
+    } catch (e) {
+      console.error("[checkout] falha ao salvar CPF no perfil", e);
     }
 
     // Disparar e-mail "pedido recebido" — AWAIT obrigatório (Worker aborta promises não aguardadas após a Response); sendOrderEmail nunca propaga erro.
