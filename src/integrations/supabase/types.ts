@@ -110,6 +110,33 @@ export type Database = {
         }
         Relationships: []
       }
+      guest_cart_contacts: {
+        Row: {
+          created_at: string
+          email: string | null
+          name: string | null
+          phone: string | null
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          name?: string | null
+          phone?: string | null
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          name?: string | null
+          phone?: string | null
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       addresses: {
         Row: {
           city: string
