@@ -22,6 +22,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/stores/cartStore";
+import { supabase } from "@/integrations/supabase/client";
+import { formatCPF, onlyDigits as onlyDigitsCpf, isValidCPF } from "@/lib/cpf";
 import { formatBRL, formatBusinessDays, ORDER_HANDLING_DAYS, totalDeliveryDays } from "@/lib/domain";
 import {
   lookupCep,
@@ -86,6 +88,14 @@ function CheckoutPage() {
     | null
     | undefined;
   const pickupEnabled = Boolean(company?.pickup_enabled);
+
+  // CPF — obrigatório em TODO pedido (a nota fiscal exige o documento do
+  // cliente independente de retirada/entrega). Pré-preenchido do perfil
+  // quando o cliente já comprou antes.
+  const [cpf, setCpf] = useState("");
+  const [cpfTouched, setCpfTouched] = useState(false);
+  const cpfDigits = onlyDigitsCpf(cpf);
+  const cpfError = cpfTouched && cpfDigits.length > 0 && !isValidCPF(cpfDigits);
 
   // Endereço
   const [zip, setZip] = useState("");
@@ -193,6 +203,20 @@ function CheckoutPage() {
     if (user?.user_metadata?.name) setRecipient(user.user_metadata.name as string);
   }, [user]);
 
+  // Pré-preenche o CPF com o valor salvo no perfil (compra anterior), se houver.
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("cpf")
+        .eq("id", user.id)
+        .maybeSingle();
+      const saved = (data as { cpf?: string | null } | null)?.cpf;
+      if (saved) setCpf(formatCPF(saved));
+    })();
+  }, [user?.id]);
+
   async function checkLocalZone(opts: { city: string; state: string; neighborhood: string }) {
     if (!opts.neighborhood || !opts.city || !opts.state) {
       setLocalZone(null);
@@ -250,9 +274,23 @@ function CheckoutPage() {
   }
 
   async function goToShipping() {
+    setCpfTouched(true);
+    if (!cpfDigits || !isValidCPF(cpfDigits)) {
+      toast.error("Informe um CPF válido — é exigido para emissão da nota fiscal.");
+      return;
+    }
+    const cleanZip = zip.replace(/\D/g, "");
     if (isPickup) {
       if (!recipient.trim()) {
         toast.error("Informe o nome de quem irá retirar o pedido.");
+        return;
+      }
+      if (!cleanZip || !street || !number || !city || !state) {
+        toast.error("Preencha o endereço completo — obrigatório para a nota fiscal.");
+        return;
+      }
+      if (cleanZip.length !== 8) {
+        toast.error("CEP deve ter 8 dígitos");
         return;
       }
       setSelectedShipping(null);
@@ -260,7 +298,6 @@ function CheckoutPage() {
       setStep(3);
       return;
     }
-    const cleanZip = zip.replace(/\D/g, "");
     if (!recipient || !cleanZip || !street || !number || !city || !state) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
@@ -478,16 +515,19 @@ function CheckoutPage() {
                 cost: selectedShipping!.price,
                 localZoneId: isLocal ? (localZone?.zoneId ?? null) : null,
               },
+          cpf: cpfDigits,
           address: {
             recipient,
-            zipCode: isPickup ? "" : zip.replace(/\D/g, ""),
-            street: isPickup ? null : street,
-            number: isPickup ? null : number,
+            // Endereço completo sempre — inclusive retirada, exigido para a
+            // nota fiscal (não é usado para cálculo de frete quando pickup).
+            zipCode: zip.replace(/\D/g, ""),
+            street,
+            number,
             complement: complement || null,
-            neighborhood: isPickup ? null : neighborhood || null,
-            city: isPickup ? null : city,
-            state: isPickup ? null : state,
-            saveAddress: isPickup ? false : saveAddress,
+            neighborhood: neighborhood || null,
+            city,
+            state,
+            saveAddress,
           },
           couponCode,
           intendedPaymentMethod: paymentChoice,
@@ -634,6 +674,106 @@ function CheckoutPage() {
                           className="mt-1.5"
                         />
                       </div>
+                      <div className="sm:col-span-2">
+                        <Label htmlFor="cpf-pickup">CPF</Label>
+                        <Input
+                          id="cpf-pickup"
+                          value={cpf}
+                          onChange={(e) => setCpf(formatCPF(e.target.value))}
+                          onBlur={() => setCpfTouched(true)}
+                          placeholder="000.000.000-00"
+                          inputMode="numeric"
+                          maxLength={14}
+                          className={`mt-1.5 ${cpfError ? "border-destructive" : ""}`}
+                        />
+                        {cpfError && (
+                          <p className="text-xs text-destructive mt-1">CPF inválido.</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Exigido por lei para emitir a nota fiscal do pedido.
+                        </p>
+                      </div>
+                    </div>
+
+                    <h3 className="font-semibold text-sm mb-3 mt-5">Endereço para nota fiscal</h3>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Não é usado para entrega — a retirada é feita na loja. A nota fiscal exige o
+                      endereço do cliente mesmo quando o pedido é retirado presencialmente.
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="zip-pickup">CEP</Label>
+                        <div className="relative mt-1.5">
+                          <Input
+                            id="zip-pickup"
+                            value={zip}
+                            onChange={(e) => setZip(formatCep(e.target.value))}
+                            onBlur={handleZipBlur}
+                            placeholder="00000-000"
+                            maxLength={9}
+                            inputMode="numeric"
+                            autoComplete="postal-code"
+                          />
+                          {zipLoading && (
+                            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="number-pickup">Número</Label>
+                        <Input
+                          id="number-pickup"
+                          value={number}
+                          onChange={(e) => setNumber(e.target.value)}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <Label htmlFor="street-pickup">Rua</Label>
+                        <Input
+                          id="street-pickup"
+                          value={street}
+                          onChange={(e) => setStreet(e.target.value)}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="complement-pickup">Complemento</Label>
+                        <Input
+                          id="complement-pickup"
+                          value={complement}
+                          onChange={(e) => setComplement(e.target.value)}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="neighborhood-pickup">Bairro</Label>
+                        <Input
+                          id="neighborhood-pickup"
+                          value={neighborhood}
+                          onChange={(e) => setNeighborhood(e.target.value)}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="city-pickup">Cidade</Label>
+                        <Input
+                          id="city-pickup"
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="state-pickup">UF</Label>
+                        <Input
+                          id="state-pickup"
+                          value={state}
+                          onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
+                          maxLength={2}
+                          className="mt-1.5"
+                        />
+                      </div>
                     </div>
                     <div className="mt-5 p-4 rounded-lg bg-surface border border-border text-sm space-y-1.5">
                       <div className="flex items-center gap-2 font-medium">
@@ -678,6 +818,25 @@ function CheckoutPage() {
                           onChange={(e) => setRecipient(e.target.value)}
                           className="mt-1.5"
                         />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <Label htmlFor="cpf">CPF</Label>
+                        <Input
+                          id="cpf"
+                          value={cpf}
+                          onChange={(e) => setCpf(formatCPF(e.target.value))}
+                          onBlur={() => setCpfTouched(true)}
+                          placeholder="000.000.000-00"
+                          inputMode="numeric"
+                          maxLength={14}
+                          className={`mt-1.5 ${cpfError ? "border-destructive" : ""}`}
+                        />
+                        {cpfError && (
+                          <p className="text-xs text-destructive mt-1">CPF inválido.</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Exigido por lei para emitir a nota fiscal do pedido.
+                        </p>
                       </div>
                       <div>
                         <Label htmlFor="zip">CEP</Label>
@@ -956,6 +1115,12 @@ function CheckoutPage() {
                         </p>
                       )}
                       <p className="text-sm text-muted-foreground">Retirada por: {recipient}</p>
+                      <p className="text-sm text-muted-foreground">CPF: {formatCPF(cpf)}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Endereço para nota fiscal: {street}, {number}
+                        {complement ? `, ${complement}` : ""} — {neighborhood}, {city}/{state} · CEP{" "}
+                        {zip}
+                      </p>
                       <p className="text-xs text-warning mt-2">
                         ⚠️ Aguarde a confirmação de disponibilidade antes de comparecer.
                       </p>
@@ -963,6 +1128,7 @@ function CheckoutPage() {
                   ) : (
                     <>
                       <p className="text-sm">{recipient}</p>
+                      <p className="text-sm text-muted-foreground">CPF: {formatCPF(cpf)}</p>
                       <p className="text-sm text-muted-foreground">
                         {street}, {number}
                         {complement ? `, ${complement}` : ""} — {neighborhood}
