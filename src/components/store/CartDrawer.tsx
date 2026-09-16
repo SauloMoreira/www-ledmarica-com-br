@@ -16,6 +16,7 @@ import { useCart, validateB2bLine } from "@/stores/cartStore";
 import { Button } from "@/components/ui/button";
 import { formatBRL } from "@/lib/domain";
 import { getCartBundlePreview } from "@/server/cartBundlePreview.functions";
+import { CartContactCapture } from "@/components/store/CartContactCapture";
 
 export function CartDrawer() {
   const cart = useCart();
@@ -221,6 +222,7 @@ export function CartDrawer() {
                       Entrega local em Maricá a partir de R$ 15
                     </span>
                   </div>
+                  <CartContactCapture />
                   {hasB2bIssue ? (
                     <Button className="w-full h-11" disabled>
                       Finalizar pedido
