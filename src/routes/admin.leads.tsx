@@ -138,6 +138,22 @@ function LeadsPage() {
     estimated_value: "",
   });
 
+  // Histórico completo da conversa (chat_messages), buscado sob demanda ao
+  // abrir um lead vindo do chat/IA — o snapshot gravado no momento do
+  // handoff (conversation_summary/last_user_message) só reflete o que o
+  // cliente disse ATÉ pedir atendimento humano; se ele continuar digitando
+  // depois disso, essas mensagens só existem em chat_messages.
+  const [chatMessages, setChatMessages] = useState<
+    { role: string; content: string; created_at: string }[]
+  >([]);
+  const [chatLoading, setChatLoading] = useState(false);
+
+  const extractSessionId = (l: any): string | null => {
+    if (l?.metadata?.session_id) return String(l.metadata.session_id);
+    const m = typeof l?.notes === "string" ? l.notes.match(/^chat:(.+)$/) : null;
+    return m ? m[1] : null;
+  };
+
   const load = async () => {
     setLoading(true);
     const rows = await fetchAllRows<any>((from, to) => {
@@ -223,6 +239,22 @@ function LeadsPage() {
       estimated_value: l.estimated_value ? String(l.estimated_value) : "",
     });
     setOpen(true);
+
+    setChatMessages([]);
+    const sessionId = extractSessionId(l);
+    if (sessionId) {
+      setChatLoading(true);
+      supabase
+        .from("chat_messages")
+        .select("role, content, created_at")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: true })
+        .limit(50)
+        .then(({ data, error }) => {
+          if (!error) setChatMessages((data as any) ?? []);
+          setChatLoading(false);
+        });
+    }
   };
 
   const save = async () => {
@@ -610,7 +642,7 @@ function LeadsPage() {
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Lead: {selected?.name}</DialogTitle>
           </DialogHeader>
@@ -640,6 +672,89 @@ function LeadsPage() {
                   <p className="text-muted-foreground">{selected.interest}</p>
                 </div>
               )}
+
+              {(selected.conversation_summary ||
+                selected.last_user_message ||
+                selected.product_name ||
+                selected.origin_product_name) && (
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <Label className="text-xs">Resumo da IA</Label>
+                  {selected.conversation_summary && (
+                    <p className="text-muted-foreground whitespace-pre-line">
+                      {selected.conversation_summary}
+                    </p>
+                  )}
+                  {selected.last_user_message && (
+                    <p>
+                      <span className="text-xs text-muted-foreground">
+                        Última pergunta antes do handoff:{" "}
+                      </span>
+                      "{selected.last_user_message}"
+                    </p>
+                  )}
+                  {(selected.product_name || selected.origin_product_name) && (
+                    <p className="text-xs text-muted-foreground">
+                      Produto relacionado: {selected.product_name ?? selected.origin_product_name}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-1.5 pt-2 border-t border-border text-xs text-muted-foreground">
+                <Label className="text-xs text-foreground">Como o cliente chegou</Label>
+                <p>Página: {selected.origin_page ?? selected.page_url ?? "—"}</p>
+                <p>Veio de (referrer): {selected.referrer_url ?? "—"}</p>
+                {(selected.utm_source || selected.utm_medium || selected.utm_campaign) && (
+                  <p>
+                    Campanha: {[selected.utm_source, selected.utm_medium, selected.utm_campaign]
+                      .filter(Boolean)
+                      .join(" / ")}
+                  </p>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-border">
+                <Label className="text-xs">
+                  Conversa completa
+                  {chatMessages.length > 0 && ` (${chatMessages.length} mensagens)`}
+                </Label>
+                {chatLoading ? (
+                  <p className="text-xs text-muted-foreground mt-1">Carregando…</p>
+                ) : chatMessages.length === 0 ? (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Sem histórico de chat associado a este lead.
+                  </p>
+                ) : (
+                  <div className="mt-1 max-h-56 overflow-y-auto rounded-md border border-border bg-muted/30 p-2 space-y-1.5">
+                    {chatMessages.map((m, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "text-xs rounded-md px-2 py-1.5",
+                          m.role === "user"
+                            ? "bg-primary/10"
+                            : "bg-card border border-border",
+                        )}
+                      >
+                        <span className="font-medium">
+                          {m.role === "user" ? "Cliente" : "Ledinho"}:
+                        </span>{" "}
+                        {m.content}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {selected.whatsapp_message && (
+                <div className="pt-2 border-t border-border">
+                  <Label className="text-xs">Mensagem enviada para o WhatsApp</Label>
+                  <p className="text-xs text-muted-foreground whitespace-pre-line mt-1 max-h-28 overflow-y-auto">
+                    {selected.whatsapp_message}
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border">
                 <div>
                   <Label>Status</Label>
