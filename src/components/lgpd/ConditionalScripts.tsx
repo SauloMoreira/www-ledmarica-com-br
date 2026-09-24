@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useCookieStore } from "@/stores/cookieStore";
 import { supabase } from "@/integrations/supabase/client";
-import { updateConsentMode } from "@/lib/tracking";
+import { getGtag, markGoogleTagsReady, updateConsentMode } from "@/lib/tracking";
 
 // Provedores do Google suportam Consent Mode v2: a tag pode (e deve) ser
 // carregada sempre, em toda visita — é o próprio Google quem decide, via
@@ -43,22 +43,35 @@ function inject(id: string, build: () => HTMLScriptElement) {
   document.head.appendChild(el);
 }
 
-function loadGa4(accountId: string) {
-  inject(`lm-ga-${accountId}`, () => {
+// `gtag('js')` deve rodar uma única vez por página; `config` uma vez por ID.
+// Os comandos são enfileirados ANTES do script carregar (padrão oficial do
+// Google): o gtag.js processa a fila quando termina de baixar.
+let gtagJsQueued = false;
+const configuredGoogleIds = new Set<string>();
+
+function configureGoogleTag(accountId: string, config?: Record<string, unknown>) {
+  if (configuredGoogleIds.has(accountId)) return;
+  const gtag = getGtag();
+  if (!gtagJsQueued) {
+    gtag("js", new Date());
+    gtagJsQueued = true;
+  }
+  gtag("config", accountId, config);
+  configuredGoogleIds.add(accountId);
+}
+
+function loadGtagScript(accountId: string, prefix: string) {
+  inject(`${prefix}-${accountId}`, () => {
     const s = document.createElement("script");
     s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(accountId)}`;
     s.async = true;
-    s.onload = () => {
-      window.dataLayer = window.dataLayer || [];
-      const gtag = (...args: any[]) => {
-        window.dataLayer!.push(args);
-      };
-      gtag("js", new Date());
-      gtag("config", accountId, { anonymize_ip: true, cookie_flags: "SameSite=None;Secure" });
-      window.gtag = window.gtag || gtag;
-    };
     return s;
   });
+}
+
+function loadGa4(accountId: string) {
+  configureGoogleTag(accountId, { cookie_flags: "SameSite=None;Secure" });
+  loadGtagScript(accountId, "lm-ga");
 }
 
 function loadGtm(accountId: string) {
@@ -94,21 +107,10 @@ function loadClarity(accountId: string) {
 }
 
 function loadGoogleAds(accountId: string) {
-  inject(`lm-gads-${accountId}`, () => {
-    const s = document.createElement("script");
-    s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(accountId)}`;
-    s.async = true;
-    s.onload = () => {
-      window.dataLayer = window.dataLayer || [];
-      const gtag = (...args: any[]) => {
-        window.dataLayer!.push(args);
-      };
-      gtag("js", new Date());
-      gtag("config", accountId);
-      window.gtag = window.gtag || gtag;
-    };
-    return s;
-  });
+  // allow_enhanced_conversions: habilita o envio do `user_data` (e-mail/telefone
+  // com hash) junto da conversão de compra — Conversões Otimizadas.
+  configureGoogleTag(accountId, { allow_enhanced_conversions: true });
+  loadGtagScript(accountId, "lm-gads");
 }
 
 function loadProvider(row: IntegrationRow) {
@@ -168,6 +170,7 @@ export function ConditionalScripts() {
       if (!GOOGLE_CONSENT_MODE_PROVIDERS.includes(row.provider)) continue;
       loadProvider(row);
     }
+    markGoogleTagsReady();
   }, [integrations]);
 
   // Demais provedores (Meta, TikTok, Clarity): continuam só carregando
