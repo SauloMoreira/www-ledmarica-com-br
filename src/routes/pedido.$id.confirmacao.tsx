@@ -26,7 +26,12 @@ import { getOrderForCustomer } from "@/server/orderTracking.functions";
 import { createMercadoPagoPreference } from "@/server/payment.functions";
 import { orderStatusLabel } from "@/lib/orderStatus";
 import { redirectToExternalCheckout } from "@/lib/externalCheckout";
-import { trackGoogleAdsPurchase } from "@/lib/tracking";
+import {
+  trackGoogleAdsPurchase,
+  trackPurchase,
+  takePendingConversionUserData,
+  whenGoogleTagsReady,
+} from "@/lib/tracking";
 import { buildSeo } from "@/lib/seo";
 
 const SearchSchema = z.object({
@@ -243,7 +248,7 @@ function OrderTrackingPage() {
     load(false);
   }, [user, loading, token, load, navigate]);
 
-  // Conversão "Compra" do Google Ads: só quando pagamento aprovado/pago,
+  // Conversão "Compra" (Google Ads + GA4 + Meta/TikTok): só com pagamento aprovado,
   // com deduplicação por pedido (localStorage) para não repetir em refresh.
   useEffect(() => {
     if (!order) return;
@@ -256,10 +261,25 @@ function OrderTrackingPage() {
     } catch {
       /* storage indisponível — tenta mesmo assim */
     }
-    trackGoogleAdsPurchase({
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      total: order.total,
+    const userData = takePendingConversionUserData(order.id);
+    const purchase = order;
+    void whenGoogleTagsReady().then(() => {
+      trackGoogleAdsPurchase({
+        orderId: purchase.id,
+        orderNumber: purchase.orderNumber,
+        total: purchase.total,
+        userData,
+      });
+      trackPurchase({
+        transactionId: String(purchase.orderNumber),
+        total: purchase.total,
+        items: purchase.items.map((it) => ({
+          id: it.id,
+          name: it.name,
+          qty: it.qty,
+          unitPrice: it.unitPrice,
+        })),
+      });
     });
   }, [order]);
 
