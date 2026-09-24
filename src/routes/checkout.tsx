@@ -38,7 +38,11 @@ import { createMercadoPagoPreference } from "@/server/payment.functions";
 import { getPublicCompanySettings } from "@/server/institutional.functions";
 import { useCartPricing, maskCnpj } from "@/hooks/useCartPricing";
 import { buildSeo } from "@/lib/seo";
-import { trackPurchase, trackBeginCheckout } from "@/lib/tracking";
+import {
+  trackAddPaymentInfo,
+  trackBeginCheckout,
+  savePendingConversionUserData,
+} from "@/lib/tracking";
 import { redirectToExternalCheckout } from "@/lib/externalCheckout";
 
 export const Route = createFileRoute("/checkout")({
@@ -537,7 +541,13 @@ function CheckoutPage() {
         },
       });
       if (r.ok) {
-        trackPurchase({ order_number: r.orderId, total: cart.subtotal(), items: cart.items });
+        // A compra só é registrada (GA4/Ads/Meta) na confirmação, com pagamento
+        // aprovado. Aqui: etapa de pagamento + dados p/ Conversões Otimizadas.
+        trackAddPaymentInfo(cart.subtotal(), cart.items.length);
+        savePendingConversionUserData(r.orderId, {
+          email: user?.email ?? null,
+          phone: (user?.user_metadata?.phone as string | undefined) ?? user?.phone ?? null,
+        });
         // Criar preference do Mercado Pago e redirecionar (mesma aba)
         try {
           const pref = await createMercadoPagoPreference({ data: { orderId: r.orderId } });
