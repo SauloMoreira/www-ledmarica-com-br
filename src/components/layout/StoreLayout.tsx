@@ -1,6 +1,7 @@
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { CartDrawer } from "@/components/store/CartDrawer";
+import { ShopperIdentifyDialog } from "@/components/store/ShopperIdentifyDialog";
 import { ChatWidgetLazy } from "@/components/store/ChatWidgetLazy";
 import { LgpdLayer } from "@/components/lgpd/LgpdLayer";
 import { Toaster } from "@/components/ui/sonner";
@@ -15,6 +16,7 @@ export function StoreLayout({ children }: { children: ReactNode }) {
       <main className="flex-1">{children}</main>
       <Footer />
       <CartDrawer />
+      <ShopperIdentifyDialog />
       <ChatWidgetLazy />
       <LgpdLayer />
       <Toaster position="top-right" richColors />

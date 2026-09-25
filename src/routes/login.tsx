@@ -17,14 +17,23 @@ import {
 } from "@/components/auth/AuthCard";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { checkLoginAttempt, recordAuthFailure } from "@/server/auth.functions";
+import { LoginCodeFlow } from "@/components/auth/LoginCodeFlow";
+import { useShopperIdentity } from "@/stores/shopperIdentity";
 
 import { buildSeo } from "@/lib/seo";
 import { translateAuthError } from "@/lib/authErrors";
 
 export const Route = createFileRoute("/login")({
   head: () => buildSeo({ title: "Entrar na sua conta", url: "/login", noindex: true }),
-  validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
-    typeof search.redirect === "string" ? { redirect: search.redirect } : {},
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { redirect?: string; modo?: "codigo" | "senha"; email?: string } => ({
+    ...(typeof search.redirect === "string" && search.redirect.startsWith("/")
+      ? { redirect: search.redirect }
+      : {}),
+    ...(search.modo === "codigo" || search.modo === "senha" ? { modo: search.modo } : {}),
+    ...(typeof search.email === "string" ? { email: search.email.slice(0, 180) } : {}),
+  }),
   beforeLoad: async ({ search }) => {
     const { data } = await supabase.auth.getSession();
     if (data.session) {
@@ -49,7 +58,12 @@ const schema = z.object({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { redirect: redirectTo } = Route.useSearch();
+  const { redirect: redirectTo, modo, email: emailParam } = Route.useSearch();
+  const identity = useShopperIdentity((s) => s.identity);
+  const [mode, setMode] = useState<"codigo" | "senha">(
+    modo ?? (redirectTo === "/checkout" || identity || emailParam ? "codigo" : "senha"),
+  );
+  const prefillEmail = emailParam ?? identity?.email ?? "";
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const [showPwd, setShowPwd] = useState(false);
@@ -117,51 +131,56 @@ function LoginPage() {
         return;
       }
 
-      // Verifica se a sessão precisa elevar para AAL2 (admin com TOTP cadastrado).
-      try {
-        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-        if (
-          aalData?.currentLevel === "aal1" &&
-          aalData?.nextLevel === "aal2"
-        ) {
-          toast.success("Confirme o código MFA para continuar.");
-          navigate({
-            to: "/mfa-challenge",
-            search: { redirect: redirectTo || undefined },
-          });
-          return;
-        }
-      } catch (e) {
-        console.warn("MFA AAL check failed:", e);
-      }
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role, status")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (profile?.status && profile.status !== "active") {
-        await supabase.auth.signOut();
-        const msg =
-          profile.status === "blocked"
-            ? "Sua conta está bloqueada. Entre em contato com o suporte."
-            : "Sua conta foi arquivada. Entre em contato com o suporte para reativá-la.";
-        showAuthError(msg);
-        return;
-      }
-
-      toast.success("Bem-vindo de volta!");
-      if (redirectTo) {
-        navigate({ to: redirectTo as never });
-      } else {
-        navigate({ to: profile?.role === "admin" ? "/admin" : "/conta" });
-      }
+      await finishLogin(userId);
     } catch (err) {
       console.error("Login error:", err);
       showAuthError(translateAuthError(err, "Erro inesperado ao entrar."));
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Pós-login comum (senha ou código): MFA de admin, status da conta e destino.
+  const finishLogin = async (userId: string) => {
+      // Verifica se a sessão precisa elevar para AAL2 (admin com TOTP cadastrado).
+    try {
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (
+        aalData?.currentLevel === "aal1" &&
+        aalData?.nextLevel === "aal2"
+      ) {
+        toast.success("Confirme o código MFA para continuar.");
+        navigate({
+          to: "/mfa-challenge",
+          search: { redirect: redirectTo || undefined },
+        });
+        return;
+      }
+    } catch (e) {
+      console.warn("MFA AAL check failed:", e);
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, status")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profile?.status && profile.status !== "active") {
+      await supabase.auth.signOut();
+      const msg =
+        profile.status === "blocked"
+          ? "Sua conta está bloqueada. Entre em contato com o suporte."
+          : "Sua conta foi arquivada. Entre em contato com o suporte para reativá-la.";
+      showAuthError(msg);
+      return;
+    }
+
+    toast.success("Bem-vindo de volta!");
+    if (redirectTo) {
+      navigate({ to: redirectTo as never });
+    } else {
+      navigate({ to: profile?.role === "admin" ? "/admin" : "/conta" });
     }
   };
 
@@ -197,8 +216,12 @@ function LoginPage() {
 
   return (
     <AuthCard
-      title="Bem-vindo de volta"
-      subtitle="Acesse sua conta para continuar"
+      title={mode === "codigo" ? "Entre sem senha" : "Bem-vindo de volta"}
+      subtitle={
+        mode === "codigo"
+          ? "Enviamos um código de acesso para o seu e-mail"
+          : "Acesse sua conta para continuar"
+      }
       footer={
         <p className="text-center text-[12px] mt-6" style={{ color: "#94A3B8" }}>
           Não tem conta?{" "}
@@ -208,6 +231,23 @@ function LoginPage() {
         </p>
       }
     >
+      {mode === "codigo" ? (
+        <>
+          <LoginCodeFlow
+            initialEmail={prefillEmail}
+            onSuccess={(userId) => finishLogin(userId)}
+          />
+          <button
+            type="button"
+            onClick={() => setMode("senha")}
+            className="mt-4 w-full text-center text-[12px] font-medium"
+            style={{ color: "#1A56DB" }}
+          >
+            Prefiro entrar com senha
+          </button>
+        </>
+      ) : (
+      <>
       <div role="form" onKeyDown={handleEnter}>
         {authError && (
           <Alert variant="destructive" className="mb-4">
@@ -267,7 +307,17 @@ function LoginPage() {
         <PrimaryButton type="button" loading={loading} onClick={() => void handleSubmit()}>
           {loading ? "Entrando..." : "Entrar"}
         </PrimaryButton>
+        <button
+          type="button"
+          onClick={() => setMode("codigo")}
+          className="mt-3 w-full text-center text-[12px] font-medium"
+          style={{ color: "#1A56DB" }}
+        >
+          Entrar sem senha (código por e-mail)
+        </button>
       </div>
+      </>
+      )}
 
       <Divider />
       <GoogleButton onClick={handleGoogle} />

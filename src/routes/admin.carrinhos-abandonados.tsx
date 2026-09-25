@@ -41,6 +41,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { renderTemplate, buildWhatsappUrl, type WhatsappTemplate } from "@/lib/whatsappTemplates";
 import { toast } from "sonner";
+import { LOSS_REASONS, lossReasonLabel, type LossReason } from "@/lib/lossReasons";
 
 export const Route = createFileRoute("/admin/carrinhos-abandonados")({
   component: AbandonedCartsPage,
@@ -291,6 +292,11 @@ function AbandonedCartsPage() {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full border ${si.color}`}>
                         {si.label}
                       </span>
+                      {lossReasonLabel((r as { loss_reason?: string | null }).loss_reason) && (
+                        <div className="mt-1 text-[10px] text-muted-foreground">
+                          Motivo: {lossReasonLabel((r as { loss_reason?: string | null }).loss_reason)}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
                       {elapsed(r.abandoned_at)}
@@ -378,7 +384,8 @@ function CartDetailDialog({
   }, [data]);
 
   const updMut = useMutation({
-    mutationFn: (patch: { status?: CartStatus; notes?: string }) => upd({ data: { id, ...patch } }),
+    mutationFn: (patch: { status?: CartStatus; notes?: string; loss_reason?: LossReason | null }) =>
+      upd({ data: { id, ...patch } }),
     onSuccess: () => {
       toast.success("Atualizado");
       qc.invalidateQueries({ queryKey: ["abandoned-carts"] });
@@ -469,6 +476,30 @@ function CartDetailDialog({
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div>
+              <Label className="text-xs" htmlFor="loss-reason">
+                Motivo da não conversão
+              </Label>
+              <select
+                id="loss-reason"
+                className="mt-1 w-full h-9 rounded-md border border-border bg-background px-2 text-sm"
+                value={(cart as { loss_reason?: string | null }).loss_reason ?? ""}
+                onChange={(e) =>
+                  updMut.mutate({ loss_reason: (e.target.value || null) as LossReason | null })
+                }
+              >
+                <option value="">Ainda não sabemos — pergunte no contato</option>
+                {LOSS_REASONS.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Registre o que o cliente respondeu. Isso mostra onde estamos perdendo vendas.
+              </p>
             </div>
 
             <div>

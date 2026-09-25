@@ -3,9 +3,10 @@
 // recuperação de carrinho abandonado por e-mail. NUNCA deve quebrar a
 // experiência de compra: qualquer falha aqui é engolida e logada.
 import { createServerFn } from "@tanstack/react-start";
-import { getCookie, getRequest, setCookie } from "@tanstack/react-start/server";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { peekCartSessionId, resolveCartSessionId } from "./cartSession.server";
 
 async function resolveOptionalUserId(): Promise<string | null> {
   try {
@@ -20,32 +21,6 @@ async function resolveOptionalUserId(): Promise<string | null> {
   } catch {
     return null;
   }
-}
-
-// ---------------------------------------------------------------------------
-// Sessão do carrinho de visitante: emitida e lida SOMENTE pelo servidor, via
-// cookie httpOnly. Antes o id vinha do client (localStorage) e era aceito como
-// estava — quem soubesse/forjasse o id de outro visitante podia apagar ou
-// trocar o carrinho dele (e o contato de recuperação). Agora o client não
-// escolhe nem lê o id: JS (inclusive um XSS) não tem acesso ao cookie, e um
-// sessionId enviado no body é ignorado.
-// ---------------------------------------------------------------------------
-const CART_SESSION_COOKIE = "lm_cart_sid";
-const CART_SESSION_MAX_AGE = 60 * 60 * 24 * 90; // 90 dias
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function resolveCartSessionId(): string {
-  const current = getCookie(CART_SESSION_COOKIE);
-  if (current && UUID_RE.test(current)) return current.toLowerCase();
-  const fresh = crypto.randomUUID();
-  setCookie(CART_SESSION_COOKIE, fresh, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: CART_SESSION_MAX_AGE,
-  });
-  return fresh;
 }
 
 const SyncInput = z.object({
@@ -84,6 +59,16 @@ export const syncCart = createServerFn({ method: "POST" })
       const filterVal = userId ?? sessionId!;
 
       await supabaseAdmin.from("cart_items").delete().eq(filterCol, filterVal);
+
+      // Visitante que acabou de entrar na conta: o carrinho passa a ser do
+      // usuário — remove a cópia antiga da sessão anônima para não gerar um
+      // segundo "carrinho abandonado" do mesmo cliente.
+      if (userId) {
+        const guestSession = peekCartSessionId();
+        if (guestSession) {
+          await supabaseAdmin.from("cart_items").delete().eq("session_id", guestSession);
+        }
+      }
 
       if (data.items.length > 0) {
         const rows = data.items.map((i) => ({

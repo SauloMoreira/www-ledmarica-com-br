@@ -213,7 +213,7 @@ export const chatWithAI = createServerFn({ method: "POST" })
           await supabaseAdmin.from("leads").insert({
             name: "Visitante do chat",
             origin: "chat",
-            status: "new",
+            status: "novo",
             interest: lastUser.content.slice(0, 200),
             notes: `chat:${data.sessionId}`,
           });

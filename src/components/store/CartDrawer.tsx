@@ -17,9 +17,14 @@ import { Button } from "@/components/ui/button";
 import { formatBRL } from "@/lib/domain";
 import { getCartBundlePreview } from "@/server/cartBundlePreview.functions";
 import { CartContactCapture } from "@/components/store/CartContactCapture";
+import { useShopperIdentity } from "@/stores/shopperIdentity";
+import { useAuth } from "@/hooks/useAuth";
 
 export function CartDrawer() {
   const cart = useCart();
+  const { user } = useAuth();
+  const identity = useShopperIdentity((s) => s.identity);
+  const openIdentify = useShopperIdentity((s) => s.openPrompt);
   const subtotal = cart.subtotal();
   const previewItems = cart.items.map((i) => ({ product_id: i.productId, qty: i.qty }));
   const { data: bundleRows } = useQuery({
@@ -222,13 +227,27 @@ export function CartDrawer() {
                       Entrega local em Maricá a partir de R$ 15
                     </span>
                   </div>
-                  <CartContactCapture />
+                  {!user && !identity && <CartContactCapture />}
                   {hasB2bIssue ? (
                     <Button className="w-full h-11" disabled>
                       Finalizar pedido
                     </Button>
                   ) : (
-                    <Button asChild className="w-full h-11" onClick={cart.close}>
+                    <Button
+                      asChild
+                      className="w-full h-11"
+                      onClick={(e) => {
+                        // Visitante ainda não identificado: pede nome/e-mail/WhatsApp
+                        // antes de seguir — é o que permite recuperar o carrinho.
+                        if (!user && !identity) {
+                          e.preventDefault();
+                          cart.close();
+                          openIdentify({ next: "/checkout" });
+                          return;
+                        }
+                        cart.close();
+                      }}
+                    >
                       <Link to="/checkout">Finalizar pedido</Link>
                     </Button>
                   )}

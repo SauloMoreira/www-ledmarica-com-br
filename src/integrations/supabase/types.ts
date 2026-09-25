@@ -30,12 +30,14 @@ export type Database = {
           last_activity_at: string | null
           last_contacted_at: string | null
           lead_id: string | null
+          loss_reason: string | null
           notes: string | null
           origin_context: string | null
           origin_page: string | null
           origin_path: string | null
           recovered_at: string | null
           recovery_attempts: number
+          session_id: string | null
           status: string
           subtotal_amount: number
           updated_at: string
@@ -61,12 +63,14 @@ export type Database = {
           last_activity_at?: string | null
           last_contacted_at?: string | null
           lead_id?: string | null
+          loss_reason?: string | null
           notes?: string | null
           origin_context?: string | null
           origin_page?: string | null
           origin_path?: string | null
           recovered_at?: string | null
           recovery_attempts?: number
+          session_id?: string | null
           status?: string
           subtotal_amount?: number
           updated_at?: string
@@ -92,12 +96,14 @@ export type Database = {
           last_activity_at?: string | null
           last_contacted_at?: string | null
           lead_id?: string | null
+          loss_reason?: string | null
           notes?: string | null
           origin_context?: string | null
           origin_page?: string | null
           origin_path?: string | null
           recovered_at?: string | null
           recovery_attempts?: number
+          session_id?: string | null
           status?: string
           subtotal_amount?: number
           updated_at?: string
@@ -112,26 +118,35 @@ export type Database = {
       }
       guest_cart_contacts: {
         Row: {
+          consent_at: string | null
           created_at: string
           email: string | null
+          lead_id: string | null
           name: string | null
           phone: string | null
           session_id: string
+          source: string | null
           updated_at: string
         }
         Insert: {
+          consent_at?: string | null
           created_at?: string
           email?: string | null
+          lead_id?: string | null
           name?: string | null
           phone?: string | null
+          source?: string | null
           session_id: string
           updated_at?: string
         }
         Update: {
+          consent_at?: string | null
           created_at?: string
           email?: string | null
+          lead_id?: string | null
           name?: string | null
           phone?: string | null
+          source?: string | null
           session_id?: string
           updated_at?: string
         }

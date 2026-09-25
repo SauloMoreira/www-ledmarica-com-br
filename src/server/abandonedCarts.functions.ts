@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { ilikePattern, sanitizeSearchTerm } from "@/lib/postgrestFilter";
+import { LOSS_REASON_VALUES, lossReasonLabel } from "@/lib/lossReasons";
 
 /**
  * Carrinhos abandonados — Fase 5.3
@@ -82,7 +83,7 @@ export const listAbandonedCarts = createServerFn({ method: "POST" })
     let q = supabaseAdmin
       .from("abandoned_carts")
       .select(
-        "id, status, customer_name, customer_email, customer_phone, company_id, company_name, subtotal_amount, items_count, abandoned_at, last_activity_at, last_contacted_at, recovery_attempts, recovered_at, converted_order_id, user_id, lead_id, origin_page, notes",
+        "id, status, customer_name, customer_email, customer_phone, company_id, company_name, subtotal_amount, items_count, abandoned_at, last_activity_at, last_contacted_at, recovery_attempts, recovered_at, converted_order_id, user_id, lead_id, origin_page, notes, loss_reason",
         { count: "exact" },
       )
       .order("abandoned_at", { ascending: false })
@@ -230,11 +231,13 @@ export const updateAbandonedCart = createServerFn({ method: "POST" })
         id: z.string().uuid(),
         status: z.enum(["novo", "contato_enviado", "recuperado", "perdido", "ignorado"]).optional(),
         notes: z.string().nullable().optional(),
+        loss_reason: z.enum(LOSS_REASON_VALUES).nullable().optional(),
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (data.loss_reason !== undefined) patch.loss_reason = data.loss_reason;
     if (data.status) {
       patch.status = data.status;
       if (data.status === "recuperado") patch.recovered_at = new Date().toISOString();
@@ -245,6 +248,21 @@ export const updateAbandonedCart = createServerFn({ method: "POST" })
       .update(patch as never)
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+
+    // Espelha o motivo no lead (Central de Comunicação), quando houver.
+    if (data.loss_reason !== undefined) {
+      const { data: cart } = await supabaseAdmin
+        .from("abandoned_carts")
+        .select("lead_id")
+        .eq("id", data.id)
+        .maybeSingle();
+      if (cart?.lead_id) {
+        await supabaseAdmin
+          .from("leads")
+          .update({ lost_reason: lossReasonLabel(data.loss_reason) } as never)
+          .eq("id", cart.lead_id);
+      }
+    }
     return { ok: true };
   });
 

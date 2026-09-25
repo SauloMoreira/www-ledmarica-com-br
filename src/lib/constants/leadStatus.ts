@@ -65,6 +65,7 @@ export const LEAD_ORIGIN_LABELS: Record<string, string> = {
   b2b_negotiation: "Negociação B2B",
   checkout: "Checkout incompleto",
   abandoned_cart: "Carrinho abandonado",
+  carrinho: "Carrinho (identificação)",
   produto: "Página de produto",
   campanha: "Campanha",
   outro: "Outro",

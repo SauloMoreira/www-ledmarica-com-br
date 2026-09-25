@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { StoreLayout } from "@/components/layout/StoreLayout";
+import { useShopperIdentity } from "@/stores/shopperIdentity";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -189,8 +190,14 @@ function CheckoutPage() {
   );
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
+    if (!loading && !user) navigate({ to: "/login", search: { redirect: "/checkout" } as never });
   }, [user, loading, navigate]);
+
+  // WhatsApp obrigatório para seguir no checkout: se o perfil ainda não tem,
+  // o diálogo de identificação pede (sem "Agora não"); se já tem, não aparece.
+  useEffect(() => {
+    if (!loading && user) useShopperIdentity.getState().openPrompt({ required: true });
+  }, [user, loading]);
 
   useEffect(() => {
     if (!loading && user && cart.items.length === 0) navigate({ to: "/carrinho" });
