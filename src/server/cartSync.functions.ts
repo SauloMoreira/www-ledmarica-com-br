@@ -23,6 +23,61 @@ async function resolveOptionalUserId(): Promise<string | null> {
   }
 }
 
+/**
+ * O carrinho abandonado registrado enquanto a pessoa era visitante passa a ser
+ * da conta dela: ganha user_id e nome/e-mail/WhatsApp do perfil, e o lead do
+ * contato do carrinho (se houver) fica ligado ao usuário. Só toca registros
+ * ainda sem dono e não convertidos — nunca reatribui carrinho de outra conta.
+ */
+async function linkGuestCartToUser(guestSession: string, userId: string): Promise<void> {
+  try {
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("name, email, phone")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const patch: Record<string, unknown> = { user_id: userId, updated_at: new Date().toISOString() };
+    if (profile?.email?.trim()) patch.customer_email = profile.email.trim();
+    if (profile?.name?.trim()) patch.customer_name = profile.name.trim();
+    if (profile?.phone?.trim()) patch.customer_phone = profile.phone.trim();
+
+    const { error } = await supabaseAdmin
+      .from("abandoned_carts")
+      .update(patch as never)
+      .eq("session_id", guestSession)
+      .is("user_id", null)
+      .is("converted_order_id", null);
+    if (error) console.warn("[cart] link abandoned cart error", error.message);
+
+    const { data: contact } = await supabaseAdmin
+      .from("guest_cart_contacts")
+      .select("lead_id")
+      .eq("session_id", guestSession)
+      .maybeSingle();
+    const leadId = (contact as { lead_id: string | null } | null)?.lead_id;
+    if (leadId) {
+      const { data: lead } = await supabaseAdmin
+        .from("leads")
+        .select("metadata")
+        .eq("id", leadId)
+        .maybeSingle();
+      const meta = ((lead as { metadata: Record<string, unknown> | null } | null)?.metadata ?? {}) as Record<
+        string,
+        unknown
+      >;
+      if (!meta.user_id) {
+        await supabaseAdmin
+          .from("leads")
+          .update({ metadata: { ...meta, user_id: userId } } as never)
+          .eq("id", leadId);
+      }
+    }
+  } catch (e) {
+    console.warn("[cart] linkGuestCartToUser exception", e instanceof Error ? e.message : e);
+  }
+}
+
 const SyncInput = z.object({
   // Mantido opcional só por compatibilidade com clients antigos em cache;
   // o valor é IGNORADO — a sessão vem do cookie httpOnly.
@@ -66,6 +121,7 @@ export const syncCart = createServerFn({ method: "POST" })
       if (userId) {
         const guestSession = peekCartSessionId();
         if (guestSession) {
+          await linkGuestCartToUser(guestSession, userId);
           await supabaseAdmin.from("cart_items").delete().eq("session_id", guestSession);
         }
       }
