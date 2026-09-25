@@ -43,6 +43,7 @@ import {
 } from "@/server/productImport.functions";
 import type { ImportRow, ImportAction } from "@/lib/productImport";
 import { countRows, parseTags } from "@/lib/productImport";
+import { neutralizeCsvFormula } from "@/lib/csvSafe";
 
 type SimResult = {
   plan: Array<{
@@ -288,7 +289,7 @@ function ImportacaoIaPage() {
     const body = commitResult.log
       .map(
         (l) =>
-          `${l.rowIndex},"${(l.sku ?? "").replace(/"/g, '""')}",${l.result},${l.productId ?? ""},"${(l.message ?? "").replace(/"/g, '""')}"`,
+          `${l.rowIndex},"${neutralizeCsvFormula(l.sku).replace(/"/g, '""')}",${l.result},${l.productId ?? ""},"${neutralizeCsvFormula(l.message).replace(/"/g, '""')}"`,
       )
       .join("\n");
     const blob = new Blob(["\uFEFF" + header + body], { type: "text/csv;charset=utf-8" });
