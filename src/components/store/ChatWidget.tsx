@@ -592,6 +592,7 @@ export function ChatWidget() {
           <div className="flex items-center gap-2 border-t border-border bg-card p-3">
             <input
               value={input}
+              maxLength={1500}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
