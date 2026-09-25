@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
+import { neutralizeCsvFormula } from "@/lib/csvSafe";
 
 /**
  * Onda Estoque Operacional 1A — funções de servidor.
@@ -320,7 +321,7 @@ export const getStockCountersForOps = createServerFn({ method: "GET" })
 
 function csvEscape(value: unknown): string {
   if (value === null || value === undefined) return "";
-  const s = String(value);
+  const s = neutralizeCsvFormula(value);
   if (/[",\n;]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }

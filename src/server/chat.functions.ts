@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getRequestHeader } from "@tanstack/react-start/server";
 import { enforceRateLimit, getClientIdentifier } from "@/server/security/rateLimit";
 
 interface ChatMessage {
@@ -8,9 +9,42 @@ interface ChatMessage {
 }
 
 interface ChatInput {
+  // O client ainda envia o histórico (compatibilidade), mas o servidor só usa
+  // a ÚLTIMA mensagem com role "user". O histórico enviado ao modelo é lido do
+  // banco (chat_messages), onde só o servidor grava respostas "assistant" —
+  // impede que alguém forje falas do assistente para manipular o bot.
   messages: ChatMessage[];
   sessionId: string;
+  /** Ignorado: o usuário é resolvido pelo token de sessão no servidor. */
   userId?: string | null;
+}
+
+const MAX_USER_MESSAGE_CHARS = 1500;
+const HISTORY_LIMIT = 20;
+const MAX_COMPLETION_TOKENS = 700;
+
+async function resolveOptionalUserId(): Promise<string | null> {
+  try {
+    const auth = getRequestHeader("authorization") || getRequestHeader("Authorization");
+    if (!auth || !auth.toLowerCase().startsWith("bearer ")) return null;
+    const { data } = await supabaseAdmin.auth.getUser(auth.slice(7).trim());
+    return data.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function loadServerHistory(sessionId: string): Promise<ChatMessage[]> {
+  const { data } = await supabaseAdmin
+    .from("chat_messages")
+    .select("role, content, created_at")
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: false })
+    .limit(HISTORY_LIMIT);
+  return (data ?? [])
+    .reverse()
+    .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .map((m) => ({ role: m.role as ChatMessage["role"], content: m.content.slice(0, 4000) }));
 }
 
 const SYSTEM_PROMPT = `Você é o assistente virtual da Led Maricá, loja de material elétrico e iluminação LED em Maricá/RJ.
@@ -80,38 +114,51 @@ function detectLeadIntent(text: string): boolean {
 export const chatWithAI = createServerFn({ method: "POST" })
   .inputValidator((input: ChatInput) => {
     if (!input || !Array.isArray(input.messages)) throw new Error("messages é obrigatório");
-    if (!input.sessionId || typeof input.sessionId !== "string")
+    if (
+      !input.sessionId ||
+      typeof input.sessionId !== "string" ||
+      input.sessionId.length < 8 ||
+      input.sessionId.length > 80
+    )
       throw new Error("sessionId é obrigatório");
-    if (input.messages.length > 30) input.messages = input.messages.slice(-30);
-    for (const m of input.messages) {
-      if (!m.content || m.content.length > 4000) throw new Error("Mensagem inválida");
-      if (m.role !== "user" && m.role !== "assistant") throw new Error("Role inválida");
-    }
-    return input;
+    const lastUser = [...input.messages].reverse().find((m) => m?.role === "user");
+    const content = typeof lastUser?.content === "string" ? lastUser.content.trim() : "";
+    if (!content) throw new Error("Mensagem inválida");
+    if (content.length > MAX_USER_MESSAGE_CHARS) throw new Error("Mensagem muito longa");
+    return { sessionId: input.sessionId, userMessage: content };
   })
   .handler(async ({ data }) => {
     const ip = getClientIdentifier();
-    // Rate limit: por sessão E por IP
+    // Rate limit em camadas — o chat é público por design (visitante anônimo),
+    // então o custo é contido por cotas, não por login:
+    //  1. por sessão (anti-loop de um mesmo navegador)
+    //  2. por IP, curto e diário (cf-connecting-ip, não forjável atrás do Cloudflare)
+    //  3. teto GLOBAL por hora — limita o gasto máximo com IA mesmo sob ataque
+    //     distribuído (muitos IPs/sessões).
     await enforceRateLimit(`session:${data.sessionId}`, "chat");
-    await enforceRateLimit(`ip:${ip}`, "chat", { maxAttempts: 60, windowSeconds: 5 * 60 });
+    await enforceRateLimit(`ip:${ip}`, "chat", { maxAttempts: 40, windowSeconds: 5 * 60 });
+    await enforceRateLimit(`ip-day:${ip}`, "chat", { maxAttempts: 150, windowSeconds: 24 * 60 * 60 });
+    await enforceRateLimit("global:chat", "chat", { maxAttempts: 1200, windowSeconds: 60 * 60 });
 
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) {
       return { reply: "Chat indisponível no momento.", error: "missing_key" };
     }
 
-    const lastUser = [...data.messages].reverse().find((m) => m.role === "user");
-    const catalog = await loadCatalogContext();
+    const userId = await resolveOptionalUserId();
+    const lastUser: ChatMessage = { role: "user", content: data.userMessage };
+    const [catalog, history] = await Promise.all([
+      loadCatalogContext(),
+      loadServerHistory(data.sessionId),
+    ]);
 
     // Persist user message
-    if (lastUser) {
-      await supabaseAdmin.from("chat_messages").insert({
-        role: "user",
-        content: lastUser.content,
-        session_id: data.sessionId,
-        user_id: data.userId ?? null,
-      });
-    }
+    await supabaseAdmin.from("chat_messages").insert({
+      role: "user",
+      content: lastUser.content,
+      session_id: data.sessionId,
+      user_id: userId,
+    });
 
     try {
       const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -122,7 +169,8 @@ export const chatWithAI = createServerFn({ method: "POST" })
         },
         body: JSON.stringify({
           model: "google/gemini-2.5-flash",
-          messages: [{ role: "system", content: SYSTEM_PROMPT + catalog }, ...data.messages],
+          max_tokens: MAX_COMPLETION_TOKENS,
+          messages: [{ role: "system", content: SYSTEM_PROMPT + catalog }, ...history, lastUser],
         }),
       });
 
@@ -149,13 +197,13 @@ export const chatWithAI = createServerFn({ method: "POST" })
           role: "assistant",
           content: reply,
           session_id: data.sessionId,
-          user_id: data.userId ?? null,
+          user_id: userId,
         });
       }
 
       // Lead capture: if intent detected, create a lead stub (admin can follow up)
       let leadCaptured = false;
-      if (lastUser && detectLeadIntent(lastUser.content)) {
+      if (detectLeadIntent(lastUser.content)) {
         const { data: existing } = await supabaseAdmin
           .from("leads")
           .select("id")

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { normalizeSearch } from "@/lib/searchNormalize";
+import { ilikePattern, sanitizeSearchTerm } from "@/lib/postgrestFilter";
 
 const PER_GROUP = 5;
 
@@ -39,7 +40,7 @@ function maskCnpj(v?: string | null) {
 
 function escapeIlike(term: string) {
   // escape % and _ and , for PostgREST or() expression
-  return term.replace(/[\\%_,()]/g, " ").trim();
+  return sanitizeSearchTerm(term);
 }
 
 export const adminGlobalSearch = createServerFn({ method: "POST" })

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
+import { neutralizeCsvFormula } from "@/lib/csvSafe";
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -1005,7 +1006,7 @@ export const getShippingReport = createServerFn({ method: "POST" })
 
 function csvEscape(s: unknown): string {
   if (s == null) return "";
-  const v = String(s);
+  const v = neutralizeCsvFormula(s);
   if (v.includes(";") || v.includes('"') || v.includes("\n")) {
     return `"${v.replace(/"/g, '""')}"`;
   }

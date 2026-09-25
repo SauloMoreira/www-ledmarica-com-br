@@ -125,8 +125,8 @@ export const adminListUsers = createServerFn({ method: "POST" })
       if (data.filter === "active") q = q.eq("status", "active");
 
       if (term) {
-        const s = `%${term}%`;
-        q = q.or(`name.ilike.${s},email.ilike.${s},phone.ilike.${s}`);
+        const s = ilikePattern(term);
+        if (s) q = q.or(`name.ilike.${s},email.ilike.${s},phone.ilike.${s}`);
       }
       return q.returns<Record<string, unknown>[]>() as never;
     });
@@ -592,6 +592,7 @@ export const adminSendPasswordReset = createServerFn({ method: "POST" })
 // ============================================================
 
 import { assertAal2 } from "./security/assertAdmin";
+import { ilikePattern, sanitizeSearchTerm } from "@/lib/postgrestFilter";
 
 const roleInput = z.object({
   user_id: z.string().uuid(),

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
+import { neutralizeCsvFormula } from "@/lib/csvSafe";
 
 /**
  * Server functions da área Financeiro & Fiscal > Impostos.
@@ -254,7 +255,7 @@ const ExportInput = ListInput.omit({ page: true, pageSize: true });
 
 function csvEscape(v: unknown): string {
   if (v == null) return "";
-  const s = String(v);
+  const s = neutralizeCsvFormula(v);
   if (/[",\n;]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
   return s;
 }

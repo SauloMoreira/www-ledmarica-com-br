@@ -7,6 +7,7 @@ import {
   type CommercialReviewResult,
   type CommercialStatus,
 } from "@/lib/commercialReview";
+import { neutralizeCsvFormula } from "@/lib/csvSafe";
 
 /**
  * Revisão Comercial — Onda 1 + Onda 2.
@@ -574,7 +575,7 @@ export const getCommercialReviewFilterOptions = createServerFn({ method: "GET" }
 
 function csvEscape(v: string | number | null | undefined): string {
   if (v == null) return "";
-  const s = String(v);
+  const s = neutralizeCsvFormula(v);
   if (/[",\n;]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }

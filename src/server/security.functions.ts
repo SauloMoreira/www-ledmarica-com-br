@@ -3,6 +3,8 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { fetchAllRows } from "@/lib/fetchAllRows";
+import { neutralizeCsvFormula } from "@/lib/csvSafe";
+import { ilikePattern, sanitizeSearchTerm } from "@/lib/postgrestFilter";
 
 /**
  * Painel resumido da Central de Segurança.
@@ -212,7 +214,7 @@ export const searchAdminAuditLog = createServerFn({ method: "POST" })
     if (data.action) q = q.eq("action", data.action);
     if (data.adminId) q = q.eq("admin_id", data.adminId);
     if (data.search && data.search.trim()) {
-      const term = data.search.trim().replace(/%/g, "");
+      const term = sanitizeSearchTerm(data.search);
       q = q.or(
         `description.ilike.%${term}%,admin_email.ilike.%${term}%,resource_id.ilike.%${term}%`,
       );
@@ -308,7 +310,7 @@ export const exportAdminAuditCsv = createServerFn({ method: "POST" })
       if (data.action) q = q.eq("action", data.action);
       if (data.adminId) q = q.eq("admin_id", data.adminId);
       if (data.search && data.search.trim()) {
-        const term = data.search.trim().replace(/%/g, "");
+        const term = sanitizeSearchTerm(data.search);
         q = q.or(
           `description.ilike.%${term}%,admin_email.ilike.%${term}%,resource_id.ilike.%${term}%`,
         );
@@ -319,7 +321,7 @@ export const exportAdminAuditCsv = createServerFn({ method: "POST" })
 
     const escape = (v: unknown) => {
       if (v === null || v === undefined) return "";
-      const s = String(v).replace(/"/g, '""');
+      const s = neutralizeCsvFormula(v).replace(/"/g, '""');
       return /[",\n;]/.test(s) ? `"${s}"` : s;
     };
     const header = [

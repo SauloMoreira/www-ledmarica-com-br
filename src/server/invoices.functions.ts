@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
+import { sanitizeSearchTerm } from "@/lib/postgrestFilter";
 
 export type InvoiceStatus =
   | "nao_necessaria"
@@ -128,14 +129,14 @@ export const listInvoices = createServerFn({ method: "POST" })
       q = q.in("invoice_status", ["pendente_emissao"]).lt("paid_at", stale24h);
     }
     if (data.search) {
-      const s = data.search.trim();
+      const s = sanitizeSearchTerm(data.search, 80);
       const orParts: string[] = [];
       if (/^\d+$/.test(s)) orParts.push(`order_number.eq.${s}`);
       orParts.push(`invoice_number.ilike.%${s}%`);
       orParts.push(`invoice_access_key.ilike.%${s}%`);
       orParts.push(`company_legal_name.ilike.%${s}%`);
       orParts.push(`company_cnpj.ilike.%${s}%`);
-      q = q.or(orParts.join(","));
+      if (s) q = q.or(orParts.join(","));
     }
 
     const from = (data.page - 1) * data.pageSize;

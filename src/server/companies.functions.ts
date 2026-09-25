@@ -6,6 +6,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isValidCNPJ, onlyDigits } from "@/lib/cnpj";
 import { decideAutoApproval, lookupCnpj } from "./cnpjLookup";
 import { fetchAllRows } from "@/lib/fetchAllRows";
+import { ilikePattern, sanitizeSearchTerm } from "@/lib/postgrestFilter";
 
 const cnpjSchema = z
   .string()
@@ -31,6 +32,49 @@ const createCompanyInput = z.object({
   address_state: z.string().trim().max(2).optional().nullable(),
 });
 
+// Provedores de e-mail gratuitos: domínio igual NÃO prova vínculo com a empresa.
+const FREE_EMAIL_DOMAINS = new Set([
+  "gmail.com", "googlemail.com", "hotmail.com", "hotmail.com.br", "outlook.com",
+  "outlook.com.br", "live.com", "msn.com", "yahoo.com", "yahoo.com.br", "icloud.com",
+  "me.com", "bol.com.br", "uol.com.br", "terra.com.br", "ig.com.br", "globo.com",
+  "globomail.com", "zipmail.com.br", "protonmail.com", "proton.me", "aol.com",
+]);
+
+function emailDomain(email: string): string {
+  return email.split("@")[1]?.trim().toLowerCase() ?? "";
+}
+
+async function checkCnpjOwnership(
+  userId: string,
+  info: Awaited<ReturnType<typeof lookupCnpj>>,
+): Promise<{ ok: boolean; reason: string }> {
+  if (!info.ok) return { ok: false, reason: "Receita indisponível — revisão manual" };
+  const receitaEmail = String((info.raw as Record<string, unknown>).email ?? "")
+    .trim()
+    .toLowerCase();
+  if (!receitaEmail || !receitaEmail.includes("@")) {
+    return { ok: false, reason: "CNPJ sem e-mail na Receita — revisão manual" };
+  }
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+  const user = data?.user;
+  if (error || !user?.email) return { ok: false, reason: "Conta sem e-mail — revisão manual" };
+  if (!user.email_confirmed_at) {
+    return { ok: false, reason: "E-mail da conta não confirmado — revisão manual" };
+  }
+  const accountEmail = user.email.trim().toLowerCase();
+  if (accountEmail === receitaEmail) {
+    return { ok: true, reason: "E-mail da conta = e-mail do CNPJ na Receita" };
+  }
+  const domain = emailDomain(accountEmail);
+  if (domain && !FREE_EMAIL_DOMAINS.has(domain) && domain === emailDomain(receitaEmail)) {
+    return { ok: true, reason: `Domínio corporativo confere (${domain})` };
+  }
+  return {
+    ok: false,
+    reason: "E-mail da conta não confere com o e-mail do CNPJ na Receita — revisão manual",
+  };
+}
+
 export const createCompany = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => createCompanyInput.parse(data))
@@ -53,7 +97,16 @@ export const createCompany = createServerFn({ method: "POST" })
     const cnpjInfo = await lookupCnpj(data.cnpj);
     const decision = decideAutoApproval(cnpjInfo);
 
-    const autoApproved = decision.approve;
+    // Anti-apropriação de CNPJ: CNPJ ativo na Receita prova que a EMPRESA
+    // existe, não que QUEM está cadastrando é dela. Sem este vínculo, qualquer
+    // usuário logado podia cadastrar o CNPJ de outra empresa (ainda não
+    // cadastrada aqui), ser aprovado na hora e comprar com preço de atacado.
+    // Aprovação automática agora exige que o e-mail da CONTA logada (verificado
+    // pelo Supabase Auth, não o digitado no formulário) bata com o e-mail do
+    // CNPJ na Receita — mesmo endereço, ou mesmo domínio corporativo. Caso
+    // contrário: pendente, para aprovação manual no admin.
+    const ownership = await checkCnpjOwnership(userId, cnpjInfo);
+    const autoApproved = decision.approve && ownership.ok;
     const adminNoteParts: string[] = [];
     if (cnpjInfo.ok) {
       adminNoteParts.push(
@@ -63,6 +116,7 @@ export const createCompany = createServerFn({ method: "POST" })
       adminNoteParts.push(`ReceitaWS indisponível: ${cnpjInfo.reason}`);
     }
     adminNoteParts.push(`Auto-aprovação: ${decision.reason}`);
+    adminNoteParts.push(`Titularidade: ${ownership.reason}`);
 
     // Insere empresa via admin (auth já validada pelo middleware).
     const { data: company, error } = await supabaseAdmin
@@ -108,7 +162,11 @@ export const createCompany = createServerFn({ method: "POST" })
       throw new Error("Falha ao vincular usuário à empresa: " + linkErr.message);
     }
 
-    return { id: company.id, auto_approved: autoApproved, reason: decision.reason };
+    return {
+      id: company.id,
+      auto_approved: autoApproved,
+      reason: autoApproved ? decision.reason : !decision.approve ? decision.reason : ownership.reason,
+    };
   });
 
 export const getMyCompany = createServerFn({ method: "GET" })
@@ -262,8 +320,8 @@ export const adminListCompanies = createServerFn({ method: "POST" })
         .range(from, to);
       if (data.status) q = q.eq("status", data.status);
       if (data.search && data.search.trim()) {
-        const s = `%${data.search.trim()}%`;
-        q = q.or(`legal_name.ilike.${s},trade_name.ilike.${s},cnpj.ilike.${s}`);
+        const s = ilikePattern(data.search);
+        if (s) q = q.or(`legal_name.ilike.${s},trade_name.ilike.${s},cnpj.ilike.${s}`);
       }
       return q;
     });

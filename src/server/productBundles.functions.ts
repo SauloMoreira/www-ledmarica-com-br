@@ -8,6 +8,7 @@ import {
   type KitPricingMethod,
   type KitB2bPricingMethod,
 } from "@/lib/kitPricing";
+import { ilikePattern, sanitizeSearchTerm } from "@/lib/postgrestFilter";
 
 // ----------------------------------------------------------------------------
 // Tipos compartilhados
@@ -760,7 +761,7 @@ export const adminSearchProductsForBundle = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireAdmin();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const term = `%${data.query.replace(/[%_]/g, "\\$&")}%`;
+    const term = ilikePattern(data.query) || "%";
     const { data: rows, error } = await supabaseAdmin
       .from("products")
       .select("id, name, slug, sku, brand, active, images, price, sale_price, stock_qty")

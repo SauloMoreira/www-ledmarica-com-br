@@ -3,7 +3,7 @@
 // recuperação de carrinho abandonado por e-mail. NUNCA deve quebrar a
 // experiência de compra: qualquer falha aqui é engolida e logada.
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
+import { getCookie, getRequest, setCookie } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
@@ -22,8 +22,36 @@ async function resolveOptionalUserId(): Promise<string | null> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Sessão do carrinho de visitante: emitida e lida SOMENTE pelo servidor, via
+// cookie httpOnly. Antes o id vinha do client (localStorage) e era aceito como
+// estava — quem soubesse/forjasse o id de outro visitante podia apagar ou
+// trocar o carrinho dele (e o contato de recuperação). Agora o client não
+// escolhe nem lê o id: JS (inclusive um XSS) não tem acesso ao cookie, e um
+// sessionId enviado no body é ignorado.
+// ---------------------------------------------------------------------------
+const CART_SESSION_COOKIE = "lm_cart_sid";
+const CART_SESSION_MAX_AGE = 60 * 60 * 24 * 90; // 90 dias
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function resolveCartSessionId(): string {
+  const current = getCookie(CART_SESSION_COOKIE);
+  if (current && UUID_RE.test(current)) return current.toLowerCase();
+  const fresh = crypto.randomUUID();
+  setCookie(CART_SESSION_COOKIE, fresh, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: CART_SESSION_MAX_AGE,
+  });
+  return fresh;
+}
+
 const SyncInput = z.object({
-  sessionId: z.string().min(8).max(80),
+  // Mantido opcional só por compatibilidade com clients antigos em cache;
+  // o valor é IGNORADO — a sessão vem do cookie httpOnly.
+  sessionId: z.string().max(80).optional(),
   items: z
     .array(z.object({ productId: z.string().uuid(), qty: z.number().int().min(1).max(9999) }))
     .max(200),
@@ -31,7 +59,7 @@ const SyncInput = z.object({
 
 const ContactInput = z
   .object({
-    sessionId: z.string().min(8).max(80),
+    sessionId: z.string().max(80).optional(), // ignorado (ver resolveCartSessionId)
     name: z.string().trim().max(120).optional(),
     email: z.string().trim().email().max(180).optional(),
     phone: z.string().trim().min(10).max(13).optional(),
@@ -52,14 +80,15 @@ export const syncCart = createServerFn({ method: "POST" })
     try {
       const userId = await resolveOptionalUserId();
       const filterCol = userId ? "user_id" : "session_id";
-      const filterVal = userId ?? data.sessionId;
+      const sessionId = userId ? null : resolveCartSessionId();
+      const filterVal = userId ?? sessionId!;
 
       await supabaseAdmin.from("cart_items").delete().eq(filterCol, filterVal);
 
       if (data.items.length > 0) {
         const rows = data.items.map((i) => ({
           user_id: userId,
-          session_id: userId ? null : data.sessionId,
+          session_id: sessionId,
           product_id: i.productId,
           qty: i.qty,
         }));
@@ -85,9 +114,10 @@ export const saveCartContact = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ContactInput.parse(input))
   .handler(async ({ data }) => {
     try {
+      const sessionId = resolveCartSessionId();
       const { error } = await supabaseAdmin.from("guest_cart_contacts").upsert(
         {
-          session_id: data.sessionId,
+          session_id: sessionId,
           name: data.name || null,
           email: data.email || null,
           phone: data.phone || null,

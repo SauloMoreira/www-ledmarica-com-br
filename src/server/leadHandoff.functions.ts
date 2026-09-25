@@ -93,7 +93,12 @@ async function getStoreWhatsapp(): Promise<string> {
 
 export const requestHumanHandoff = createServerFn({ method: "POST" })
   .inputValidator((input: HandoffInput) => {
-    if (!input?.sessionId || typeof input.sessionId !== "string") {
+    if (
+      !input?.sessionId ||
+      typeof input.sessionId !== "string" ||
+      input.sessionId.length < 8 ||
+      input.sessionId.length > 80
+    ) {
       throw new Error("sessionId obrigatório");
     }
     return {
@@ -141,7 +146,11 @@ export const requestHumanHandoff = createServerFn({ method: "POST" })
     // copiar número, copiar mensagem e ligar.
     const whatsappUrl = `https://wa.me/${storeWhats}?text=${encodeURIComponent(whatsappText)}`;
 
-    // Deduplicação: lead com mesmo telefone nas últimas 24h
+    // Deduplicação: só reaproveita um lead das últimas 24h se ele for do MESMO
+    // telefone E da MESMA sessão de chat. Antes bastava o telefone — qualquer
+    // pessoa que digitasse o número de outro cliente sobrescrevia o nome, o
+    // resumo e a mensagem do lead dele. Sessão diferente => lead novo (a
+    // equipe vê os dois e decide), nunca reescrita de dados de terceiros.
     let leadId: string | null = null;
     let leadError: string | null = null;
     try {
@@ -150,6 +159,7 @@ export const requestHumanHandoff = createServerFn({ method: "POST" })
         .from("leads")
         .select("id")
         .eq("phone", data.phone)
+        .eq("notes", `chat:${data.sessionId}`)
         .gte("created_at", since)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -189,7 +199,10 @@ export const requestHumanHandoff = createServerFn({ method: "POST" })
       };
 
       if (existing?.id) {
-        await supabaseAdmin.from("leads").update(payload).eq("id", existing.id);
+        // Não rebaixa o status: se a equipe já está atendendo, o lead não
+        // volta para "novo" só porque o cliente clicou de novo.
+        const { status: _status, ...updatePayload } = payload;
+        await supabaseAdmin.from("leads").update(updatePayload).eq("id", existing.id);
         leadId = existing.id;
       } else {
         const { data: created } = await supabaseAdmin

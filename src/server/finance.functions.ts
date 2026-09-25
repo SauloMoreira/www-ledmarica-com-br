@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { fetchAllRows } from "@/lib/fetchAllRows";
+import { ilikePattern, sanitizeSearchTerm } from "@/lib/postgrestFilter";
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -335,8 +336,8 @@ export const getFinanceMargin = createServerFn({ method: "POST" })
       .order("name", { ascending: true });
 
     if (data.search && data.search.trim()) {
-      const s = `%${data.search.trim()}%`;
-      q = q.or(`name.ilike.${s},sku.ilike.${s}`);
+      const s = ilikePattern(data.search);
+      if (s) q = q.or(`name.ilike.${s},sku.ilike.${s}`);
     }
 
     const fromIdx = (data.page - 1) * data.pageSize;

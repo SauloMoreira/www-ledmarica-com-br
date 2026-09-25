@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
+import { neutralizeCsvFormula } from "@/lib/csvSafe";
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -878,7 +879,7 @@ export const getAttributionQuality = createServerFn({ method: "POST" })
 
 function csvEscape(v: unknown): string {
   if (v == null) return "";
-  const s = String(v);
+  const s = neutralizeCsvFormula(v);
   if (/[",\n;]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }

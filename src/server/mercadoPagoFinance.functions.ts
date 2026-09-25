@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { fetchAllRows } from "@/lib/fetchAllRows";
+import { ilikePattern, sanitizeSearchTerm } from "@/lib/postgrestFilter";
 
 export type MpOverview = {
   rangeFrom: string;
@@ -154,8 +155,8 @@ export const listMpPayments = createServerFn({ method: "POST" })
     }
     if (data.source !== "all") q = q.eq("payment_fee_source", data.source);
     if (data.search) {
-      const s = `%${data.search}%`;
-      q = q.or(`mp_payment_id.ilike.${s},customer_email.ilike.${s}`);
+      const s = ilikePattern(data.search);
+      if (s) q = q.or(`mp_payment_id.ilike.${s},customer_email.ilike.${s}`);
     }
 
     const offset = (data.page - 1) * data.pageSize;

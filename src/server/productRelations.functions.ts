@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { ilikePattern, sanitizeSearchTerm } from "@/lib/postgrestFilter";
 
 export const RELATION_TYPES = [
   "related",
@@ -272,7 +273,7 @@ export const adminSearchProductsForRelation = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireAdmin();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const term = `%${data.query.replace(/[%_]/g, "\\$&")}%`;
+    const term = ilikePattern(data.query) || "%";
     let q = supabaseAdmin
       .from("products")
       .select("id, name, slug, sku, brand, active, images, price, sale_price")

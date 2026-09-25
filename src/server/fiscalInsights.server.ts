@@ -3,6 +3,7 @@
  * Importado dinamicamente para não vazar `client.server` no bundle do cliente.
  */
 import { fetchAllRows } from "@/lib/fetchAllRows";
+import { ilikePattern, sanitizeSearchTerm } from "@/lib/postgrestFilter";
 
 
 
@@ -305,7 +306,7 @@ export async function fetchFiscalProducts(
   // search
   const s = (input.search ?? "").trim();
   if (s) {
-    const escaped = s.replace(/[%,]/g, " ").slice(0, 80);
+    const escaped = sanitizeSearchTerm(s, 80);
     q = q.or(
       `name.ilike.%${escaped}%,sku.ilike.%${escaped}%,ncm.ilike.%${escaped}%,gtin_ean.ilike.%${escaped}%`,
     );

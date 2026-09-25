@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { ilikePattern, sanitizeSearchTerm } from "@/lib/postgrestFilter";
 
 /**
  * Carrinhos abandonados — Fase 5.3
@@ -97,7 +98,7 @@ export const listAbandonedCarts = createServerFn({ method: "POST" })
     if (data.isB2B === true) q = q.not("company_id", "is", null);
     if (data.isB2B === false) q = q.is("company_id", null);
     if (data.search && data.search.trim()) {
-      const s = `%${data.search.trim()}%`;
+      const s = ilikePattern(data.search) || "%";
       q = q.or(
         `customer_name.ilike.${s},customer_email.ilike.${s},customer_phone.ilike.${s},company_name.ilike.${s}`,
       );
