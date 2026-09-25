@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  CalendarClock,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -39,8 +40,20 @@ import {
   leadOriginLabel,
 } from "@/lib/constants/leadStatus";
 import { cn } from "@/lib/utils";
+import {
+  LeadContactPanel,
+  isFollowUpDue,
+  type LeadPatch,
+} from "@/components/admin/leads/LeadContactPanel";
 
-const SORT_VALUES = ["created_desc", "created_asc", "name_asc", "status", "value_desc"] as const;
+const SORT_VALUES = [
+  "created_desc",
+  "created_asc",
+  "name_asc",
+  "status",
+  "value_desc",
+  "followup",
+] as const;
 
 const searchSchema = z.object({
   view: fallback(z.enum(["kanban", "list"]), "kanban").default("kanban"),
@@ -49,6 +62,7 @@ const searchSchema = z.object({
   origin: fallback(z.string(), "all").default("all"),
   interest: fallback(z.string(), "all").default("all"),
   q: fallback(z.string(), "").default(""),
+  due: fallback(z.boolean(), false).default(false),
   page: fallback(z.number().int().min(1), 1).default(1),
   pageSize: fallback(z.number().int().min(1).max(100), 20).default(20),
 });
@@ -192,6 +206,7 @@ function LeadsPage() {
     .filter((l) => {
       if (filterOrigin !== "all" && (l.origin ?? "") !== filterOrigin) return false;
       if (filterInterest !== "all" && (l.interest ?? "") !== filterInterest) return false;
+      if (sp.due && !isFollowUpDue(l.next_action_at)) return false;
       if (search.trim()) {
         const q = norm(search.trim());
         const hay = norm(`${l.name ?? ""} ${l.company ?? ""}`);
@@ -209,6 +224,12 @@ function LeadsPage() {
           return (STATUS_ORDER[a.status ?? "new"] ?? 99) - (STATUS_ORDER[b.status ?? "new"] ?? 99);
         case "value_desc":
           return (Number(b.estimated_value) || 0) - (Number(a.estimated_value) || 0);
+        case "followup": {
+          // Retornos marcados primeiro (mais antigos/atrasados no topo); sem retorno por último.
+          const ta = a.next_action_at ? new Date(a.next_action_at).getTime() : Infinity;
+          const tb = b.next_action_at ? new Date(b.next_action_at).getTime() : Infinity;
+          return ta - tb;
+        }
         case "created_desc":
         default:
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -225,10 +246,14 @@ function LeadsPage() {
   const pagedLeads = filteredLeads.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const hasActiveFilters =
-    !!search.trim() || filterOrigin !== "all" || filterInterest !== "all" || !!filterStatus;
+    !!search.trim() ||
+    filterOrigin !== "all" ||
+    filterInterest !== "all" ||
+    !!filterStatus ||
+    sp.due;
 
   const clearFilters = () => {
-    updateSearch({ q: "", origin: "all", interest: "all", status: "", page: 1 });
+    updateSearch({ q: "", origin: "all", interest: "all", status: "", due: false, page: 1 });
   };
 
   const openDetail = (l: any) => {
@@ -279,6 +304,17 @@ function LeadsPage() {
     if (error) return toast.error(error.message);
     load();
   };
+
+  // Atualização otimista vinda da central de comunicação (sem recarregar a lista).
+  const applyLeadPatch = (id: string, patch: LeadPatch) => {
+    setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+    setSelected((prev: any) => (prev && prev.id === id ? { ...prev, ...patch } : prev));
+    if (patch.status) {
+      setEdit((prev) => ({ ...prev, status: normalizeLeadStatus(patch.status) }));
+    }
+  };
+
+  const dueCount = leads.filter((l) => isFollowUpDue(l.next_action_at)).length;
 
   const updateStatus = async (id: string, status: Status) => {
     const { error } = await supabase.from("leads").update({ status }).eq("id", id);
@@ -398,7 +434,26 @@ function LeadsPage() {
               <option value="name_asc">Nome (A–Z)</option>
               <option value="status">Status</option>
               <option value="value_desc">Maior valor</option>
+              <option value="followup">Próximo retorno</option>
             </select>
+
+            <button
+              type="button"
+              aria-pressed={sp.due}
+              onClick={() => updateSearch({ due: !sp.due, page: 1 })}
+              className={cn(
+                "inline-flex items-center gap-1.5 h-9 rounded-md border px-3 text-xs font-medium transition-colors",
+                sp.due
+                  ? "border-amber-500/50 bg-amber-500/15 text-amber-800"
+                  : dueCount > 0
+                    ? "border-amber-500/40 text-amber-800 hover:bg-amber-500/10"
+                    : "border-input text-muted-foreground hover:bg-muted",
+              )}
+            >
+              <CalendarClock className="w-3.5 h-3.5" aria-hidden />
+              Retornar hoje
+              <span className="rounded bg-background/70 px-1 tabular-nums">{dueCount}</span>
+            </button>
 
             <span className="text-xs text-muted-foreground ml-auto">
               {filteredLeads.length} de {leads.length} {leads.length === 1 ? "lead" : "leads"}
@@ -473,7 +528,17 @@ function LeadsPage() {
                           onClick={() => openDetail(l)}
                           className="bg-card border border-border rounded-md p-2.5 cursor-grab active:cursor-grabbing hover:border-primary/50 hover:shadow-sm transition-all"
                         >
-                          <div className="font-medium text-sm truncate">{l.name}</div>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="font-medium text-sm truncate">{l.name}</div>
+                            {isFollowUpDue(l.next_action_at) && (
+                              <span
+                                title={l.next_action ?? "Retornar contato"}
+                                className="inline-flex shrink-0 items-center gap-0.5 rounded border border-amber-500/40 bg-amber-500/10 px-1 text-[10px] font-medium text-amber-800"
+                              >
+                                <CalendarClock className="w-3 h-3" aria-hidden /> Hoje
+                              </span>
+                            )}
+                          </div>
                           {l.company && (
                             <div className="text-xs text-muted-foreground truncate">
                               {l.company}
@@ -566,7 +631,14 @@ function LeadsPage() {
                     <td className="px-4 py-3 text-xs">{leadOriginLabel(l.origin)}</td>
                     <td className="px-4 py-3 text-xs max-w-xs truncate">{l.interest ?? "—"}</td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={l.status} />
+                      <div className="flex flex-col items-start gap-1">
+                        <StatusBadge status={l.status} />
+                        {isFollowUpDue(l.next_action_at) && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-800">
+                            <CalendarClock className="w-3 h-3" aria-hidden /> Retornar hoje
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-xs">
                       {new Date(l.created_at).toLocaleDateString("pt-BR")}
@@ -673,6 +745,12 @@ function LeadsPage() {
                 </div>
               )}
 
+              <LeadContactPanel
+                key={selected.id}
+                lead={selected}
+                onChanged={(patch) => applyLeadPatch(selected.id, patch)}
+              />
+
               {(selected.conversation_summary ||
                 selected.last_user_message ||
                 selected.product_name ||
@@ -706,7 +784,8 @@ function LeadsPage() {
                 <p>Veio de (referrer): {selected.referrer_url ?? "—"}</p>
                 {(selected.utm_source || selected.utm_medium || selected.utm_campaign) && (
                   <p>
-                    Campanha: {[selected.utm_source, selected.utm_medium, selected.utm_campaign]
+                    Campanha:{" "}
+                    {[selected.utm_source, selected.utm_medium, selected.utm_campaign]
                       .filter(Boolean)
                       .join(" / ")}
                   </p>
@@ -731,9 +810,7 @@ function LeadsPage() {
                         key={i}
                         className={cn(
                           "text-xs rounded-md px-2 py-1.5",
-                          m.role === "user"
-                            ? "bg-primary/10"
-                            : "bg-card border border-border",
+                          m.role === "user" ? "bg-primary/10" : "bg-card border border-border",
                         )}
                       >
                         <span className="font-medium">

@@ -1757,6 +1757,7 @@ export type Database = {
           created_by: string | null
           id: string
           lead_id: string
+          metadata: Json
           type: string | null
         }
         Insert: {
@@ -1765,6 +1766,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           lead_id: string
+          metadata?: Json
           type?: string | null
         }
         Update: {
@@ -1773,6 +1775,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           lead_id?: string
+          metadata?: Json
           type?: string | null
         }
         Relationships: [
