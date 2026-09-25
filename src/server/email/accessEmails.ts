@@ -37,7 +37,7 @@ function layout(title: string, bodyHtml: string): string {
   </table></body></html>`;
 }
 
-/** Código de 6 dígitos para entrar sem senha. */
+/** Código numérico para entrar sem senha. */
 export async function sendLoginCodeEmail(opts: { to: string; code: string }): Promise<boolean> {
   const code = opts.code.replace(/\D/g, "").slice(0, 10);
   const html = layout(

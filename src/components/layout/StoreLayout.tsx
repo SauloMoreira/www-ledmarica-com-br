@@ -4,7 +4,6 @@ import { CartDrawer } from "@/components/store/CartDrawer";
 import { ShopperIdentifyDialog } from "@/components/store/ShopperIdentifyDialog";
 import { ChatWidgetLazy } from "@/components/store/ChatWidgetLazy";
 import { LgpdLayer } from "@/components/lgpd/LgpdLayer";
-import { Toaster } from "@/components/ui/sonner";
 import { useCartSync } from "@/hooks/useCartSync";
 import type { ReactNode } from "react";
 
@@ -19,7 +18,6 @@ export function StoreLayout({ children }: { children: ReactNode }) {
       <ShopperIdentifyDialog />
       <ChatWidgetLazy />
       <LgpdLayer />
-      <Toaster position="top-right" richColors />
     </div>
   );
 }

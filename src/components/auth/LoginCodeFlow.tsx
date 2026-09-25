@@ -17,7 +17,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const RESEND_SECONDS = 30;
 
 /**
- * Login sem senha: e-mail → código de 6 dígitos → sessão.
+ * Login sem senha: e-mail → código numérico → sessão.
  * Serve também para quem teve a conta criada automaticamente no carrinho.
  */
 export function LoginCodeFlow({
@@ -35,6 +35,8 @@ export function LoginCodeFlow({
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  // Tamanho do código vem do servidor (config do Auth: 6 a 10 dígitos).
+  const [codeLength, setCodeLength] = useState(6);
   const verifyingRef = useRef(false);
 
   useEffect(() => {
@@ -52,7 +54,8 @@ export function LoginCodeFlow({
     setEmailError(undefined);
     setSending(true);
     try {
-      await sendLoginCode({ data: { email: value } });
+      const res = await sendLoginCode({ data: { email: value } });
+      if (res?.length && res.length >= 6 && res.length <= 10) setCodeLength(res.length);
       setEmail(value);
       setStep("code");
       setCode("");
@@ -73,7 +76,7 @@ export function LoginCodeFlow({
   };
 
   const verify = async (token: string) => {
-    if (verifyingRef.current || token.length !== 6) return;
+    if (verifyingRef.current || token.length !== codeLength) return;
     verifyingRef.current = true;
     setVerifying(true);
     setCodeError(undefined);
@@ -123,7 +126,7 @@ export function LoginCodeFlow({
         />
         <FieldError message={emailError} />
         <p className="mt-2 mb-5 text-[12px]" style={{ color: "#64748B" }}>
-          Sem senha: enviamos um código de 6 dígitos para você entrar. Se ainda não tem conta, ela é
+          Sem senha: enviamos um código de acesso para o seu e-mail. Se ainda não tem conta, ela é
           criada automaticamente.
         </p>
         <PrimaryButton type="submit" loading={sending}>
@@ -149,7 +152,7 @@ export function LoginCodeFlow({
       <div className="flex justify-center">
         <InputOTP
           id="login-code-otp"
-          maxLength={6}
+          maxLength={codeLength}
           value={code}
           autoFocus
           inputMode="numeric"
@@ -158,12 +161,16 @@ export function LoginCodeFlow({
           onChange={(v) => {
             const digits = v.replace(/\D/g, "");
             setCode(digits);
-            if (digits.length === 6) void verify(digits);
+            if (digits.length === codeLength) void verify(digits);
           }}
         >
           <InputOTPGroup>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <InputOTPSlot key={i} index={i} className="w-11 h-12 text-lg" />
+            {Array.from({ length: codeLength }).map((_, i) => (
+              <InputOTPSlot
+                key={i}
+                index={i}
+                className={codeLength > 6 ? "w-9 h-11 text-base" : "w-11 h-12 text-lg"}
+              />
             ))}
           </InputOTPGroup>
         </InputOTP>
@@ -173,7 +180,7 @@ export function LoginCodeFlow({
         <PrimaryButton
           type="button"
           loading={verifying}
-          disabled={code.length !== 6}
+          disabled={code.length !== codeLength}
           onClick={() => void verify(code)}
         >
           {verifying ? "Entrando..." : "Entrar"}

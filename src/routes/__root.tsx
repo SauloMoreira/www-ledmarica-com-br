@@ -87,12 +87,12 @@ function NotFoundComponent() {
 // Violações continuam sendo reportadas para /api/public/csp-report.
 const CSP_POLICY = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.mercadopago.com https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://analytics.tiktok.com https://www.clarity.ms https://*.clarity.ms",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.mercadopago.com https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://analytics.tiktok.com https://www.clarity.ms https://*.clarity.ms https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
-  "connect-src 'self' https://*.supabase.co https://*.supabase.in https://api.mercadopago.com https://ai.gateway.lovable.dev https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://stats.g.doubleclick.net https://www.facebook.com https://*.facebook.com https://analytics.tiktok.com https://*.tiktok.com https://www.clarity.ms https://*.clarity.ms",
-  "frame-src 'self' https://www.mercadopago.com https://www.mercadopago.com.br https://td.doubleclick.net https://www.facebook.com https://www.google.com",
+  "connect-src 'self' https://*.supabase.co https://*.supabase.in https://api.mercadopago.com https://ai.gateway.lovable.dev https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://stats.g.doubleclick.net https://www.facebook.com https://*.facebook.com https://analytics.tiktok.com https://*.tiktok.com https://www.clarity.ms https://*.clarity.ms https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com https://www.google.com.br https://*.doubleclick.net",
+  "frame-src 'self' https://www.mercadopago.com https://www.mercadopago.com.br https://td.doubleclick.net https://www.googletagmanager.com https://www.facebook.com https://www.google.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self' https://www.mercadopago.com https://www.mercadopago.com.br",
@@ -215,7 +215,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Outlet />
-        <Toaster />
+        <Toaster position="top-right" richColors />
       </AuthProvider>
     </QueryClientProvider>
   );

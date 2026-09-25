@@ -225,7 +225,7 @@ export const identifyShopper = createServerFn({ method: "POST" })
   });
 
 // ---------------------------------------------------------------------------
-// Login sem senha: envia um código de 6 dígitos por e-mail.
+// Login sem senha: envia um código numérico (6 a 10 dígitos, conforme o Auth) por e-mail.
 // O client confirma com supabase.auth.verifyOtp({ email, token, type: "email" }).
 // Se o e-mail ainda não tem conta, cria (sem senha) — a sessão só é emitida
 // depois do código, então isso prova a posse do e-mail.
@@ -266,5 +266,6 @@ export const sendLoginCode = createServerFn({ method: "POST" })
 
     const sent = await sendLoginCodeEmail({ to: data.email, code });
     if (!sent) throw new Error("Não foi possível enviar o e-mail com o código. Tente novamente.");
-    return { ok: true as const };
+    // O tamanho do código depende da configuração do Auth (6 a 10 dígitos).
+    return { ok: true as const, length: code.length };
   });
