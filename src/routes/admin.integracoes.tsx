@@ -10,6 +10,7 @@ import {
   FlaskConical,
   CheckCircle2,
   AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -109,9 +110,27 @@ function isValidId(provider: IntegrationProvider, accountId: string): boolean {
   return ID_PATTERNS[provider].test(accountId.trim());
 }
 
+/** Extrai uma mensagem curta e legível de um erro de server function. */
+async function describeLoadError(e: unknown): Promise<string> {
+  if (e instanceof Response) {
+    const body = await e.text().catch(() => "");
+    return `HTTP ${e.status}${body ? ` — ${body.slice(0, 160)}` : ""}`;
+  }
+  if (e && typeof e === "object") {
+    const err = e as { code?: unknown; message?: unknown };
+    const msg = typeof err.message === "string" ? err.message : "";
+    const code = typeof err.code === "string" ? err.code : "";
+    if (msg || code) return [code, msg].filter(Boolean).join(": ").slice(0, 200);
+  }
+  return "erro desconhecido";
+}
+
 function IntegrationsPage() {
   const [items, setItems] = useState<MarketingIntegration[]>([]);
   const [loading, setLoading] = useState(true);
+  // Erro de carregamento é estado próprio: nunca deve ser exibido como
+  // "nenhuma integração" / "não configurado".
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [form, setForm] = useState<{
@@ -130,12 +149,15 @@ function IntegrationsPage() {
 
   async function load() {
     setLoading(true);
+    setLoadError(null);
     try {
       const list = await listIntegrations();
       setItems(list);
     } catch (e) {
+      const message = await describeLoadError(e);
+      setLoadError(message);
       toast.error("Falha ao carregar integrações");
-      console.error(e);
+      console.error("[integracoes] load failed", e);
     } finally {
       setLoading(false);
     }
@@ -245,30 +267,32 @@ function IntegrationsPage() {
           consentimento LGPD do visitante.
         </p>
 
-        {(missingGa4 || missingMetaPixel || activeWithBadFormat.length > 0) && (
-          <Card className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-950/20">
-            <CardContent className="pt-6 space-y-2 text-sm">
-              <p className="font-medium flex items-center gap-2 text-amber-900 dark:text-amber-200">
-                <AlertTriangle className="w-4 h-4" /> Pendências de medição
-              </p>
-              <ul className="space-y-1 text-muted-foreground list-disc pl-5">
-                {missingGa4 && <li>Google Analytics 4 ainda não foi configurado.</li>}
-                {missingMetaPixel && (
-                  <li>
-                    Meta Pixel ainda não foi configurado — recomendado para campanhas no
-                    Facebook/Instagram.
-                  </li>
-                )}
-                {activeWithBadFormat.map((i) => (
-                  <li key={i.id} className="text-destructive">
-                    {PROVIDER_INFO[i.provider]?.label ?? i.provider}: integração ativa com ID em
-                    formato inválido.
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        )}
+        {!loading &&
+          !loadError &&
+          (missingGa4 || missingMetaPixel || activeWithBadFormat.length > 0) && (
+            <Card className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-950/20">
+              <CardContent className="pt-6 space-y-2 text-sm">
+                <p className="font-medium flex items-center gap-2 text-amber-900 dark:text-amber-200">
+                  <AlertTriangle className="w-4 h-4" /> Pendências de medição
+                </p>
+                <ul className="space-y-1 text-muted-foreground list-disc pl-5">
+                  {missingGa4 && <li>Google Analytics 4 ainda não foi configurado.</li>}
+                  {missingMetaPixel && (
+                    <li>
+                      Meta Pixel ainda não foi configurado — recomendado para campanhas no
+                      Facebook/Instagram.
+                    </li>
+                  )}
+                  {activeWithBadFormat.map((i) => (
+                    <li key={i.id} className="text-destructive">
+                      {PROVIDER_INFO[i.provider]?.label ?? i.provider}: integração ativa com ID em
+                      formato inválido.
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
 
         {items.length > 0 &&
           !missingGa4 &&
@@ -389,6 +413,24 @@ function IntegrationsPage() {
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : loadError ? (
+              <div
+                role="alert"
+                className="flex flex-col items-center gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-8 text-center"
+              >
+                <p className="flex items-center gap-2 text-sm font-medium text-destructive">
+                  <AlertTriangle className="w-4 h-4" aria-hidden="true" />
+                  Não foi possível carregar as integrações.
+                </p>
+                <p className="max-w-md text-xs text-muted-foreground">
+                  As integrações cadastradas continuam ativas na loja. Detalhe técnico:{" "}
+                  <span className="font-mono">{loadError}</span>
+                </p>
+                <Button variant="outline" size="sm" onClick={() => void load()}>
+                  <RefreshCw className="w-4 h-4 mr-2" aria-hidden="true" />
+                  Tentar novamente
+                </Button>
               </div>
             ) : items.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
