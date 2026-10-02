@@ -1,4 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
+import {
+  INTEGRATION_ID_PATTERNS,
+  isEffectiveIntegration,
+  isValidIntegrationId,
+  type IntegrationProvider,
+} from "@/lib/integrationIds";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 
@@ -104,7 +110,10 @@ export const getAdminOperations = createServerFn({ method: "GET" })
     // ============================================================
     const paidAwaitingShipping = await safeCount(
       () => supabaseAdmin.from("orders"),
-      (q) => q.in("payment_status", ["paid", "approved"]).in("status", ["paid", "confirmed", "preparing"]),
+      (q) =>
+        q
+          .in("payment_status", ["paid", "approved"])
+          .in("status", ["paid", "confirmed", "preparing"]),
     );
     const paidStuck24h = await safeCount(
       () => supabaseAdmin.from("orders"),
@@ -483,22 +492,21 @@ export const getAdminOperations = createServerFn({ method: "GET" })
       const { data: integs } = await supabaseAdmin
         .from("marketing_integrations")
         .select("provider, account_id, enabled");
-      const ID_PATTERNS: Record<string, RegExp> = {
-        ga4: new RegExp("^G-[A-Z0-9]{6,}$", "i"),
-        gtm: new RegExp("^GTM-[A-Z0-9]{4,}$", "i"),
-        meta_pixel: new RegExp("^[0-9]{6,20}$"),
-        tiktok_pixel: new RegExp("^[A-Z0-9]{15,30}$", "i"),
-        clarity: new RegExp("^[a-z0-9]{6,20}$", "i"),
-        google_ads: new RegExp("^AW-[0-9]{6,}$", "i"),
-      };
       (integs ?? []).forEach((i: any) => {
-        if (i.provider === "ga4") hasGa4 = true;
-        if (i.provider === "meta_pixel") hasMetaPixel = true;
-        if (i.enabled) {
-          const re = ID_PATTERNS[i.provider];
-          if (re && !re.test(String(i.account_id ?? "").trim())) {
-            activeBadFormatCount += 1;
-          }
+        const row = {
+          provider: String(i.provider ?? ""),
+          account_id: String(i.account_id ?? ""),
+          enabled: !!i.enabled,
+        };
+        // Pendência só some com integração ativa e ID válido (mesma regra do admin).
+        if (row.provider === "ga4" && isEffectiveIntegration(row)) hasGa4 = true;
+        if (row.provider === "meta_pixel" && isEffectiveIntegration(row)) hasMetaPixel = true;
+        if (
+          row.enabled &&
+          row.provider in INTEGRATION_ID_PATTERNS &&
+          !isValidIntegrationId(row.provider as IntegrationProvider, row.account_id)
+        ) {
+          activeBadFormatCount += 1;
         }
       });
     } catch {}
