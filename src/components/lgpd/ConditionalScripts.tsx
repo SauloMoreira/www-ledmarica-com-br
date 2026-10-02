@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useCookieStore } from "@/stores/cookieStore";
 import { supabase } from "@/integrations/supabase/client";
 import { getGtag, markGoogleTagsReady, updateConsentMode } from "@/lib/tracking";
+import { isValidIntegrationId, type IntegrationProvider } from "@/lib/integrationIds";
+import { activateMetaPixel, revokeMetaPixelConsent } from "@/lib/metaPixel";
 
 // Provedores do Google suportam Consent Mode v2: a tag pode (e deve) ser
 // carregada sempre, em toda visita — é o próprio Google quem decide, via
@@ -12,7 +14,7 @@ import { getGtag, markGoogleTagsReady, updateConsentMode } from "@/lib/tracking"
 // suportado, então continuam só carregando após consentimento explícito.
 const GOOGLE_CONSENT_MODE_PROVIDERS: Provider[] = ["ga4", "google_ads"];
 
-type Provider = "ga4" | "gtm" | "meta_pixel" | "tiktok_pixel" | "clarity" | "google_ads";
+type Provider = IntegrationProvider;
 type ConsentCategory = "analytics" | "marketing";
 
 interface IntegrationRow {
@@ -22,17 +24,8 @@ interface IntegrationRow {
   consent_category: ConsentCategory;
 }
 
-const ID_PATTERNS: Record<Provider, RegExp> = {
-  ga4: /^G-[A-Z0-9]{6,}$/i,
-  gtm: /^GTM-[A-Z0-9]{4,}$/i,
-  meta_pixel: /^[0-9]{6,20}$/,
-  tiktok_pixel: /^[A-Z0-9]{15,30}$/i,
-  clarity: /^[a-z0-9]{6,20}$/i,
-  google_ads: /^AW-[0-9]{6,}$/i,
-};
-
 function isValid(provider: Provider, accountId: string) {
-  return ID_PATTERNS[provider].test(accountId.trim());
+  return isValidIntegrationId(provider, accountId);
 }
 
 function inject(id: string, build: () => HTMLScriptElement) {
@@ -83,11 +76,9 @@ function loadGtm(accountId: string) {
 }
 
 function loadMetaPixel(accountId: string) {
-  inject(`lm-meta-${accountId}`, () => {
-    const s = document.createElement("script");
-    s.innerHTML = `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${accountId}');fbq('track','PageView');`;
-    return s;
-  });
+  // Código do Pixel gerado em src/lib/metaPixel.ts (stub fbq + fbevents.js por
+  // src): o ID nunca é interpolado em script inline.
+  activateMetaPixel(accountId);
 }
 
 function loadTiktokPixel(accountId: string) {
@@ -187,6 +178,14 @@ export function ConditionalScripts() {
     }
     if (preferences.personalization) window.__LM_PERSONALIZATION = true;
   }, [consented, preferences, integrations]);
+
+  // Revogação de Marketing: o Meta Pixel já carregado deixa de enviar qualquer
+  // evento (inclusive PageView automático de navegação) até novo consentimento.
+  // Cobre tanto "desmarcar Marketing" quanto `resetConsent` (consented=false).
+  useEffect(() => {
+    if (consented && preferences.marketing) return;
+    revokeMetaPixelConsent();
+  }, [consented, preferences.marketing]);
 
   // Propaga a decisão do usuário para o Google Consent Mode v2 assim que ele
   // aceita/rejeita/ajusta as preferências — atualiza o dataLayer já criado
