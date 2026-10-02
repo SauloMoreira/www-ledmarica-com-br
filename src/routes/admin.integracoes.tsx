@@ -35,6 +35,12 @@ import {
   type IntegrationProvider,
   type ConsentCategory,
 } from "@/server/marketingIntegrations.functions";
+import {
+  INTEGRATION_ID_PATTERNS,
+  MARKETING_ONLY_PROVIDERS,
+  isEffectiveIntegration,
+  looksLikeScript,
+} from "@/lib/integrationIds";
 
 export const Route = createFileRoute("/admin/integracoes")({
   component: IntegrationsPage,
@@ -67,10 +73,10 @@ const PROVIDER_INFO: Record<
   },
   meta_pixel: {
     label: "Meta Pixel (Facebook/Instagram)",
-    placeholder: "1234567890123456",
+    placeholder: "Somente os números do Pixel ID",
     example: "123456789012345",
     defaultConsent: "marketing",
-    help: "Gerenciador de Eventos do Meta → ID do Pixel (números).",
+    help: "Gerenciador de Eventos do Meta → Fontes de dados → seu Pixel → ID (15 ou 16 dígitos). O código do Pixel é gerado pelo site — não cole scripts.",
   },
   tiktok_pixel: {
     label: "TikTok Pixel",
@@ -97,14 +103,7 @@ const PROVIDER_INFO: Record<
 
 const PROVIDERS = Object.keys(PROVIDER_INFO) as IntegrationProvider[];
 
-const ID_PATTERNS: Record<IntegrationProvider, RegExp> = {
-  ga4: /^G-[A-Z0-9]{6,}$/i,
-  gtm: /^GTM-[A-Z0-9]{4,}$/i,
-  meta_pixel: /^[0-9]{6,20}$/,
-  tiktok_pixel: /^[A-Z0-9]{15,30}$/i,
-  clarity: /^[a-z0-9]{6,20}$/i,
-  google_ads: /^AW-[0-9]{6,}$/i,
-};
+const ID_PATTERNS = INTEGRATION_ID_PATTERNS;
 
 function isValidId(provider: IntegrationProvider, accountId: string): boolean {
   return ID_PATTERNS[provider].test(accountId.trim());
@@ -172,8 +171,21 @@ function IntegrationsPage() {
   }
 
   async function handleAdd() {
-    if (!form.account_id.trim()) {
+    const rawId = form.account_id.trim();
+    if (!rawId) {
       toast.error("Informe o ID da conta");
+      return;
+    }
+    if (looksLikeScript(rawId)) {
+      toast.error("Cole apenas o ID público. Scripts e códigos completos não são aceitos.");
+      return;
+    }
+    if (!isValidId(form.provider, rawId)) {
+      toast.error(
+        form.provider === "meta_pixel"
+          ? "Pixel ID inválido: informe apenas os 15 ou 16 dígitos do Pixel do Meta."
+          : "ID em formato inválido para esta plataforma.",
+      );
       return;
     }
     setSaving(true);
@@ -231,6 +243,27 @@ function IntegrationsPage() {
     setTestingId(item.id);
     try {
       const r = await testIntegration({ data: { id: item.id } });
+      if (item.provider === "meta_pixel") {
+        if (!r.formatOk) {
+          toast.error("Pixel ID inválido: são esperados apenas 15 ou 16 dígitos.");
+        } else if (!r.consentOk) {
+          toast.error("Categoria incorreta: o Meta Pixel precisa usar consentimento Marketing.");
+        } else if (r.reachable === "ok") {
+          toast.success(
+            "Meta Pixel OK: Pixel ID válido e biblioteca oficial do Meta disponível — o Pixel será inicializado (PageView) para visitantes que aceitarem Marketing. Confirme no Gerenciador de Eventos → Testar eventos.",
+            { duration: 9000 },
+          );
+        } else if (r.reachable === "failed") {
+          toast.error(
+            `Pixel ID válido, mas a biblioteca do Meta não respondeu (${r.detail || "erro"}). Tente novamente em instantes.`,
+          );
+        } else {
+          toast.warning(
+            `Pixel ID válido, mas não foi possível contatar o Meta agora (${r.detail || "sem resposta"}). Tente novamente.`,
+          );
+        }
+        return;
+      }
       if (!r.formatOk) {
         toast.error("ID com formato inválido. Verifique o valor informado.");
       } else if (r.reachable === "ok") {
@@ -254,8 +287,11 @@ function IntegrationsPage() {
   const activeWithBadFormat = items.filter(
     (i) => i.enabled && !isValidId(i.provider, i.account_id),
   );
-  const missingGa4 = !configuredProviders.has("ga4");
-  const missingMetaPixel = !configuredProviders.has("meta_pixel");
+  // Pendência só some com integração ATIVA e com ID VÁLIDO.
+  const hasEffective = (p: IntegrationProvider) =>
+    items.some((i) => i.provider === p && isEffectiveIntegration(i));
+  const missingGa4 = !hasEffective("ga4");
+  const missingMetaPixel = !hasEffective("meta_pixel");
 
   const info = PROVIDER_INFO[form.provider];
 
@@ -342,7 +378,28 @@ function IntegrationsPage() {
                 <Input
                   placeholder={info.placeholder}
                   value={form.account_id}
+                  inputMode={form.provider === "meta_pixel" ? "numeric" : undefined}
+                  maxLength={form.provider === "meta_pixel" ? 16 : 80}
+                  autoComplete="off"
+                  spellCheck={false}
+                  aria-invalid={
+                    form.account_id.trim() !== "" && !isValidId(form.provider, form.account_id)
+                  }
                   onChange={(e) => setForm((f) => ({ ...f, account_id: e.target.value }))}
+                  onPaste={(e) => {
+                    if (form.provider !== "meta_pixel") return;
+                    const pasted = e.clipboardData.getData("text");
+                    const digits = pasted.replace(/\D/g, "");
+                    if (looksLikeScript(pasted)) {
+                      e.preventDefault();
+                      toast.error(
+                        "Cole apenas o Pixel ID (números). O código do Meta Pixel é gerado automaticamente pelo site.",
+                      );
+                    } else if (digits !== pasted.trim()) {
+                      e.preventDefault();
+                      setForm((f) => ({ ...f, account_id: digits.slice(0, 16) }));
+                    }
+                  }}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Exemplo: <code>{info.example}</code>
@@ -353,6 +410,7 @@ function IntegrationsPage() {
                 <Label>Categoria de consentimento</Label>
                 <Select
                   value={form.consent_category}
+                  disabled={MARKETING_ONLY_PROVIDERS.has(form.provider)}
                   onValueChange={(v) =>
                     setForm((f) => ({ ...f, consent_category: v as ConsentCategory }))
                   }
@@ -366,7 +424,9 @@ function IntegrationsPage() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Define qual switch da LGPD libera o carregamento.
+                  {MARKETING_ONLY_PROVIDERS.has(form.provider)
+                    ? "Fixo em Marketing: o Pixel só carrega após o visitante aceitar cookies de Marketing."
+                    : "Define qual switch da LGPD libera o carregamento."}
                 </p>
               </div>
 
