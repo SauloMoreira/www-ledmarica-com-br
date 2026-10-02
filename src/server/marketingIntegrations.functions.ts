@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logAdminAction } from "@/server/security/auditLog";
@@ -78,12 +77,19 @@ export const listPublicIntegrations = createServerFn({ method: "GET" }).handler(
   }>;
 });
 
-/** Lista completa para o admin. */
+/**
+ * Lista completa para o admin (inclui `notes`, `created_at`, `updated_at`).
+ *
+ * Lê com service role atrás de `requireAdmin` (admin + MFA/AAL2), no mesmo
+ * padrão de upsert/delete/test. Não usa o cliente do usuário porque a
+ * migration 20260717200000 restringiu o SELECT de anon/authenticated às
+ * colunas públicas (id, provider, account_id, enabled, consent_category) —
+ * um `select("*")` com a role authenticated falha com 42501.
+ */
 export const listIntegrations = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase } = context;
-    const { data, error } = await supabase
+  .middleware([requireAdmin])
+  .handler(async () => {
+    const { data, error } = await supabaseAdmin
       .from("marketing_integrations")
       .select("*")
       .order("provider", { ascending: true });
