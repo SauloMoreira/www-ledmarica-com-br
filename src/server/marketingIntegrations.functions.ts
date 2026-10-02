@@ -3,14 +3,15 @@ import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logAdminAction } from "@/server/security/auditLog";
+import {
+  INTEGRATION_ID_PATTERNS,
+  MARKETING_ONLY_PROVIDERS,
+  META_PIXEL_SCRIPT_SRC,
+  looksLikeScript,
+  type IntegrationProvider,
+} from "@/lib/integrationIds";
 
-export type IntegrationProvider =
-  | "ga4"
-  | "gtm"
-  | "meta_pixel"
-  | "tiktok_pixel"
-  | "clarity"
-  | "google_ads";
+export type { IntegrationProvider };
 
 export type ConsentCategory = "analytics" | "marketing";
 
@@ -28,26 +29,22 @@ export interface MarketingIntegration {
 const PROVIDERS = ["ga4", "gtm", "meta_pixel", "tiktok_pixel", "clarity", "google_ads"] as const;
 const CATEGORIES = ["analytics", "marketing"] as const;
 
-// Validação por provider para evitar IDs malformados
-const ID_PATTERNS: Record<IntegrationProvider, RegExp> = {
-  ga4: /^G-[A-Z0-9]{6,}$/i,
-  gtm: /^GTM-[A-Z0-9]{4,}$/i,
-  meta_pixel: /^[0-9]{6,20}$/,
-  tiktok_pixel: /^[A-Z0-9]{15,30}$/i,
-  clarity: /^[a-z0-9]{6,20}$/i,
-  google_ads: /^AW-[0-9]{6,}$/i,
-};
+// Validação por provider para evitar IDs malformados (fonte única em @/lib/integrationIds)
+const ID_PATTERNS = INTEGRATION_ID_PATTERNS;
 
 function validateAccountId(provider: IntegrationProvider, accountId: string): string {
   const cleaned = accountId.trim();
   if (!cleaned) throw new Error("ID da conta é obrigatório");
   if (cleaned.length > 80) throw new Error("ID muito longo");
   // bloqueio defensivo contra colagem de scripts
-  if (/[<>]|script|javascript:|on\w+=/i.test(cleaned)) {
+  if (looksLikeScript(cleaned)) {
     throw new Error("Informe apenas o ID oficial. Scripts personalizados não são permitidos.");
   }
   const pattern = ID_PATTERNS[provider];
   if (!pattern.test(cleaned)) {
+    if (provider === "meta_pixel") {
+      throw new Error("Pixel ID inválido: informe apenas os 15 ou 16 dígitos do Pixel do Meta.");
+    }
     throw new Error(`Formato de ID inválido para ${provider}`);
   }
   return cleaned;
@@ -102,6 +99,10 @@ export const upsertIntegration = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => upsertSchema.parse(input))
   .handler(async ({ data, context }) => {
     const account_id = validateAccountId(data.provider, data.account_id);
+    // Pixels de anúncio só podem rodar sob consentimento de Marketing (LGPD).
+    if (MARKETING_ONLY_PROVIDERS.has(data.provider) && data.consent_category !== "marketing") {
+      throw new Error("Esta integração exige a categoria de consentimento Marketing.");
+    }
 
     const payload = {
       provider: data.provider,
@@ -235,41 +236,50 @@ export const testIntegration = createServerFn({ method: "POST" })
 
     const integ = row as MarketingIntegration;
     const formatOk = ID_PATTERNS[integ.provider].test(integ.account_id.trim());
+    const consentOk =
+      !MARKETING_ONLY_PROVIDERS.has(integ.provider) || integ.consent_category === "marketing";
 
     let reachable: "ok" | "unknown" | "failed" = "unknown";
     let detail = "";
-    try {
-      const ac = encodeURIComponent(integ.account_id.trim());
-      let url: string | null = null;
-      switch (integ.provider) {
-        case "ga4":
-        case "google_ads":
-          url = `https://www.googletagmanager.com/gtag/js?id=${ac}`;
-          break;
-        case "gtm":
-          url = `https://www.googletagmanager.com/gtm.js?id=${ac}`;
-          break;
-        case "clarity":
-          url = `https://www.clarity.ms/tag/${ac}`;
-          break;
-        // Meta Pixel e TikTok Pixel não expõem endpoints simples sem inicialização JS;
-        // mantemos como "unknown" e validamos apenas o formato.
-        default:
-          url = null;
-      }
-      if (url) {
-        const resp = await fetch(url, { method: "GET" });
-        if (resp.ok) {
-          reachable = "ok";
-        } else {
-          reachable = "failed";
-          detail = `HTTP ${resp.status}`;
+    if (formatOk)
+      try {
+        const ac = encodeURIComponent(integ.account_id.trim());
+        let url: string | null = null;
+        switch (integ.provider) {
+          case "ga4":
+          case "google_ads":
+            url = `https://www.googletagmanager.com/gtag/js?id=${ac}`;
+            break;
+          case "gtm":
+            url = `https://www.googletagmanager.com/gtm.js?id=${ac}`;
+            break;
+          case "clarity":
+            url = `https://www.clarity.ms/tag/${ac}`;
+            break;
+          case "meta_pixel":
+            // Confirma que a biblioteca oficial (fbevents.js) que inicializa o
+            // Pixel está disponível. A existência do Pixel na conta do Meta só é
+            // confirmável no Gerenciador de Eventos (aba "Testar eventos").
+            url = META_PIXEL_SCRIPT_SRC;
+            break;
+          // TikTok Pixel não expõe endpoint simples sem inicialização JS;
+          // mantemos como "unknown" e validamos apenas o formato.
+          default:
+            url = null;
         }
+        if (url) {
+          const resp = await fetch(url, { method: "GET" });
+          if (resp.ok) {
+            reachable = "ok";
+          } else {
+            reachable = "failed";
+            detail = `HTTP ${resp.status}`;
+          }
+        }
+      } catch (e: any) {
+        reachable = "unknown";
+        detail = e?.message ?? "";
       }
-    } catch (e: any) {
-      reachable = "unknown";
-      detail = e?.message ?? "";
-    }
 
     try {
       await logAdminAction({
@@ -278,11 +288,11 @@ export const testIntegration = createServerFn({ method: "POST" })
         action: "test",
         resourceType: "marketing_integration",
         resourceId: integ.id,
-        description: `Testou integração ${integ.provider} — formato:${formatOk ? "ok" : "invalido"} alcance:${reachable}`,
+        description: `Testou integração ${integ.provider} — formato:${formatOk ? "ok" : "invalido"} consentimento:${consentOk ? "ok" : "incorreto"} alcance:${reachable}`,
       });
     } catch {
       // ignore
     }
 
-    return { formatOk, reachable, detail, provider: integ.provider };
+    return { formatOk, consentOk, reachable, detail, provider: integ.provider };
   });
