@@ -306,7 +306,7 @@ export const getOrderPaymentStatus = createServerFn({ method: "POST" })
     const { data: order, error } = await supabase
       .from("orders")
       .select(
-        "id, order_number, status, payment_status, total, paid_at, checkout_url, payment_error",
+        "id, order_number, status, payment_status, total, paid_at, checkout_url, payment_error, order_items(product_id, product_name, qty, unit_price)",
       )
       .eq("id", data.orderId)
       .single();

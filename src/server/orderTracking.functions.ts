@@ -60,7 +60,7 @@ export const getOrderForCustomer = createServerFn({ method: "POST" })
     const { data: order, error } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, order_number, user_id, status, payment_status, payment_method, subtotal, discount, shipping_cost, total, coupon_code, shipping_carrier, shipping_service, tracking_code, estimated_delivery, address_snapshot, created_at, paid_at, public_access_token, delivery_method, pickup_status, pickup_store_name, pickup_store_address, pickup_store_phone, pickup_instructions, local_delivery_district, local_delivery_eta, bundle_discount_total, bundle_discount_details, has_bundle_discount, order_items(id, product_name, product_image, qty, unit_price, total_price, bundle_id, bundle_name, bundle_applied, bundle_discount_amount)",
+        "id, order_number, user_id, status, payment_status, payment_method, subtotal, discount, shipping_cost, total, coupon_code, shipping_carrier, shipping_service, tracking_code, estimated_delivery, address_snapshot, created_at, paid_at, public_access_token, delivery_method, pickup_status, pickup_store_name, pickup_store_address, pickup_store_phone, pickup_instructions, local_delivery_district, local_delivery_eta, bundle_discount_total, bundle_discount_details, has_bundle_discount, order_items(id, product_id, product_name, product_image, qty, unit_price, total_price, bundle_id, bundle_name, bundle_applied, bundle_discount_amount)",
       )
       .eq("id", data.id)
       .single();
@@ -154,6 +154,7 @@ export const getOrderForCustomer = createServerFn({ method: "POST" })
           const ii = i as any;
           return {
             id: i.id,
+            productId: (ii.product_id as string | null) ?? null,
             name: i.product_name,
             image: i.product_image,
             qty: Number(i.qty),
