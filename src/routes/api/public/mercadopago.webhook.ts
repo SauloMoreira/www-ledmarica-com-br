@@ -1,4 +1,5 @@
 import { MP_PAYMENT_TYPE_BY_CONDITION } from "@/lib/couponConditions";
+import { evaluateMpApproval } from "@/lib/paymentIntegrity";
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -20,6 +21,8 @@ type MPPayment = {
   order?: { id?: number | string; type?: string } | null;
   live_mode?: boolean;
   transaction_amount?: number | null;
+  coupon_amount?: number | null;
+  transaction_details?: { total_paid_amount?: number | null } | null;
   payment_method_id?: string | null;
   payment_type_id?: string | null;
   fee_details?: Array<{ amount?: number; type?: string }> | null;
@@ -298,7 +301,9 @@ export const Route = createFileRoute("/api/public/mercadopago/webhook")({
         // 5) Localizar pedido
         const { data: order, error: orderErr } = await supabaseAdmin
           .from("orders")
-          .select("id, order_number, payment_status, status, mp_payment_id, user_id, coupon_code, discount, admin_notes")
+          .select(
+            "id, order_number, payment_status, status, mp_payment_id, user_id, coupon_code, discount, admin_notes, total",
+          )
           .eq("external_reference", externalRef)
           .single();
         if (orderErr || !order) {
@@ -312,10 +317,61 @@ export const Route = createFileRoute("/api/public/mercadopago/webhook")({
           return new Response("ok", { status: 200 });
         }
 
-        const mappedStatus = STATUS_MAP[payment.status ?? ""] ?? "pending";
+        // Integridade: o pagamento só é aceito como pago se o valor cobrado pelo
+        // MP bater com o total do pedido (tolerância de R$ 0,05). Valor
+        // divergente fica "em análise" para conferência manual — nunca "pago".
+        const paidAmount = Number(payment.transaction_amount);
+        const orderTotal = Number((order as { total?: number | string | null }).total);
+        const { approvedByMp, amountMatches, amountMismatch } = evaluateMpApproval({
+          mpStatus: TERMINAL_PAID.has(payment.status ?? "") ? "approved" : payment.status,
+          transactionAmount: payment.transaction_amount,
+          orderTotal: (order as { total?: number | string | null }).total,
+        });
+        if (amountMismatch) {
+          const detail = {
+            orderId: order.id,
+            orderNumber: order.order_number,
+            paymentId: String(payment.id),
+            paidAmount,
+            orderTotal,
+            couponAmount: payment.coupon_amount ?? null,
+            totalPaidAmount: payment.transaction_details?.total_paid_amount ?? null,
+          };
+          console.error("[MP webhook] valor pago diverge do total do pedido", detail);
+          void logSecurityEvent({
+            type: "webhook_processed",
+            severity: "error",
+            identifier: "mercadopago",
+            message: "Pagamento aprovado com valor diferente do total do pedido",
+            metadata: detail,
+          });
+        }
+        const mappedStatus = amountMismatch
+          ? "in_process"
+          : (STATUS_MAP[payment.status ?? ""] ?? "pending");
         const wasAlreadyPaid =
           order.payment_status === "approved" || order.payment_status === "paid";
-        const willBePaid = TERMINAL_PAID.has(payment.status ?? "");
+        const willBePaid = approvedByMp && amountMatches;
+
+        // Pedido já pago + nova notificação aprovada com valor divergente
+        // (ex.: segundo pagamento): NÃO rebaixa o pedido; só registra o alerta.
+        if (wasAlreadyPaid && amountMismatch) {
+          const alert = `[${new Date().toISOString()}] Alerta: pagamento MP ${String(payment.id)} aprovado com valor ${paidAmount} diferente do total ${orderTotal}. Conferir manualmente.`;
+          await supabaseAdmin
+            .from("orders")
+            .update({
+              mp_webhook_error: alert,
+              admin_notes: order.admin_notes ? `${order.admin_notes}\n${alert}` : alert,
+            } as never)
+            .eq("id", order.id);
+          if (auditId) {
+            await supabaseAdmin
+              .from("payment_webhook_events")
+              .update({ processed: true })
+              .eq("id", auditId);
+          }
+          return new Response("ok", { status: 200 });
+        }
 
         // Idempotência: se já está pago e o evento de novo é "approved", apenas registra e sai
         if (wasAlreadyPaid && willBePaid) {
@@ -352,8 +408,14 @@ export const Route = createFileRoute("/api/public/mercadopago/webhook")({
           payment_fee_calculated_at: nowIso,
           mp_last_webhook_at: nowIso,
           mp_webhook_status: payment.status ?? null,
-          mp_webhook_error: null,
+          mp_webhook_error: amountMismatch
+            ? `Valor pago (${paidAmount}) diverge do total do pedido (${orderTotal})`
+            : null,
         };
+        if (amountMismatch) {
+          const alert = `[${nowIso}] Alerta: pagamento MP ${String(payment.id)} aprovado com valor ${paidAmount} diferente do total ${orderTotal}. Pedido mantido em análise; conferir manualmente.`;
+          updates.admin_notes = order.admin_notes ? `${order.admin_notes}\n${alert}` : alert;
+        }
         if (payment.payment_method_id) updates.payment_method = payment.payment_method_id;
         if (payment.order?.id) updates.mp_merchant_order_id = String(payment.order.id);
         if (willBePaid) {
@@ -445,6 +507,8 @@ export const Route = createFileRoute("/api/public/mercadopago/webhook")({
           const { sendOrderEmail } = await import("@/server/email/orderEmails");
           let emailType: "payment_approved" | "payment_pending" | "payment_failed" | null = null;
           if (willBePaid) emailType = "payment_approved";
+          // Valor divergente: o cliente pagou; não enviar "pagamento pendente".
+          else if (amountMismatch) emailType = null;
           else if (mappedStatus === "pending" || mappedStatus === "in_process")
             emailType = "payment_pending";
           else if (mappedStatus === "rejected" || mappedStatus === "cancelled")
