@@ -702,9 +702,14 @@ export const createOrder = createServerFn({ method: "POST" })
       addressId = addr?.id ?? null;
     }
 
-    // Criar pedido
+    // Criar pedido — gravado pelo SERVIDOR (service role), depois de todos os
+    // preços e totais acima terem sido recalculados aqui. O cliente não tem
+    // mais permissão de INSERT direto em orders/order_items (migração
+    // 20261005180000_lock_client_order_inserts), o que impede pedidos forjados
+    // com status de pagamento ou preços arbitrários.
+    const { supabaseAdmin: orderWriter } = await import("@/integrations/supabase/client.server");
     const deliveryMethodValue = isPickup ? "pickup" : isLocal ? "local_delivery" : "delivery";
-    const { data: order, error: orderErr } = await supabase
+    const { data: order, error: orderErr } = await orderWriter
       .from("orders")
       .insert({
         user_id: userId,
@@ -771,7 +776,7 @@ export const createOrder = createServerFn({ method: "POST" })
     }
 
     // Criar itens (com memória da regra B2B aplicada)
-    const { error: itemsErr } = await supabase.from("order_items").insert(
+    const { error: itemsErr } = await orderWriter.from("order_items").insert(
       lines.map((i) => {
         const totalPrice = i.appliedUnitPrice * i.qty;
         const hasCost = i.unitCost != null;
@@ -818,6 +823,9 @@ export const createOrder = createServerFn({ method: "POST" })
     );
 
     if (itemsErr) {
+      // Não deixa pedido sem itens para trás.
+      const { error: cleanupErr } = await orderWriter.from("orders").delete().eq("id", order.id);
+      if (cleanupErr) console.error("[checkout] falha ao remover pedido sem itens", cleanupErr);
       return { ok: false as const, error: itemsErr.message };
     }
 
