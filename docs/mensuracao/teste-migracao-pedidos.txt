@@ -1,0 +1,96 @@
+# Teste do SQL de bloqueio em PostgreSQL 16 local (réplica mínima das tabelas e políticas de produção; NENHUM acesso ao banco real)
+## ANTES (políticas atuais de produção)
+set role authenticated;
+SET
+set request.jwt.claim.sub='11111111-1111-1111-1111-111111111111';
+SET
+set request.jwt.claim.role='authenticated';
+SET
+--- cliente tenta pedido forjado aprovado
+insert into public.orders(user_id,status,payment_status,total) values ('11111111-1111-1111-1111-111111111111','confirmed','approved',0.01);
+INSERT 0 1
+--- cliente tenta pedido pendente com preco forjado
+insert into public.orders(id,user_id,total) values ('22222222-2222-2222-2222-222222222222','11111111-1111-1111-1111-111111111111',0.01);
+INSERT 0 1
+reset role;
+RESET
+ payment_status |  status   | total 
+----------------+-----------+-------
+ approved       | confirmed |  0.01
+ pending        | pending   |  0.01
+(2 rows)
+
+## Aplicação do SQL
+(aplicado sem erro)
+## DEPOIS
+set role authenticated;
+SET
+set request.jwt.claim.sub='11111111-1111-1111-1111-111111111111';
+SET
+set request.jwt.claim.role='authenticated';
+SET
+--- cliente tenta pedido forjado aprovado
+insert into public.orders(user_id,status,payment_status,total) values ('11111111-1111-1111-1111-111111111111','confirmed','approved',0.01);
+psql:/tmp/attack.sql:3: ERROR:  Pedidos só podem ser criados pelo servidor da loja
+CONTEXT:  PL/pgSQL function guard_client_order_insert() line 4 at RAISE
+--- cliente tenta pedido pendente com preco forjado
+insert into public.orders(id,user_id,total) values ('22222222-2222-2222-2222-222222222222','11111111-1111-1111-1111-111111111111',0.01);
+psql:/tmp/attack.sql:5: ERROR:  Pedidos só podem ser criados pelo servidor da loja
+CONTEXT:  PL/pgSQL function guard_client_order_insert() line 4 at RAISE
+reset role;
+RESET
+set role service_role;
+SET
+set request.jwt.claim.role='service_role';
+SET
+reset request.jwt.claim.sub;
+RESET
+--- servidor (service role) cria pedido pendente
+insert into public.orders(id,user_id,total) values ('33333333-3333-3333-3333-333333333333','11111111-1111-1111-1111-111111111111',100) returning payment_status;
+ payment_status 
+----------------
+ pending
+(1 row)
+
+INSERT 0 1
+insert into public.order_items(order_id,unit_price) values ('33333333-3333-3333-3333-333333333333',100) returning unit_price;
+ unit_price 
+------------
+        100
+(1 row)
+
+INSERT 0 1
+reset role;
+RESET
+set role authenticated;
+SET
+set request.jwt.claim.sub='11111111-1111-1111-1111-111111111111';
+SET
+set request.jwt.claim.role='authenticated';
+SET
+--- cliente continua lendo o proprio pedido
+select count(*) as pedidos_visiveis from public.orders;
+ pedidos_visiveis 
+------------------
+                1
+(1 row)
+
+--- cliente tenta inserir item no proprio pedido
+insert into public.order_items(order_id,unit_price) values ('33333333-3333-3333-3333-333333333333',0.01);
+psql:/tmp/server.sql:10: ERROR:  new row violates row-level security policy for table "order_items"
+reset role;
+RESET
+## Manutenção direta no banco (postgres) não é bloqueada
+ payment_status 
+----------------
+ pending
+(1 row)
+
+INSERT 0 1
+## Política de INSERT recriada por engano: o gatilho ainda barra o cliente
+--- cliente tenta pedido forjado aprovado
+psql:/tmp/attack.sql:3: ERROR:  Pedidos só podem ser criados pelo servidor da loja
+--- cliente tenta pedido pendente com preco forjado
+psql:/tmp/attack.sql:5: ERROR:  Pedidos só podem ser criados pelo servidor da loja
+## Reaplicação (idempotente)
+(ok)
