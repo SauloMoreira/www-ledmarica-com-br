@@ -8,6 +8,7 @@ import { useShopperIdentity } from "@/stores/shopperIdentity";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { identifyShopper } from "@/server/shopperIdentity.functions";
+import { trackLeadCaptured } from "@/lib/tracking";
 import { formatBrMobile, normalizeBrMobile } from "@/lib/brPhone";
 import { GoogleButton } from "@/components/auth/AuthCard";
 
@@ -146,6 +147,9 @@ export function ShopperIdentifyDialog() {
         setProfilePhone(normalizedPhone);
         toast.success("WhatsApp salvo! Vamos te avisar sobre o seu pedido por lá.");
       } else {
+        // Visitante identificado no carrinho: contato interessado salvo.
+        // (Cliente logado só atualizando o WhatsApp do perfil não é Lead.)
+        trackLeadCaptured("cart_identify");
         saveIdentity({ name: name.trim(), email: email.trim().toLowerCase(), phone: normalizedPhone });
         toast.success("Carrinho salvo!", {
           description:

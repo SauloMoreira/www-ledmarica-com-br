@@ -9,7 +9,7 @@ import {
 } from "@/server/productRelations.functions";
 import { useCart } from "@/stores/cartStore";
 import { formatBRL } from "@/lib/domain";
-import { trackAddToCart } from "@/lib/tracking";
+import { cartSnapshot, trackAddedSince } from "@/lib/cartTracking";
 
 type Props = {
   productId: string;
@@ -164,6 +164,7 @@ function RelatedCard({ item }: { item: RelatedProduct }) {
 
   const handleAdd = () => {
     if (outOfStock) return;
+    const snap = cartSnapshot([item.product_id]);
     cart.addItem({
       productId: item.product_id,
       name: item.name,
@@ -173,7 +174,9 @@ function RelatedCard({ item }: { item: RelatedProduct }) {
       stock: item.stock_qty,
       freeShippingEligible: item.free_shipping_eligible,
     });
-    trackAddToCart({ id: item.product_id, name: item.name, price: item.applied_price }, 1);
+    trackAddedSince(snap, [
+      { productId: item.product_id, name: item.name, unitPrice: item.applied_price },
+    ]);
     toast.success("Adicionado ao carrinho");
   };
 

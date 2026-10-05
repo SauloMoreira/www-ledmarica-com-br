@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { getRelationsForProduct } from "@/server/productRelations.functions";
 import { useCart } from "@/stores/cartStore";
 import { formatBRL } from "@/lib/domain";
-import { trackAddToCart } from "@/lib/tracking";
+import { cartSnapshot, trackAddedSince, type CartAdditionInput } from "@/lib/cartTracking";
 import type { Product } from "@/lib/domain";
 
 type Props = {
@@ -65,6 +65,16 @@ export function BuyTogetherBlock({ product }: Props) {
   const mainImage = (product.images && product.images[0]) || null;
 
   const handleAddAll = () => {
+    // Um único AddToCart com todos os itens do "compre junto".
+    const tracked: CartAdditionInput[] = [];
+    if (product.stock_qty > 0)
+      tracked.push({ productId: product.id, name: product.name, unitPrice: mainPrice });
+    items
+      .filter((i) => effectiveSelection[i.product_id])
+      .forEach((i) =>
+        tracked.push({ productId: i.product_id, name: i.name, unitPrice: i.applied_price }),
+      );
+    const snap = cartSnapshot(tracked.map((t) => t.productId));
     if (product.stock_qty > 0) {
       cart.addItem(
         {
@@ -79,7 +89,6 @@ export function BuyTogetherBlock({ product }: Props) {
         1,
         { openDrawer: false },
       );
-      trackAddToCart({ id: product.id, name: product.name, price: mainPrice }, 1);
     }
     items
       .filter((i) => effectiveSelection[i.product_id])
@@ -97,8 +106,8 @@ export function BuyTogetherBlock({ product }: Props) {
           1,
           { openDrawer: false },
         );
-        trackAddToCart({ id: i.product_id, name: i.name, price: i.applied_price }, 1);
       });
+    trackAddedSince(snap, tracked);
     cart.open();
     toast.success("Itens adicionados ao carrinho");
   };

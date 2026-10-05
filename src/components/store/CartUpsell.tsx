@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { getCartComplementary } from "@/server/productRelations.functions";
 import { useCart } from "@/stores/cartStore";
 import { formatBRL } from "@/lib/domain";
-import { trackAddToCart } from "@/lib/tracking";
+import { cartSnapshot, trackAddedSince } from "@/lib/cartTracking";
 
 export function CartUpsell() {
   const cart = useCart();
@@ -94,6 +94,7 @@ export function CartUpsell() {
                 <button
                   onClick={() => {
                     if (outOfStock) return;
+                    const snap = cartSnapshot([p.product_id]);
                     cart.addItem({
                       productId: p.product_id,
                       name: p.name,
@@ -103,7 +104,9 @@ export function CartUpsell() {
                       stock: p.stock_qty,
                       freeShippingEligible: p.free_shipping_eligible,
                     });
-                    trackAddToCart({ id: p.product_id, name: p.name, price: p.applied_price }, 1);
+                    trackAddedSince(snap, [
+                      { productId: p.product_id, name: p.name, unitPrice: p.applied_price },
+                    ]);
                     toast.success("Adicionado ao carrinho");
                   }}
                   disabled={outOfStock}
