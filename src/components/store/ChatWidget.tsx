@@ -270,7 +270,8 @@ export function ChatWidget() {
       setWhatsappPhone(res.whatsappPhone || "5521982126467");
       setWhatsappText(res.whatsappText || "");
       setHandoffStep("ready");
-      trackLeadCaptured("chat_handoff");
+      // Lead só quando o contato foi de fato registrado no servidor.
+      if (res.leadSaved) trackLeadCaptured("chat_handoff");
       setMessages((p) => [
         ...p,
         {
@@ -506,6 +507,7 @@ export function ChatWidget() {
                 return (
                   <div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-3">
                     <a
+                      data-wa-origin="chat_encaminhamento"
                       href={primaryUrl}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -521,7 +523,7 @@ export function ChatWidget() {
                     </a>
 
                     {!isMobile && (
-                      <a href={appUrl} className="block">
+                      <a href={appUrl} className="block" data-wa-origin="chat_encaminhamento">
                         <Button size="sm" variant="outline" className="w-full">
                           Abrir no app WhatsApp Desktop
                         </Button>

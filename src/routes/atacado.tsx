@@ -22,6 +22,7 @@ import { StoreLayout } from "@/components/layout/StoreLayout";
 import { ProductImagePlaceholder } from "@/components/store/ProductImagePlaceholder";
 import { formatBRL, STORE_WHATSAPP } from "@/lib/domain";
 import { useCart } from "@/stores/cartStore";
+import { cartSnapshot, trackAddedSince } from "@/lib/cartTracking";
 import type { Product } from "@/lib/domain";
 import { searchProducts } from "@/server/productSearch.functions";
 import { getPublicCompanySettings } from "@/server/institutional.functions";
@@ -320,6 +321,7 @@ function AtacadoPage() {
               <CartButton />
               {isApproved && (
                 <a
+                  data-wa-origin="atacado_barra"
                   href={whatsappLink}
                   target="_blank"
                   rel="noreferrer"
@@ -435,6 +437,7 @@ function AtacadoPage() {
               </p>
             </div>
             <a
+              data-wa-origin="atacado_rodape"
               href={whatsappLink}
               target="_blank"
               rel="noreferrer"
@@ -518,6 +521,7 @@ function CompactHero({
             <ShoppingCart className="w-4 h-4" /> Comprar no atacado
           </a>
           <a
+            data-wa-origin="atacado_topo"
             href={whatsappLink}
             target="_blank"
             rel="noreferrer"
@@ -547,6 +551,7 @@ function B2bProductCard({ product, index }: { product: Product; index: number })
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    const snap = cartSnapshot([product.id]);
     cart.addItem(
       {
         productId: product.id,
@@ -563,6 +568,7 @@ function B2bProductCard({ product, index }: { product: Product; index: number })
       minQty,
       { openDrawer: false },
     );
+    trackAddedSince(snap, [{ productId: product.id, name: product.name, unitPrice: finalPrice }]);
     toast.success("Produto adicionado ao carrinho", {
       description: `${product.name} · ${minQty} un`,
       duration: 6000,

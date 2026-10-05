@@ -3,6 +3,7 @@ import { Bell, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCartSessionId } from "@/lib/cartSession";
 import { saveCartContact } from "@/server/cartSync.functions";
+import { trackLeadCaptured } from "@/lib/tracking";
 
 const STATUS_KEY = "led-marica-cart-contact-status";
 
@@ -93,6 +94,7 @@ export function CartContactCapture() {
     try {
       const res = await saveCartContact({ data: { sessionId, ...parsed } });
       if (res.ok) {
+        trackLeadCaptured("cart_contact");
         persistStatus("done");
         setStatus("done");
       } else {

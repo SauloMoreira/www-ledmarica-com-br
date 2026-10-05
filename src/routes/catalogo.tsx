@@ -867,6 +867,7 @@ function EmptyResults({
         {supportWhats && (
           <a
             href={`https://wa.me/${supportWhats}?text=${whatsappText}`}
+            data-wa-origin="catalogo_sem_resultado"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex"

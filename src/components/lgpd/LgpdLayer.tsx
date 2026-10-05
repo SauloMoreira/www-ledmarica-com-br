@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { installWhatsAppClickTracking } from "@/lib/whatsappTracking";
 
 const CookieBanner = lazy(() =>
   import("@/components/lgpd/CookieBanner").then((module) => ({ default: module.CookieBanner })),
@@ -16,6 +17,11 @@ const ConditionalScripts = lazy(() =>
 
 export function LgpdLayer() {
   const [enabled, setEnabled] = useState(false);
+
+  // Cliques em WhatsApp: listener leve, instalado já na montagem (não espera o
+  // idle) para não perder cliques rápidos. O envio ao Meta continua sujeito ao
+  // consentimento de Marketing.
+  useEffect(() => installWhatsAppClickTracking(), []);
 
   useEffect(() => {
     let idleId: number | null = null;

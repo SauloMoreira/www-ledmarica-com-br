@@ -7,6 +7,7 @@ import { StoreLayout } from "@/components/layout/StoreLayout";
 import { Button } from "@/components/ui/button";
 import { formatBRL } from "@/lib/domain";
 import { useCart } from "@/stores/cartStore";
+import { cartSnapshot, trackAddedSince, type CartAdditionInput } from "@/lib/cartTracking";
 import {
   getPublicBundleBySlug,
   type BundleAvailability,
@@ -88,6 +89,13 @@ function ComboDetailPage() {
     setAdding(true);
     let added = 0;
     let skipped = 0;
+    // Um único AddToCart com os itens do combo que de fato entraram no carrinho.
+    const tracked: CartAdditionInput[] = bundle!.items.map((it) => ({
+      productId: it.product.id,
+      name: it.product.name,
+      unitPrice: it.product.final_price,
+    }));
+    const snap = cartSnapshot(tracked.map((t) => t.productId));
     for (const it of bundle!.items) {
       if (it.status === "inactive" || it.status === "no_price") {
         skipped++;
@@ -115,6 +123,7 @@ function ComboDetailPage() {
       added++;
     }
     setAdding(false);
+    trackAddedSince(snap, tracked);
     if (added > 0 && skipped === 0) {
       toast.success("Itens adicionados ao carrinho");
       open();

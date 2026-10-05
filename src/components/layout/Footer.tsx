@@ -47,6 +47,7 @@ export function Footer() {
             </p>
             <a
               href={`https://wa.me/${STORE_WHATSAPP}`}
+              data-wa-origin="rodape"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-sm font-medium text-slate-100 hover:text-[#60A5FA] transition-colors"

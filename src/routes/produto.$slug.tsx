@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ShoppingCart, Truck, Shield, ChevronRight, Check, Zap, Store, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { StoreLayout } from "@/components/layout/StoreLayout";
@@ -9,7 +9,8 @@ import type { Product } from "@/lib/domain";
 import { formatBRL } from "@/lib/domain";
 import { useCart } from "@/stores/cartStore";
 import { buildSeo, SITE_URL, clamp } from "@/lib/seo";
-import { trackViewProduct, trackAddToCart } from "@/lib/tracking";
+import { trackViewProduct } from "@/lib/tracking";
+import { cartSnapshot, trackAddedSince } from "@/lib/cartTracking";
 import { ProductGallery } from "@/components/store/ProductGallery";
 import { pickUrl, type ProductImageRow } from "@/lib/productImages";
 import { RelatedProductsBlock } from "@/components/store/RelatedProductsBlock";
@@ -250,8 +251,13 @@ function ProductPage() {
     return () => clearTimeout(t);
   }, []);
 
+  // ViewContent uma vez por produto exibido: um refetch (novo objeto com o
+  // mesmo produto) ou o duplo efeito do StrictMode não repetem o evento.
+  const viewTrackedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (product) trackViewProduct(product);
+    if (!product || viewTrackedFor.current === product.id) return;
+    viewTrackedFor.current = product.id;
+    trackViewProduct(product);
   }, [product]);
 
   if (isLoading) {
@@ -278,6 +284,7 @@ function ProductPage() {
   const maxQty = Math.min(10, Math.max(1, product.stock_qty));
 
   const addToCart = (then?: "checkout") => {
+    const snap = cartSnapshot([product.id]);
     cart.addItem(
       {
         productId: product.id,
@@ -290,7 +297,8 @@ function ProductPage() {
       },
       qty,
     );
-    trackAddToCart(product, qty);
+    // Quantidade efetivamente adicionada (o carrinho limita ao estoque).
+    trackAddedSince(snap, [{ productId: product.id, name: product.name, unitPrice: finalPrice }]);
     if (then === "checkout") {
       navigate({ to: "/checkout" });
     } else {

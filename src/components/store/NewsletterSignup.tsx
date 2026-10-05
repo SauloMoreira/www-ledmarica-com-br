@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Mail, Check, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { trackNewsletterSignup } from "@/lib/tracking";
 
 const WELCOME_COUPON_CODE = "BEMVINDO10";
 
@@ -21,6 +22,8 @@ export function NewsletterSignup({ compact = false }: { compact?: boolean } = {}
       interest: "newsletter",
       status: "novo",
     });
+    // Newsletter tem evento próprio (NewsletterSignup) — não é Lead.
+    if (!error) trackNewsletterSignup("site");
     setStatus(error ? "error" : "done");
   };
 

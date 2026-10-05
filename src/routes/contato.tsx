@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { getPublicCompanySettings, submitContactMessage } from "@/server/institutional.functions";
 import { buildSeo, SITE_URL } from "@/lib/seo";
+import { trackLeadCaptured } from "@/lib/tracking";
 
 export const Route = createFileRoute("/contato")({
   head: () =>
@@ -60,6 +61,7 @@ function ContatoPage() {
         },
       }),
     onSuccess: () => {
+      trackLeadCaptured("contact_form");
       setDone(true);
       setForm({ name: "", email: "", phone: "", subject: "", message: "" });
       setAccept(false);
@@ -137,6 +139,7 @@ function ContatoPage() {
               <InfoCard icon={<MessageCircle className="w-5 h-5" />} label="WhatsApp">
                 <a
                   href={`https://wa.me/${onlyDigits(company.support_whatsapp)}`}
+                  data-wa-origin="contato"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline"

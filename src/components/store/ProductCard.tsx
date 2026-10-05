@@ -3,6 +3,7 @@ import { ShoppingCart } from "lucide-react";
 import type { Product } from "@/lib/domain";
 import { formatBRL } from "@/lib/domain";
 import { useCart } from "@/stores/cartStore";
+import { cartSnapshot, trackAddedSince } from "@/lib/cartTracking";
 import { ProductImagePlaceholder } from "@/components/store/ProductImagePlaceholder";
 import { responsiveSrcSet } from "@/lib/productImages";
 
@@ -30,6 +31,7 @@ export function ProductCard({
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    const snap = cartSnapshot([product.id]);
     cart.addItem({
       productId: product.id,
       name: product.name,
@@ -39,6 +41,7 @@ export function ProductCard({
       stock: product.stock_qty,
       freeShippingEligible: !!product.free_shipping_eligible,
     });
+    trackAddedSince(snap, [{ productId: product.id, name: product.name, unitPrice: finalPrice }]);
   };
 
   // As primeiras posições (1ª leva visível antes de rolar, tipicamente 4 por linha)
