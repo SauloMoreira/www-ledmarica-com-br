@@ -40,6 +40,7 @@ export function B2BEmptyState({ onReset, whatsappLink, isApproved }: Props) {
           <ShoppingBag className="w-4 h-4" /> Ver todos os produtos
         </Link>
         <a
+          data-wa-origin="atacado_sem_resultado"
           href={whatsappLink}
           target="_blank"
           rel="noreferrer"
