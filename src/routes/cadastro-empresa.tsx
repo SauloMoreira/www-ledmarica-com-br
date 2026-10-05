@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { buildSeo } from "@/lib/seo";
 import { formatCNPJ, isValidCNPJ, onlyDigits } from "@/lib/cnpj";
 import { createCompany } from "@/server/companies.functions";
+import { trackLeadCaptured } from "@/lib/tracking";
 
 export const Route = createFileRoute("/cadastro-empresa")({
   head: () =>
@@ -99,6 +100,8 @@ function CadastroEmpresaPage() {
       const res = await createCompany({
         data: { ...r.data, cnpj: onlyDigits(r.data.cnpj) },
       });
+      // Empresa cadastrada para compras B2B = contato comercial interessado.
+      trackLeadCaptured("b2b_company_signup");
       const approved = Boolean((res as { auto_approved?: boolean })?.auto_approved);
       const reason = String((res as { reason?: string })?.reason ?? "");
       toast.success(

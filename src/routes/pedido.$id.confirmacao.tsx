@@ -26,12 +26,8 @@ import { getOrderForCustomer } from "@/server/orderTracking.functions";
 import { createMercadoPagoPreference } from "@/server/payment.functions";
 import { orderStatusLabel } from "@/lib/orderStatus";
 import { redirectToExternalCheckout } from "@/lib/externalCheckout";
-import {
-  trackGoogleAdsPurchase,
-  trackPurchase,
-  takePendingConversionUserData,
-  whenGoogleTagsReady,
-} from "@/lib/tracking";
+import { takePendingConversionUserData } from "@/lib/tracking";
+import { isPaymentApproved, trackConfirmedPurchase } from "@/lib/purchaseTracking";
 import { buildSeo } from "@/lib/seo";
 
 const SearchSchema = z.object({
@@ -84,6 +80,7 @@ type CustomerOrder = {
   } | null;
   items: Array<{
     id: string;
+    productId: string | null;
     name: string;
     image: string | null;
     qty: number;
@@ -248,39 +245,27 @@ function OrderTrackingPage() {
     load(false);
   }, [user, loading, token, load, navigate]);
 
-  // Conversão "Compra" (Google Ads + GA4 + Meta/TikTok): só com pagamento aprovado,
-  // com deduplicação por pedido (localStorage) para não repetir em refresh.
+  // Conversão "Compra" (GA4 + Google Ads + Meta): só com pagamento aprovado
+  // segundo o SERVIDOR (status gravado pelo webhook assinado do Mercado Pago).
+  // A deduplicação por pedido e por canal fica em trackConfirmedPurchase:
+  // recarregar ou revisitar esta página não repete o envio.
   useEffect(() => {
-    if (!order) return;
-    const isPaid = order.paymentStatus === "paid" || order.paymentStatus === "approved";
-    if (!isPaid) return;
-    const dedupeKey = `gads_conversion_${order.id}`;
-    try {
-      if (window.localStorage.getItem(dedupeKey)) return;
-      window.localStorage.setItem(dedupeKey, new Date().toISOString());
-    } catch {
-      /* storage indisponível — tenta mesmo assim */
-    }
-    const userData = takePendingConversionUserData(order.id);
-    const purchase = order;
-    void whenGoogleTagsReady().then(() => {
-      trackGoogleAdsPurchase({
-        orderId: purchase.id,
-        orderNumber: purchase.orderNumber,
-        total: purchase.total,
-        userData,
-      });
-      trackPurchase({
-        transactionId: String(purchase.orderNumber),
-        total: purchase.total,
-        items: purchase.items.map((it) => ({
-          id: it.id,
+    if (!order || !isPaymentApproved(order.paymentStatus)) return;
+    void trackConfirmedPurchase(
+      {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        total: order.total,
+        paymentStatus: order.paymentStatus,
+        items: order.items.map((it) => ({
+          productId: it.productId,
           name: it.name,
           qty: it.qty,
           unitPrice: it.unitPrice,
         })),
-      });
-    });
+      },
+      takePendingConversionUserData(order.id),
+    );
   }, [order]);
 
   async function startPayment() {
@@ -688,7 +673,12 @@ function OrderTrackingPage() {
         <div className="flex flex-col sm:flex-row gap-3">
           {whatsUrl && (
             <Button asChild variant="outline" className="flex-1">
-              <a href={whatsUrl} target="_blank" rel="noopener noreferrer">
+              <a
+                href={whatsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-wa-origin="pedido_atendimento"
+              >
                 <MessageCircle className="w-4 h-4" />
                 Falar com atendimento
               </a>

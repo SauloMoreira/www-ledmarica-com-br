@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { buildSeo } from "@/lib/seo";
 import { formatBRL, STORE_WHATSAPP } from "@/lib/domain";
 import { useCart } from "@/stores/cartStore";
+import { cartSnapshot, trackAddedSince, type CartAdditionInput } from "@/lib/cartTracking";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveQuickBuyCodes, type QuickBuyResolvedLine } from "@/server/quickBuy.functions";
 import { autocompleteSearch } from "@/server/productSearch.functions";
@@ -231,6 +232,13 @@ function CompraRapidaPage() {
       return;
     }
     let added = 0;
+    // Um único AddToCart com as linhas que de fato entraram no carrinho.
+    const tracked: CartAdditionInput[] = valid.map((ln) => ({
+      productId: ln.product_id!,
+      name: ln.product_name || "",
+      unitPrice: ln.applied_preview_price!,
+    }));
+    const snap = cartSnapshot(tracked.map((t) => t.productId));
     for (const ln of valid) {
       const useB2b = ln.pricing_source_preview === "b2b";
       cart.addItem(
@@ -251,6 +259,7 @@ function CompraRapidaPage() {
       );
       added += 1;
     }
+    trackAddedSince(snap, tracked);
     const hasErrors = resolved.length > valid.length;
     toast.success(
       hasErrors
@@ -502,6 +511,7 @@ function CompraRapidaPage() {
                 </button>
                 {(isApproved || companyStatus === "pending") && (
                   <a
+                    data-wa-origin="compra_rapida"
                     href={whatsappLink}
                     target="_blank"
                     rel="noreferrer"

@@ -205,7 +205,16 @@ function CheckoutPage() {
 
   useEffect(() => {
     if (!loading && user && cart.items.length > 0) {
-      trackBeginCheckout(subtotal, cart.items.length);
+      // Deduplicado por sessão + conteúdo do carrinho (recarga/revisita não repete).
+      trackBeginCheckout(
+        cart.items.map((i) => ({
+          productId: i.productId,
+          name: i.name,
+          qty: i.qty,
+          unitPrice: i.price,
+        })),
+        subtotal,
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user]);
@@ -550,7 +559,16 @@ function CheckoutPage() {
       if (r.ok) {
         // A compra só é registrada (GA4/Ads/Meta) na confirmação, com pagamento
         // aprovado. Aqui: etapa de pagamento + dados p/ Conversões Otimizadas.
-        trackAddPaymentInfo(cart.subtotal(), cart.items.length);
+        // Lido ANTES do cart.clear() logo abaixo.
+        trackAddPaymentInfo(
+          cart.items.map((i) => ({
+            productId: i.productId,
+            name: i.name,
+            qty: i.qty,
+            unitPrice: i.price,
+          })),
+          cart.subtotal(),
+        );
         savePendingConversionUserData(r.orderId, {
           email: user?.email ?? null,
           phone: (user?.user_metadata?.phone as string | undefined) ?? user?.phone ?? null,

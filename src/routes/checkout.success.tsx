@@ -8,6 +8,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/stores/cartStore";
 import { getOrderPaymentStatus } from "@/server/payment.functions";
 import { buildSeo } from "@/lib/seo";
+import { takePendingConversionUserData } from "@/lib/tracking";
+import { isPaymentApproved, trackConfirmedPurchase } from "@/lib/purchaseTracking";
 
 const searchSchema = z.object({
   order_id: z.string().uuid().optional(),
@@ -48,6 +50,26 @@ function CheckoutSuccessPage() {
       if (r.ok) {
         setStatus(r.order.payment_status ?? "pending");
         setOrderNumber(r.order.order_number);
+        // Compra: o parâmetro `status` da URL de retorno NÃO é usado. Só o
+        // status lido do banco (gravado pelo webhook assinado do Mercado Pago,
+        // que consulta o pagamento na API do MP) dispara a conversão.
+        if (isPaymentApproved(r.order.payment_status)) {
+          void trackConfirmedPurchase(
+            {
+              id: r.order.id,
+              orderNumber: r.order.order_number,
+              total: Number(r.order.total),
+              paymentStatus: r.order.payment_status,
+              items: (r.order.order_items ?? []).map((it) => ({
+                productId: it.product_id ?? null,
+                name: it.product_name,
+                qty: Number(it.qty),
+                unitPrice: Number(it.unit_price),
+              })),
+            },
+            takePendingConversionUserData(r.order.id),
+          );
+        }
         if (
           r.order.payment_status === "approved" ||
           r.order.payment_status === "paid" ||
