@@ -18,6 +18,15 @@ export interface SendEmailParams {
   text?: string;
   replyTo?: string;
   metadata?: Record<string, string | number | boolean | null>;
+  /** Anexos (ex.: DANFE em PDF e XML da NF-e). `content` em base64. */
+  attachments?: EmailAttachment[];
+}
+
+export interface EmailAttachment {
+  filename: string;
+  /** Conteúdo do arquivo codificado em base64. */
+  content: string;
+  contentType?: string;
 }
 
 export interface SendEmailResult {
@@ -54,6 +63,13 @@ export async function sendTransactionalEmail(params: SendEmailParams): Promise<S
       html: params.html,
       text: params.text,
       replyTo: replyTo ?? undefined,
+      attachments: params.attachments?.length
+        ? params.attachments.map((a) => ({
+            filename: a.filename,
+            content: a.content,
+            contentType: a.contentType,
+          }))
+        : undefined,
       headers: params.metadata
         ? { "X-Entity-Ref-ID": String(params.metadata.orderId ?? params.metadata.type ?? "") }
         : undefined,

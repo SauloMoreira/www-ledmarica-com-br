@@ -2580,6 +2580,10 @@ export type Database = {
           customer_cnpj: string | null
           customer_document_type: string | null
           customer_legal_name: string | null
+          invoice_email_sent_at: string | null
+          invoice_email_sent_to: string | null
+          invoice_pdf_path: string | null
+          invoice_xml_path: string | null
           delivery_method: string
           discount: number
           estimated_delivery: string | null
@@ -2677,6 +2681,10 @@ export type Database = {
           customer_cnpj?: string | null
           customer_document_type?: string | null
           customer_legal_name?: string | null
+          invoice_email_sent_at?: string | null
+          invoice_email_sent_to?: string | null
+          invoice_pdf_path?: string | null
+          invoice_xml_path?: string | null
           delivery_method?: string
           discount?: number
           estimated_delivery?: string | null
@@ -2774,6 +2782,10 @@ export type Database = {
           customer_cnpj?: string | null
           customer_document_type?: string | null
           customer_legal_name?: string | null
+          invoice_email_sent_at?: string | null
+          invoice_email_sent_to?: string | null
+          invoice_pdf_path?: string | null
+          invoice_xml_path?: string | null
           delivery_method?: string
           discount?: number
           estimated_delivery?: string | null

@@ -28,6 +28,10 @@ import {
   INVOICE_STATUS_LABEL,
   type InvoiceStatus,
 } from "@/server/invoices.functions";
+import {
+  InvoiceDeliveryPanel,
+  toDeliveryState,
+} from "@/components/admin/invoices/InvoiceDeliveryPanel";
 
 const STATUS_BADGE: Record<InvoiceStatus, string> = {
   nao_necessaria: "bg-muted text-muted-foreground",
@@ -75,8 +79,8 @@ export function InvoiceBlock({
     invoice_notes: "",
   });
 
-  const reload = async () => {
-    setLoading(true);
+  const reload = async (opts: { silent?: boolean } = {}) => {
+    if (!opts.silent) setLoading(true);
     try {
       const r = await fetchDetail({ data: { orderId } });
       setData(r);
@@ -116,7 +120,8 @@ export function InvoiceBlock({
 
   const o = data.order;
   const status = (o.invoice_status ?? "pendente_emissao") as InvoiceStatus;
-  const isPaid = paymentStatus === "paid";
+  // Mercado Pago grava "approved"; pedidos antigos/manuais podem ter "paid".
+  const isPaid = paymentStatus === "paid" || paymentStatus === "approved";
 
   async function handleSave() {
     setSaving(true);
@@ -140,7 +145,7 @@ export function InvoiceBlock({
       } else {
         toast.success("Nota fiscal registrada");
         setOpen(false);
-        await reload();
+        await reload({ silent: true });
       }
     } finally {
       setSaving(false);
@@ -154,7 +159,7 @@ export function InvoiceBlock({
       if (!r.ok) toast.error(r.error ?? "Erro ao atualizar status");
       else {
         toast.success("Status fiscal atualizado");
-        await reload();
+        await reload({ silent: true });
       }
     } finally {
       setStatusSaving(false);
@@ -234,6 +239,14 @@ export function InvoiceBlock({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-border">
+        <InvoiceDeliveryPanel
+          orderId={orderId}
+          state={toDeliveryState(o, data.customerEmail)}
+          onChanged={() => reload({ silent: true })}
+        />
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>

@@ -50,3 +50,4 @@ export async function sendTransactionalEmail(
 }
 
 export type { SendEmailParams, SendEmailResult };
+export type { EmailAttachment } from "./resend";

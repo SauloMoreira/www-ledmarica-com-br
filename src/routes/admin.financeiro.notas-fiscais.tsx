@@ -42,10 +42,15 @@ import {
   listInvoices,
   getInvoiceSummary,
   registerInvoice,
+  getInvoiceDetail,
   setInvoiceStatus,
   INVOICE_STATUS_LABEL,
   type InvoiceStatus,
 } from "@/server/invoices.functions";
+import {
+  InvoiceDeliveryPanel,
+  toDeliveryState,
+} from "@/components/admin/invoices/InvoiceDeliveryPanel";
 
 export const Route = createFileRoute("/admin/financeiro/notas-fiscais")({
   component: NotasFiscaisPage,
@@ -417,6 +422,23 @@ function NotasFiscaisPage() {
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
+                      {(r.invoice_pdf_path || r.invoice_email_sent_at) && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {r.invoice_pdf_path && (
+                            <span className="inline-flex items-center gap-0.5 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                              <FileText className="w-2.5 h-2.5" aria-hidden /> PDF anexado
+                            </span>
+                          )}
+                          {r.invoice_email_sent_at && (
+                            <span
+                              className="inline-flex items-center gap-0.5 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-700 dark:text-emerald-400"
+                              title={`Enviada para ${r.invoice_email_sent_to ?? "cliente"} em ${fmtDate(r.invoice_email_sent_at)}`}
+                            >
+                              <CheckCircle2 className="w-2.5 h-2.5" aria-hidden /> Enviada ao cliente
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="inline-flex flex-wrap gap-1 justify-end">
@@ -426,7 +448,7 @@ function NotasFiscaisPage() {
                           className="h-7 text-xs"
                           onClick={() => setRegisterOrder({ id: r.id, number: r.order_number })}
                         >
-                          {r.invoice_status === "emitida" ? "Editar NF" : "Registrar NF"}
+                          {r.invoice_status === "emitida" ? "NF / Enviar" : "Registrar NF"}
                         </Button>
                         <select
                           className="h-7 rounded border border-input bg-background px-1 text-[11px]"
@@ -535,6 +557,7 @@ export function RegisterInvoiceDialog({
   onSaved: () => void;
 }) {
   const register = useServerFn(registerInvoice);
+  const fetchDetail = useServerFn(getInvoiceDetail);
   const [form, setForm] = useState({
     invoice_number: "",
     invoice_series: "1",
@@ -544,9 +567,39 @@ export function RegisterInvoiceDialog({
     invoice_issued_at: new Date().toISOString().slice(0, 16),
     invoice_notes: "",
   });
+  const [detail, setDetail] = useState<Awaited<ReturnType<typeof getInvoiceDetail>> | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [changed, setChanged] = useState(false);
 
-  const handleSave = async () => {
+  const loadDetail = async (prefill: boolean) => {
+    const r = await fetchDetail({ data: { orderId } });
+    setDetail(r);
+    if (prefill && r.ok) {
+      const o = r.order;
+      // Editar uma NF já registrada parte dos dados salvos (antes abria em
+      // branco e salvar apagava número/chave/links existentes).
+      setForm((f) => ({
+        invoice_number: o.invoice_number ?? f.invoice_number,
+        invoice_series: o.invoice_series ?? f.invoice_series,
+        invoice_access_key: o.invoice_access_key ?? f.invoice_access_key,
+        invoice_danfe_url: o.invoice_danfe_url ?? f.invoice_danfe_url,
+        invoice_xml_url: o.invoice_xml_url ?? f.invoice_xml_url,
+        invoice_issued_at: o.invoice_issued_at
+          ? new Date(o.invoice_issued_at).toISOString().slice(0, 16)
+          : f.invoice_issued_at,
+        invoice_notes: o.invoice_notes ?? f.invoice_notes,
+      }));
+    }
+    setLoaded(true);
+  };
+
+  useEffect(() => {
+    void loadDetail(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId]);
+
+  const save = async (opts: { quiet?: boolean } = {}): Promise<boolean> => {
     setSaving(true);
     try {
       const r = await register({
@@ -563,92 +616,137 @@ export function RegisterInvoiceDialog({
           invoice_notes: form.invoice_notes || null,
         } as any,
       });
-      if (!r.ok) toast.error(r.error ?? "Falha ao registrar NF");
-      else {
-        toast.success("Nota fiscal registrada");
-        onSaved();
+      if (!r.ok) {
+        toast.error(r.error ?? "Falha ao registrar NF");
+        return false;
       }
+      setChanged(true);
+      if (!opts.quiet) toast.success("Nota fiscal registrada");
+      return true;
     } catch (e: any) {
       toast.error(e?.message ?? "Erro inesperado");
+      return false;
     } finally {
       setSaving(false);
     }
   };
 
+  const handleSave = async () => {
+    if (await save()) onSaved();
+  };
+
+  const close = () => (changed ? onSaved() : onClose());
+
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-xl">
+    <Dialog open onOpenChange={(o) => !o && close()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Registrar nota fiscal · Pedido #{orderNumber}</DialogTitle>
+          <DialogTitle>Nota fiscal · Pedido #{orderNumber}</DialogTitle>
           <DialogDescription>
-            Registre aqui os dados da NF-e emitida fora da plataforma. Esta tela não emite a nota.
+            Registre os dados da NF-e emitida fora da plataforma, anexe o PDF e envie ao cliente.
+            Esta tela não emite a nota.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Número da NF</Label>
-            <Input
-              value={form.invoice_number}
-              onChange={(e) => setForm({ ...form, invoice_number: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label>Série</Label>
-            <Input
-              value={form.invoice_series}
-              onChange={(e) => setForm({ ...form, invoice_series: e.target.value })}
-            />
-          </div>
-          <div className="col-span-2">
-            <Label>Chave de acesso (44 dígitos)</Label>
-            <Input
-              value={form.invoice_access_key}
-              maxLength={44}
-              onChange={(e) =>
-                setForm({ ...form, invoice_access_key: e.target.value.replace(/\D/g, "") })
-              }
-            />
-          </div>
-          <div className="col-span-2">
-            <Label>Link do DANFE (PDF)</Label>
-            <Input
-              type="url"
-              placeholder="https://…"
-              value={form.invoice_danfe_url}
-              onChange={(e) => setForm({ ...form, invoice_danfe_url: e.target.value })}
-            />
-          </div>
-          <div className="col-span-2">
-            <Label>Link do XML</Label>
-            <Input
-              type="url"
-              placeholder="https://…"
-              value={form.invoice_xml_url}
-              onChange={(e) => setForm({ ...form, invoice_xml_url: e.target.value })}
-            />
-          </div>
-          <div className="col-span-2">
-            <Label>Data de emissão</Label>
-            <Input
-              type="datetime-local"
-              value={form.invoice_issued_at}
-              onChange={(e) => setForm({ ...form, invoice_issued_at: e.target.value })}
-            />
-          </div>
-          <div className="col-span-2">
-            <Label>Observações</Label>
-            <Textarea
-              rows={3}
-              value={form.invoice_notes}
-              onChange={(e) => setForm({ ...form, invoice_notes: e.target.value })}
-            />
-          </div>
-        </div>
+        {!loaded ? (
+          <div className="py-10 text-center text-sm text-muted-foreground">Carregando…</div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="nf-number">Número da NF</Label>
+                <Input
+                  id="nf-number"
+                  value={form.invoice_number}
+                  onChange={(e) => setForm({ ...form, invoice_number: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="nf-series">Série</Label>
+                <Input
+                  id="nf-series"
+                  value={form.invoice_series}
+                  onChange={(e) => setForm({ ...form, invoice_series: e.target.value })}
+                />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="nf-key">Chave de acesso (44 dígitos)</Label>
+                <Input
+                  id="nf-key"
+                  value={form.invoice_access_key}
+                  maxLength={44}
+                  inputMode="numeric"
+                  onChange={(e) =>
+                    setForm({ ...form, invoice_access_key: e.target.value.replace(/\D/g, "") })
+                  }
+                />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="nf-issued">Data de emissão</Label>
+                <Input
+                  id="nf-issued"
+                  type="datetime-local"
+                  value={form.invoice_issued_at}
+                  onChange={(e) => setForm({ ...form, invoice_issued_at: e.target.value })}
+                />
+              </div>
+              <details className="col-span-2 text-sm">
+                <summary className="cursor-pointer text-xs text-muted-foreground">
+                  Links externos do DANFE/XML (opcional, se a nota estiver hospedada no emissor)
+                </summary>
+                <div className="grid gap-3 mt-2">
+                  <div>
+                    <Label htmlFor="nf-danfe-url">Link do DANFE (PDF)</Label>
+                    <Input
+                      id="nf-danfe-url"
+                      type="url"
+                      placeholder="https://…"
+                      value={form.invoice_danfe_url}
+                      onChange={(e) => setForm({ ...form, invoice_danfe_url: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="nf-xml-url">Link do XML</Label>
+                    <Input
+                      id="nf-xml-url"
+                      type="url"
+                      placeholder="https://…"
+                      value={form.invoice_xml_url}
+                      onChange={(e) => setForm({ ...form, invoice_xml_url: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </details>
+              <div className="col-span-2">
+                <Label htmlFor="nf-notes">Observações internas</Label>
+                <Textarea
+                  id="nf-notes"
+                  rows={2}
+                  value={form.invoice_notes}
+                  onChange={(e) => setForm({ ...form, invoice_notes: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {detail?.ok && (
+              <div className="border-t border-border pt-4">
+                <InvoiceDeliveryPanel
+                  orderId={orderId}
+                  state={toDeliveryState(detail.order, detail.customerEmail)}
+                  onChanged={async () => {
+                    setChanged(true);
+                    await loadDetail(false);
+                  }}
+                  beforeSend={() => save({ quiet: true })}
+                />
+              </div>
+            )}
+          </>
+        )}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancelar
+          <Button variant="outline" onClick={close}>
+            Fechar
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} disabled={saving || !loaded}>
             {saving ? "Salvando…" : "Salvar nota fiscal"}
           </Button>
         </DialogFooter>
