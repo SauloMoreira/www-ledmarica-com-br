@@ -108,7 +108,7 @@ export const listInvoices = createServerFn({ method: "POST" })
     let q = supabaseAdmin
       .from("orders")
       .select(
-        "id, order_number, user_id, total, payment_status, paid_at, created_at, order_type, company_id, company_name, company_cnpj, customer_document_type, customer_cnpj, customer_legal_name, invoice_status, invoice_number, invoice_series, invoice_access_key, invoice_danfe_url, invoice_xml_url, invoice_issued_at, invoice_required, invoice_registered_at, address_snapshot",
+        "id, order_number, user_id, total, payment_status, paid_at, created_at, order_type, company_id, company_name, company_cnpj, customer_document_type, customer_cnpj, customer_legal_name, invoice_status, invoice_number, invoice_series, invoice_access_key, invoice_danfe_url, invoice_xml_url, invoice_issued_at, invoice_required, invoice_registered_at, invoice_pdf_path, invoice_xml_path, invoice_email_sent_at, invoice_email_sent_to, address_snapshot",
         { count: "exact" },
       )
       .in("payment_status", ["paid", "approved"])
@@ -289,7 +289,7 @@ export const getInvoiceDetail = createServerFn({ method: "POST" })
     const { data: order, error } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, order_number, payment_status, paid_at, order_type, invoice_status, invoice_number, invoice_series, invoice_access_key, invoice_danfe_url, invoice_xml_url, invoice_issued_at, invoice_notes, invoice_required, invoice_registered_by, invoice_registered_at, invoice_updated_at",
+        "id, order_number, payment_status, paid_at, order_type, invoice_status, invoice_number, invoice_series, invoice_access_key, invoice_danfe_url, invoice_xml_url, invoice_issued_at, invoice_notes, invoice_required, invoice_registered_by, invoice_registered_at, invoice_updated_at, invoice_pdf_path, invoice_xml_path, invoice_email_sent_at, invoice_email_sent_to, user_id",
       )
       .eq("id", data.orderId)
       .single();
@@ -313,7 +313,18 @@ export const getInvoiceDetail = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(50);
 
-    return { ok: true as const, order, registeredByEmail, audit: audit ?? [] };
+    // E-mail sugerido para envio da NF: último destino usado ou o do cliente.
+    let customerEmail: string | null = order.invoice_email_sent_to ?? null;
+    if (!customerEmail && order.user_id) {
+      const { data: cust } = await supabaseAdmin
+        .from("profiles")
+        .select("email")
+        .eq("id", order.user_id)
+        .maybeSingle();
+      customerEmail = cust?.email ?? null;
+    }
+
+    return { ok: true as const, order, registeredByEmail, customerEmail, audit: audit ?? [] };
   });
 
 // ============================================================
