@@ -2,7 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { couponConditionMetPrePayment } from "@/lib/couponConditions";
-import { onlyDigits as onlyDigitsCpf, isValidCPF } from "@/lib/cpf";
+import { isValidCPF } from "@/lib/cpf";
+import { isValidCNPJ } from "@/lib/cnpj";
+import { onlyDigits as onlyDigitsDoc } from "@/lib/taxDocument";
 
 // ============================================================
 // ViaCEP — público, sem token
@@ -260,15 +262,48 @@ export const getAutoCouponForContext = createServerFn({ method: "POST" })
 // ============================================================
 // Criar pedido (RLS aplicada como o usuário)
 // ============================================================
+// Documento fiscal do comprador — obrigatório para TODO pedido (delivery,
+// frete local ou retirada): a nota fiscal exige o documento independente de
+// como o produto chega. Pessoa física → CPF; empresa/MEI → CNPJ + razão
+// social. Validado por dígito verificador — nunca aceitamos um documento
+// apenas "bem formatado". Comprar com CNPJ NÃO concede preço de atacado
+// (isso continua exigindo empresa B2B aprovada — ver b2bPricing).
+const TaxDocumentInput = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("cpf"),
+    number: z
+      .string()
+      .transform((v) => onlyDigitsDoc(v))
+      .pipe(z.string().refine((v) => isValidCPF(v), "CPF inválido")),
+    legalName: z.null().optional(),
+  }),
+  z.object({
+    type: z.literal("cnpj"),
+    number: z
+      .string()
+      .transform((v) => onlyDigitsDoc(v))
+      .pipe(z.string().refine((v) => isValidCNPJ(v), "CNPJ inválido")),
+    legalName: z
+      .string()
+      .transform((v) => v.replace(/\s+/g, " ").trim())
+      .pipe(z.string().min(2, "Informe a razão social").max(150, "Razão social muito longa")),
+  }),
+]);
+
+// Compatibilidade: um client com bundle antigo (antes do deploy) ainda envia
+// `cpf` solto. Convertemos para o formato novo em vez de rejeitar o pedido.
+function normalizeLegacyOrderInput(input: unknown): unknown {
+  if (!input || typeof input !== "object") return input;
+  const raw = input as Record<string, unknown>;
+  if (raw.taxDocument === undefined && typeof raw.cpf === "string") {
+    const { cpf, ...rest } = raw;
+    return { ...rest, taxDocument: { type: "cpf", number: cpf } };
+  }
+  return input;
+}
+
 const CreateOrderInput = z.object({
-  // CPF é obrigatório para TODO pedido (delivery, frete local ou retirada):
-  // a nota fiscal exige o documento do cliente independente de como o
-  // produto chega até ele. Validado por dígito verificador (mesmo padrão
-  // de rigor do CNPJ B2B) — nunca aceitamos um CPF apenas "bem formatado".
-  cpf: z
-    .string()
-    .transform((v) => onlyDigitsCpf(v))
-    .pipe(z.string().refine((v) => isValidCPF(v), "CPF inválido")),
+  taxDocument: TaxDocumentInput,
   items: z
     .array(
       z.object({
@@ -336,7 +371,7 @@ const CreateOrderInput = z.object({
 
 export const createOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => CreateOrderInput.parse(input))
+  .inputValidator((input: unknown) => CreateOrderInput.parse(normalizeLegacyOrderInput(input)))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
@@ -717,11 +752,14 @@ export const createOrder = createServerFn({ method: "POST" })
         total,
         coupon_code: appliedCouponCode,
         intended_payment_method: data.intendedPaymentMethod ?? null,
-        // Snapshot imutável do CPF no momento da compra — igual ao padrão já
-        // usado para company_cnpj (B2B) e address_snapshot: o pedido guarda
-        // o dado como era na hora, mesmo que o cliente troque o CPF salvo
-        // no perfil depois.
-        customer_cpf: data.cpf,
+        // Snapshot imutável do documento fiscal no momento da compra — igual
+        // ao padrão de company_cnpj (B2B) e address_snapshot: o pedido guarda
+        // o dado como era na hora, mesmo que o cliente mude o perfil depois.
+        customer_document_type: data.taxDocument.type,
+        customer_cpf: data.taxDocument.type === "cpf" ? data.taxDocument.number : null,
+        customer_cnpj: data.taxDocument.type === "cnpj" ? data.taxDocument.number : null,
+        customer_legal_name:
+          data.taxDocument.type === "cnpj" ? data.taxDocument.legalName : null,
 
         shipping_carrier: shippingCarrier,
         shipping_service: shippingService,
@@ -821,13 +859,27 @@ export const createOrder = createServerFn({ method: "POST" })
       return { ok: false as const, error: itemsErr.message };
     }
 
-    // Persiste o CPF no perfil para pré-preencher a próxima compra — nunca
-    // deve derrubar o pedido já criado se falhar (ex.: CPF já usado em outra
-    // conta, bloqueado pelo índice único parcial).
+    // Persiste o documento no perfil para pré-preencher a próxima compra —
+    // nunca deve derrubar o pedido já criado se falhar (ex.: CPF já usado em
+    // outra conta, bloqueado pelo índice único parcial). O CPF salvo é mantido
+    // quando a compra é feita com CNPJ (e vice-versa).
     try {
-      await supabase.from("profiles").update({ cpf: data.cpf } as never).eq("id", userId);
+      const doc = data.taxDocument;
+      const profilePatch =
+        doc.type === "cpf"
+          ? { billing_document_type: "cpf", cpf: doc.number }
+          : {
+              billing_document_type: "cnpj",
+              billing_cnpj: doc.number,
+              billing_legal_name: doc.legalName,
+            };
+      const { error: profileErr } = await supabase
+        .from("profiles")
+        .update(profilePatch as never)
+        .eq("id", userId);
+      if (profileErr) console.error("[checkout] falha ao salvar documento no perfil", profileErr.message);
     } catch (e) {
-      console.error("[checkout] falha ao salvar CPF no perfil", e);
+      console.error("[checkout] falha ao salvar documento no perfil", e);
     }
 
     // Disparar e-mail "pedido recebido" — AWAIT obrigatório (Worker aborta promises não aguardadas após a Response); sendOrderEmail nunca propaga erro.

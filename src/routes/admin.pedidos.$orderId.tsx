@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { formatStoredTaxDocument } from "@/lib/taxDocument";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
@@ -247,17 +248,20 @@ function OrderDetailPage() {
               <Field label="Nome" value={customer?.name ?? snap?.recipient ?? "—"} />
               <Field label="E-mail" value={customer?.email ?? "—"} />
               <Field label="Telefone" value={customer?.phone ?? "—"} />
-              <Field
-                label="CPF"
-                value={
-                  (order as any).customer_cpf
-                    ? String((order as any).customer_cpf).replace(
-                        /(\d{3})(\d{3})(\d{3})(\d{2})/,
-                        "$1.$2.$3-$4",
-                      )
-                    : "—"
-                }
-              />
+              {(order as any).customer_document_type === "cnpj" ? (
+                <>
+                  <Field
+                    label="Nota fiscal em nome de (CNPJ)"
+                    value={formatStoredTaxDocument((order as any).customer_cnpj) || "—"}
+                  />
+                  <Field label="Razão social" value={(order as any).customer_legal_name ?? "—"} />
+                </>
+              ) : (
+                <Field
+                  label="CPF"
+                  value={formatStoredTaxDocument((order as any).customer_cpf) || "—"}
+                />
+              )}
               <Field
                 label="Cliente desde"
                 value={customer?.created_at ? fmtDate(customer.created_at) : "—"}
