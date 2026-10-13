@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { formatStoredTaxDocument } from "@/lib/taxDocument";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -341,6 +342,13 @@ function NotasFiscaisPage() {
                         <>
                           <div className="font-medium">{r.company_name ?? "—"}</div>
                           <div className="text-muted-foreground">{r.company_cnpj ?? ""}</div>
+                        </>
+                      ) : r.customer_document_type === "cnpj" ? (
+                        <>
+                          <div className="font-medium">{r.customer_legal_name ?? "—"}</div>
+                          <div className="text-muted-foreground">
+                            CNPJ {formatStoredTaxDocument(r.customer_cnpj)}
+                          </div>
                         </>
                       ) : (
                         <>

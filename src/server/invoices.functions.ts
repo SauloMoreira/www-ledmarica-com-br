@@ -108,7 +108,7 @@ export const listInvoices = createServerFn({ method: "POST" })
     let q = supabaseAdmin
       .from("orders")
       .select(
-        "id, order_number, user_id, total, payment_status, paid_at, created_at, order_type, company_id, company_name, company_cnpj, invoice_status, invoice_number, invoice_series, invoice_access_key, invoice_danfe_url, invoice_xml_url, invoice_issued_at, invoice_required, invoice_registered_at, address_snapshot",
+        "id, order_number, user_id, total, payment_status, paid_at, created_at, order_type, company_id, company_name, company_cnpj, customer_document_type, customer_cnpj, customer_legal_name, invoice_status, invoice_number, invoice_series, invoice_access_key, invoice_danfe_url, invoice_xml_url, invoice_issued_at, invoice_required, invoice_registered_at, address_snapshot",
         { count: "exact" },
       )
       .in("payment_status", ["paid", "approved"])
@@ -134,8 +134,10 @@ export const listInvoices = createServerFn({ method: "POST" })
       if (/^\d+$/.test(s)) orParts.push(`order_number.eq.${s}`);
       orParts.push(`invoice_number.ilike.%${s}%`);
       orParts.push(`invoice_access_key.ilike.%${s}%`);
-      orParts.push(`company_legal_name.ilike.%${s}%`);
+      orParts.push(`company_name.ilike.%${s}%`);
       orParts.push(`company_cnpj.ilike.%${s}%`);
+      orParts.push(`customer_legal_name.ilike.%${s}%`);
+      orParts.push(`customer_cnpj.ilike.%${s}%`);
       if (s) q = q.or(orParts.join(","));
     }
 

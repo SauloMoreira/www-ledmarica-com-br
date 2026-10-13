@@ -24,7 +24,14 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/stores/cartStore";
 import { supabase } from "@/integrations/supabase/client";
-import { formatCPF, onlyDigits as onlyDigitsCpf, isValidCPF } from "@/lib/cpf";
+import {
+  formatTaxDocument,
+  isValidLegalName,
+  isValidTaxDocument,
+  onlyDigits as onlyDigitsDoc,
+  type TaxDocumentType,
+} from "@/lib/taxDocument";
+import { TaxDocumentField, type TaxDocumentValue } from "@/components/store/TaxDocumentField";
 import { formatBRL, formatBusinessDays, ORDER_HANDLING_DAYS, totalDeliveryDays } from "@/lib/domain";
 import {
   lookupCep,
@@ -94,13 +101,24 @@ function CheckoutPage() {
     | undefined;
   const pickupEnabled = Boolean(company?.pickup_enabled);
 
-  // CPF — obrigatório em TODO pedido (a nota fiscal exige o documento do
-  // cliente independente de retirada/entrega). Pré-preenchido do perfil
-  // quando o cliente já comprou antes.
-  const [cpf, setCpf] = useState("");
-  const [cpfTouched, setCpfTouched] = useState(false);
-  const cpfDigits = onlyDigitsCpf(cpf);
-  const cpfError = cpfTouched && cpfDigits.length > 0 && !isValidCPF(cpfDigits);
+  // Documento fiscal — CPF ou CNPJ, obrigatório em TODO pedido (a nota fiscal
+  // exige o documento do comprador independente de retirada/entrega).
+  // Pré-preenchido do perfil quando o cliente já comprou antes.
+  const [taxDoc, setTaxDoc] = useState<TaxDocumentValue>({
+    type: "cpf",
+    cpf: "",
+    cnpj: "",
+    legalName: "",
+  });
+  const [taxDocTouched, setTaxDocTouched] = useState(false);
+  const taxDocDigits = onlyDigitsDoc(taxDoc.type === "cnpj" ? taxDoc.cnpj : taxDoc.cpf);
+  const taxDocValid =
+    isValidTaxDocument(taxDocDigits, taxDoc.type) &&
+    (taxDoc.type === "cpf" || isValidLegalName(taxDoc.legalName));
+  const taxDocSummary =
+    taxDoc.type === "cnpj"
+      ? `CNPJ: ${formatTaxDocument(taxDocDigits, "cnpj")} · ${taxDoc.legalName.trim()}`
+      : `CPF: ${formatTaxDocument(taxDocDigits, "cpf")}`;
 
   // Endereço
   const [zip, setZip] = useState("");
@@ -147,6 +165,22 @@ function CheckoutPage() {
   const subtotal = pricing?.applied_subtotal ?? cart.subtotal();
   const b2bSavings = pricing?.b2b_discount_total ?? 0;
   const isB2bOrder = Boolean(pricing?.has_b2b_items);
+
+  // Empresa B2B aprovada: sugere o CNPJ/razão social do cadastro (o cliente
+  // pode trocar para CPF). Só preenche se ainda não houver CNPJ digitado/salvo.
+  const approvedCompany = pricing?.company_approved ? pricing.company : null;
+  useEffect(() => {
+    if (!approvedCompany?.cnpj) return;
+    setTaxDoc((prev) => {
+      if (prev.cnpj) return prev;
+      return {
+        ...prev,
+        type: prev.cpf ? prev.type : "cnpj",
+        cnpj: formatTaxDocument(approvedCompany.cnpj, "cnpj"),
+        legalName: prev.legalName || approvedCompany.legal_name || "",
+      };
+    });
+  }, [approvedCompany?.cnpj, approvedCompany?.legal_name]);
 
   // Prévia de desconto de combo no checkout (estimativa; backend recalcula em createOrder)
   const previewItems = cart.items.map((i) => ({ product_id: i.productId, qty: i.qty }));
@@ -223,18 +257,36 @@ function CheckoutPage() {
     if (user?.user_metadata?.name) setRecipient(user.user_metadata.name as string);
   }, [user]);
 
-  // Pré-preenche o CPF com o valor salvo no perfil (compra anterior), se houver.
+  // Pré-preenche o documento com o que foi usado na última compra (perfil).
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("cpf")
+        .select("cpf, billing_document_type, billing_cnpj, billing_legal_name")
         .eq("id", user.id)
         .maybeSingle();
-      const saved = (data as { cpf?: string | null } | null)?.cpf;
-      if (saved) setCpf(formatCPF(saved));
+      if (cancelled || !data) return;
+      const saved = data as {
+        cpf?: string | null;
+        billing_document_type?: string | null;
+        billing_cnpj?: string | null;
+        billing_legal_name?: string | null;
+      };
+      const savedType: TaxDocumentType =
+        saved.billing_document_type === "cnpj" && saved.billing_cnpj ? "cnpj" : "cpf";
+      // Só preenche campos ainda vazios — nunca sobrescreve o que o cliente digitou.
+      setTaxDoc((prev) => ({
+        type: prev.cpf || prev.cnpj ? prev.type : savedType,
+        cpf: prev.cpf || (saved.cpf ? formatTaxDocument(saved.cpf, "cpf") : ""),
+        cnpj: prev.cnpj || (saved.billing_cnpj ? formatTaxDocument(saved.billing_cnpj, "cnpj") : ""),
+        legalName: prev.legalName || saved.billing_legal_name || "",
+      }));
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id]);
 
   async function checkLocalZone(opts: { city: string; state: string; neighborhood: string }) {
@@ -294,9 +346,13 @@ function CheckoutPage() {
   }
 
   async function goToShipping() {
-    setCpfTouched(true);
-    if (!cpfDigits || !isValidCPF(cpfDigits)) {
-      toast.error("Informe um CPF válido — é exigido para emissão da nota fiscal.");
+    setTaxDocTouched(true);
+    if (!taxDocValid) {
+      toast.error(
+        taxDoc.type === "cnpj"
+          ? "Informe um CNPJ válido e a razão social — exigidos para emissão da nota fiscal."
+          : "Informe um CPF válido — é exigido para emissão da nota fiscal.",
+      );
       return;
     }
     const cleanZip = zip.replace(/\D/g, "");
@@ -535,7 +591,11 @@ function CheckoutPage() {
                 cost: selectedShipping!.price,
                 localZoneId: isLocal ? (localZone?.zoneId ?? null) : null,
               },
-          cpf: cpfDigits,
+          taxDocument: {
+            type: taxDoc.type,
+            number: taxDocDigits,
+            legalName: taxDoc.type === "cnpj" ? taxDoc.legalName.trim() : null,
+          },
           address: {
             recipient,
             // Endereço completo sempre — inclusive retirada, exigido para a
@@ -709,25 +769,13 @@ function CheckoutPage() {
                           className="mt-1.5"
                         />
                       </div>
-                      <div className="sm:col-span-2">
-                        <Label htmlFor="cpf-pickup">CPF</Label>
-                        <Input
-                          id="cpf-pickup"
-                          value={cpf}
-                          onChange={(e) => setCpf(formatCPF(e.target.value))}
-                          onBlur={() => setCpfTouched(true)}
-                          placeholder="000.000.000-00"
-                          inputMode="numeric"
-                          maxLength={14}
-                          className={`mt-1.5 ${cpfError ? "border-destructive" : ""}`}
-                        />
-                        {cpfError && (
-                          <p className="text-xs text-destructive mt-1">CPF inválido.</p>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Exigido por lei para emitir a nota fiscal do pedido.
-                        </p>
-                      </div>
+                      <TaxDocumentField
+                        className="sm:col-span-2"
+                        value={taxDoc}
+                        onChange={setTaxDoc}
+                        showErrors={taxDocTouched}
+                        onBlur={() => setTaxDocTouched(true)}
+                      />
                     </div>
 
                     <h3 className="font-semibold text-sm mb-3 mt-5">Endereço para nota fiscal</h3>
@@ -854,25 +902,13 @@ function CheckoutPage() {
                           className="mt-1.5"
                         />
                       </div>
-                      <div className="sm:col-span-2">
-                        <Label htmlFor="cpf">CPF</Label>
-                        <Input
-                          id="cpf"
-                          value={cpf}
-                          onChange={(e) => setCpf(formatCPF(e.target.value))}
-                          onBlur={() => setCpfTouched(true)}
-                          placeholder="000.000.000-00"
-                          inputMode="numeric"
-                          maxLength={14}
-                          className={`mt-1.5 ${cpfError ? "border-destructive" : ""}`}
-                        />
-                        {cpfError && (
-                          <p className="text-xs text-destructive mt-1">CPF inválido.</p>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Exigido por lei para emitir a nota fiscal do pedido.
-                        </p>
-                      </div>
+                      <TaxDocumentField
+                        className="sm:col-span-2"
+                        value={taxDoc}
+                        onChange={setTaxDoc}
+                        showErrors={taxDocTouched}
+                        onBlur={() => setTaxDocTouched(true)}
+                      />
                       <div>
                         <Label htmlFor="zip">CEP</Label>
                         <div className="relative mt-1.5">
@@ -1150,7 +1186,7 @@ function CheckoutPage() {
                         </p>
                       )}
                       <p className="text-sm text-muted-foreground">Retirada por: {recipient}</p>
-                      <p className="text-sm text-muted-foreground">CPF: {formatCPF(cpf)}</p>
+                      <p className="text-sm text-muted-foreground">{taxDocSummary}</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Endereço para nota fiscal: {street}, {number}
                         {complement ? `, ${complement}` : ""} — {neighborhood}, {city}/{state} · CEP{" "}
@@ -1163,7 +1199,7 @@ function CheckoutPage() {
                   ) : (
                     <>
                       <p className="text-sm">{recipient}</p>
-                      <p className="text-sm text-muted-foreground">CPF: {formatCPF(cpf)}</p>
+                      <p className="text-sm text-muted-foreground">{taxDocSummary}</p>
                       <p className="text-sm text-muted-foreground">
                         {street}, {number}
                         {complement ? `, ${complement}` : ""} — {neighborhood}

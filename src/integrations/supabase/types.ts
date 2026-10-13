@@ -2577,6 +2577,9 @@ export type Database = {
           coupon_code: string | null
           created_at: string | null
           customer_cpf: string | null
+          customer_cnpj: string | null
+          customer_document_type: string | null
+          customer_legal_name: string | null
           delivery_method: string
           discount: number
           estimated_delivery: string | null
@@ -2671,6 +2674,9 @@ export type Database = {
           coupon_code?: string | null
           created_at?: string | null
           customer_cpf?: string | null
+          customer_cnpj?: string | null
+          customer_document_type?: string | null
+          customer_legal_name?: string | null
           delivery_method?: string
           discount?: number
           estimated_delivery?: string | null
@@ -2765,6 +2771,9 @@ export type Database = {
           coupon_code?: string | null
           created_at?: string | null
           customer_cpf?: string | null
+          customer_cnpj?: string | null
+          customer_document_type?: string | null
+          customer_legal_name?: string | null
           delivery_method?: string
           discount?: number
           estimated_delivery?: string | null
@@ -3636,6 +3645,9 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           cpf: string | null
+          billing_cnpj: string | null
+          billing_document_type: string | null
+          billing_legal_name: string | null
           email: string
           id: string
           name: string
@@ -3648,6 +3660,9 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           cpf?: string | null
+          billing_cnpj?: string | null
+          billing_document_type?: string | null
+          billing_legal_name?: string | null
           email: string
           id: string
           name: string
@@ -3660,6 +3675,9 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           cpf?: string | null
+          billing_cnpj?: string | null
+          billing_document_type?: string | null
+          billing_legal_name?: string | null
           email?: string
           id?: string
           name?: string
