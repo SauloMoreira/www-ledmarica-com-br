@@ -8,6 +8,27 @@ e versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.1.1] — 2026-10-15
+
+**Tipo:** correção (link de telefone na vitrine pública)
+**ChangeControl:** CC-2026-014
+**Classificação:** Baixa (link/copy público, sem lógica de negócio)
+**Aplicação:** código de aplicação em preview; banco inalterado.
+
+### Corrigido
+- **Home, seção "Visite a Led Maricá":** o item exibia o telefone fixo
+  `(21) 3731-2324`, mas o link discava o WhatsApp — o `href` montava
+  `tel:+55` + `STORE_WHATSAPP`, que já contém o DDI `55`, resultando em
+  `+555521982126467`. O link agora aponta para o fixo correto:
+  `tel:+552137312324`.
+- Criada a constante única `STORE_PHONE_TEL` em `src/lib/domain.ts`,
+  derivada do número exibido, para que texto e número discável não voltem
+  a divergir. Links de WhatsApp (`wa.me`) permanecem usando `STORE_WHATSAPP`.
+
+### Verificado
+- DOM da home renderiza `href="tel:+552137312324"` com o texto
+  `(21) 3731-2324`; nenhuma falha de console na página.
+
 ## [1.1.0] — 2026-09-02
 
 **Tipo:** nova funcionalidade (automação de e-mails)

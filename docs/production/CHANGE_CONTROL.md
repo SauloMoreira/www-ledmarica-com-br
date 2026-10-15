@@ -234,3 +234,18 @@ neste arquivo na seção "Histórico" abaixo.
 - **Status:** aprovado
 - **Data fechamento:** pendente de validação pós-deploy
 - **Observações pós-deploy:** bindings server-side confirmados antes da mudança por `/api/public/health` = 200; falha isolada ao bundle client.
+
+### CC-2026-014 — v1.1.1: Correção do link de telefone da home
+- **Solicitante:** Saulo Moreira
+- **Classificação:** Baixa (link/copy na vitrine pública; não toca checkout, estoque, RLS nem dados pessoais)
+- **Data abertura:** 15/out/2026
+- **Risco segurança:** nenhum — número público da loja; nenhum segredo ou dado pessoal envolvido.
+- **Risco regressão:** mínimo — troca do `href` de um único link e adição de constante; WhatsApp, rodapé e chat inalterados.
+- **Backup necessário:** não (snapshot diário cobre; reversão é trocar 2 arquivos de código).
+- **Arquivos alterados:** `src/lib/domain.ts`, `src/routes/index.tsx`, `docs/production/CHANGELOG.md`, este arquivo.
+- **Plano de teste:** abrir a home, rolar até "Visite a Led Maricá" e confirmar que o link de telefone tem `href="tel:+552137312324"` e exibe `(21) 3731-2324`; sem erros de console.
+- **Plano de rollback:** ROLLBACK_PLAN.md — reverter `src/lib/domain.ts` e `src/routes/index.tsx` e republicar.
+- **Aprovador:** Saulo Moreira (solicitação explícita nesta conversa)
+- **Versão alvo:** v1.1.1
+- **Status:** implementado e validado em preview; publicação em produção pendente
+- **Data fechamento:** pendente de publicação
