@@ -87,6 +87,13 @@ export const STORE_NAME = "Led Maricá";
 // Loja física — usados na seção "Visite nossa loja" e nos selos de confiança
 // da home. Mantidos aqui como fonte única para não divergir entre componentes.
 export const STORE_PHONE_DISPLAY = "(21) 3731-2324";
+/**
+ * Telefone fixo em formato E.164 para links `tel:`. Fonte única: o número
+ * exibido (`STORE_PHONE_DISPLAY`) e o número discado precisam sempre bater —
+ * usar `STORE_WHATSAPP` aqui gerava um link que mostrava o fixo e ligava para
+ * o WhatsApp (com o DDI "55" duplicado).
+ */
+export const STORE_PHONE_TEL = "+552137312324";
 export const STORE_ADDRESS =
   "Rod. Ernani do Amaral Peixoto, 28354, Loja 5/6/7 — Mumbuca, Maricá/RJ, 24913-700";
 export const STORE_HOURS = "Seg a sex, 8h às 18h · Sáb, 8h às 12h";
