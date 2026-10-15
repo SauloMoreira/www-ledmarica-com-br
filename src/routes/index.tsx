@@ -1078,7 +1078,7 @@ function HomePage() {
                 <span className="text-muted-foreground">{STORE_HOURS}</span>
               </div>
               <a
-                href={STORE_PHONE_TEL}
+                href={`tel:${STORE_PHONE_TEL}`}
                 className="flex items-start gap-2.5 text-foreground hover:text-primary transition-colors w-fit"
               >
                 <Phone className="w-4 h-4 text-primary mt-0.5 shrink-0" />
