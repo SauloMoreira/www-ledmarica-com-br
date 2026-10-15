@@ -116,42 +116,6 @@ export type Database = {
         }
         Relationships: []
       }
-      guest_cart_contacts: {
-        Row: {
-          consent_at: string | null
-          created_at: string
-          email: string | null
-          lead_id: string | null
-          name: string | null
-          phone: string | null
-          session_id: string
-          source: string | null
-          updated_at: string
-        }
-        Insert: {
-          consent_at?: string | null
-          created_at?: string
-          email?: string | null
-          lead_id?: string | null
-          name?: string | null
-          phone?: string | null
-          source?: string | null
-          session_id: string
-          updated_at?: string
-        }
-        Update: {
-          consent_at?: string | null
-          created_at?: string
-          email?: string | null
-          lead_id?: string | null
-          name?: string | null
-          phone?: string | null
-          source?: string | null
-          session_id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       addresses: {
         Row: {
           city: string
@@ -1210,6 +1174,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      guest_cart_contacts: {
+        Row: {
+          consent_at: string | null
+          created_at: string
+          email: string | null
+          lead_id: string | null
+          name: string | null
+          phone: string | null
+          session_id: string
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          consent_at?: string | null
+          created_at?: string
+          email?: string | null
+          lead_id?: string | null
+          name?: string | null
+          phone?: string | null
+          session_id: string
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          consent_at?: string | null
+          created_at?: string
+          email?: string | null
+          lead_id?: string | null
+          name?: string | null
+          phone?: string | null
+          session_id?: string
+          source?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_cart_contacts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       home_banners: {
         Row: {
@@ -2576,14 +2584,10 @@ export type Database = {
           company_name: string | null
           coupon_code: string | null
           created_at: string | null
-          customer_cpf: string | null
           customer_cnpj: string | null
+          customer_cpf: string | null
           customer_document_type: string | null
           customer_legal_name: string | null
-          invoice_email_sent_at: string | null
-          invoice_email_sent_to: string | null
-          invoice_pdf_path: string | null
-          invoice_xml_path: string | null
           delivery_method: string
           discount: number
           estimated_delivery: string | null
@@ -2595,9 +2599,12 @@ export type Database = {
           intended_payment_method: string | null
           invoice_access_key: string | null
           invoice_danfe_url: string | null
+          invoice_email_sent_at: string | null
+          invoice_email_sent_to: string | null
           invoice_issued_at: string | null
           invoice_notes: string | null
           invoice_number: string | null
+          invoice_pdf_path: string | null
           invoice_registered_at: string | null
           invoice_registered_by: string | null
           invoice_required: boolean
@@ -2605,6 +2612,7 @@ export type Database = {
           invoice_status: string
           invoice_updated_at: string | null
           invoice_url: string | null
+          invoice_xml_path: string | null
           invoice_xml_url: string | null
           local_delivery_district: string | null
           local_delivery_eta: string | null
@@ -2677,14 +2685,10 @@ export type Database = {
           company_name?: string | null
           coupon_code?: string | null
           created_at?: string | null
-          customer_cpf?: string | null
           customer_cnpj?: string | null
+          customer_cpf?: string | null
           customer_document_type?: string | null
           customer_legal_name?: string | null
-          invoice_email_sent_at?: string | null
-          invoice_email_sent_to?: string | null
-          invoice_pdf_path?: string | null
-          invoice_xml_path?: string | null
           delivery_method?: string
           discount?: number
           estimated_delivery?: string | null
@@ -2696,9 +2700,12 @@ export type Database = {
           intended_payment_method?: string | null
           invoice_access_key?: string | null
           invoice_danfe_url?: string | null
+          invoice_email_sent_at?: string | null
+          invoice_email_sent_to?: string | null
           invoice_issued_at?: string | null
           invoice_notes?: string | null
           invoice_number?: string | null
+          invoice_pdf_path?: string | null
           invoice_registered_at?: string | null
           invoice_registered_by?: string | null
           invoice_required?: boolean
@@ -2706,6 +2713,7 @@ export type Database = {
           invoice_status?: string
           invoice_updated_at?: string | null
           invoice_url?: string | null
+          invoice_xml_path?: string | null
           invoice_xml_url?: string | null
           local_delivery_district?: string | null
           local_delivery_eta?: string | null
@@ -2778,14 +2786,10 @@ export type Database = {
           company_name?: string | null
           coupon_code?: string | null
           created_at?: string | null
-          customer_cpf?: string | null
           customer_cnpj?: string | null
+          customer_cpf?: string | null
           customer_document_type?: string | null
           customer_legal_name?: string | null
-          invoice_email_sent_at?: string | null
-          invoice_email_sent_to?: string | null
-          invoice_pdf_path?: string | null
-          invoice_xml_path?: string | null
           delivery_method?: string
           discount?: number
           estimated_delivery?: string | null
@@ -2797,9 +2801,12 @@ export type Database = {
           intended_payment_method?: string | null
           invoice_access_key?: string | null
           invoice_danfe_url?: string | null
+          invoice_email_sent_at?: string | null
+          invoice_email_sent_to?: string | null
           invoice_issued_at?: string | null
           invoice_notes?: string | null
           invoice_number?: string | null
+          invoice_pdf_path?: string | null
           invoice_registered_at?: string | null
           invoice_registered_by?: string | null
           invoice_required?: boolean
@@ -2807,6 +2814,7 @@ export type Database = {
           invoice_status?: string
           invoice_updated_at?: string | null
           invoice_url?: string | null
+          invoice_xml_path?: string | null
           invoice_xml_url?: string | null
           local_delivery_district?: string | null
           local_delivery_eta?: string | null
@@ -3655,11 +3663,11 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
-          created_at: string | null
-          cpf: string | null
           billing_cnpj: string | null
           billing_document_type: string | null
           billing_legal_name: string | null
+          cpf: string | null
+          created_at: string | null
           email: string
           id: string
           name: string
@@ -3670,11 +3678,11 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
-          created_at?: string | null
-          cpf?: string | null
           billing_cnpj?: string | null
           billing_document_type?: string | null
           billing_legal_name?: string | null
+          cpf?: string | null
+          created_at?: string | null
           email: string
           id: string
           name: string
@@ -3685,11 +3693,11 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
-          created_at?: string | null
-          cpf?: string | null
           billing_cnpj?: string | null
           billing_document_type?: string | null
           billing_legal_name?: string | null
+          cpf?: string | null
+          created_at?: string | null
           email?: string
           id?: string
           name?: string
