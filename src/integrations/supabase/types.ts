@@ -2569,6 +2569,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          ad_attribution: Json | null
           address_id: string | null
           address_snapshot: Json | null
           admin_notes: string | null
@@ -2653,6 +2654,7 @@ export type Database = {
           public_access_token: string | null
           referrer_url: string | null
           retail_subtotal: number | null
+          server_conversions: Json | null
           shipping_carrier: string | null
           shipping_cost: number
           shipping_service: string | null
@@ -2670,6 +2672,7 @@ export type Database = {
           utm_term: string | null
         }
         Insert: {
+          ad_attribution?: Json | null
           address_id?: string | null
           address_snapshot?: Json | null
           admin_notes?: string | null
@@ -2754,6 +2757,7 @@ export type Database = {
           public_access_token?: string | null
           referrer_url?: string | null
           retail_subtotal?: number | null
+          server_conversions?: Json | null
           shipping_carrier?: string | null
           shipping_cost?: number
           shipping_service?: string | null
@@ -2771,6 +2775,7 @@ export type Database = {
           utm_term?: string | null
         }
         Update: {
+          ad_attribution?: Json | null
           address_id?: string | null
           address_snapshot?: Json | null
           admin_notes?: string | null
@@ -2855,6 +2860,7 @@ export type Database = {
           public_access_token?: string | null
           referrer_url?: string | null
           retail_subtotal?: number | null
+          server_conversions?: Json | null
           shipping_carrier?: string | null
           shipping_cost?: number
           shipping_service?: string | null
