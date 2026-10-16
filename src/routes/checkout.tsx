@@ -614,6 +614,8 @@ function CheckoutPage() {
 
           notes: notes || null,
           tracking: (await import("@/lib/leadTracking")).getLeadTrackingPayload(),
+          // Identificadores para a conversão de compra pelo servidor (respeita o consentimento).
+          attribution: (await import("@/lib/adAttribution")).getAdAttributionPayload(),
         },
       });
       if (r.ok) {

@@ -439,6 +439,18 @@ export const Route = createFileRoute("/api/public/mercadopago/webhook")({
           }
         }
 
+        // Conversão de compra pelo servidor (Meta API de Conversões + GA4).
+        // Só na transição para aprovado (o retorno antecipado acima evita
+        // reenvio). Idempotente e nunca lança. AWAIT obrigatório (Worker).
+        if (willBePaid) {
+          try {
+            const { sendServerPurchaseConversions } = await import("@/server/adConversions.server");
+            await sendServerPurchaseConversions(order.id);
+          } catch (e) {
+            console.error("[MP webhook] falha nas conversões pelo servidor", e);
+          }
+        }
+
         // E-mail transacional ao cliente — idempotente. AWAIT obrigatório
         // (mesma razão acima: void Promise é cancelada antes do envio em Worker).
         try {

@@ -367,7 +367,58 @@ const CreateOrderInput = z.object({
     })
     .nullable()
     .optional(),
+  // Identificadores de anúncio + consentimento (ver src/lib/adAttribution.ts).
+  attribution: z
+    .object({
+      consent_analytics: z.boolean(),
+      consent_marketing: z.boolean(),
+      fbp: z.string().max(200).nullable().optional(),
+      fbc: z.string().max(500).nullable().optional(),
+      ga_client_id: z.string().max(100).nullable().optional(),
+      ga_session_id: z.string().max(40).nullable().optional(),
+      event_source_url: z.string().max(500).nullable().optional(),
+    })
+    .nullable()
+    .optional(),
 });
+
+/**
+ * Monta orders.ad_attribution respeitando o consentimento: sem Marketing, não
+ * guarda identificadores do Meta nem IP/navegador; sem Análise, não guarda os
+ * do GA4. Usado só para as conversões pelo servidor (adConversions.server.ts).
+ */
+async function buildAdAttribution(
+  input: z.infer<typeof CreateOrderInput>["attribution"],
+): Promise<Record<string, unknown> | null> {
+  if (!input) return null;
+  const marketing = input.consent_marketing === true;
+  const analytics = input.consent_analytics === true;
+  let userAgent: string | null = null;
+  let ip: string | null = null;
+  if (marketing) {
+    try {
+      const { getRequestHeader } = await import("@tanstack/react-start/server");
+      userAgent = (getRequestHeader("user-agent") ?? "").slice(0, 400) || null;
+      ip =
+        getRequestHeader("cf-connecting-ip") ??
+        getRequestHeader("x-forwarded-for")?.split(",")[0]?.trim() ??
+        null;
+    } catch {
+      /* noop */
+    }
+  }
+  return {
+    consent: { analytics, marketing },
+    fbp: marketing ? (input.fbp ?? null) : null,
+    fbc: marketing ? (input.fbc ?? null) : null,
+    ga_client_id: analytics ? (input.ga_client_id ?? null) : null,
+    ga_session_id: analytics ? (input.ga_session_id ?? null) : null,
+    client_user_agent: userAgent,
+    client_ip_address: ip,
+    event_source_url: input.event_source_url ?? null,
+    captured_at: new Date().toISOString(),
+  };
+}
 
 export const createOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -800,6 +851,7 @@ export const createOrder = createServerFn({ method: "POST" })
         origin_path: data.tracking?.origin_path ?? null,
         origin_context: data.tracking?.origin_context ?? null,
         referrer_url: data.tracking?.referrer_url ?? null,
+        ad_attribution: (await buildAdAttribution(data.attribution)) as never,
       } as never)
       .select("id, order_number")
       .single();
