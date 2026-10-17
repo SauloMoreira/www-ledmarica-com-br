@@ -115,6 +115,17 @@ export const syncCart = createServerFn({ method: "POST" })
 
       await supabaseAdmin.from("cart_items").delete().eq(filterCol, filterVal);
 
+      // Equipe da loja (modo teste ou conta admin): o carrinho não é
+      // sincronizado, então nunca vira "carrinho abandonado".
+      const { isInternalTraffic } = await import("./testMode.server");
+      if (await isInternalTraffic(userId)) {
+        const guestSession = peekCartSessionId();
+        if (guestSession) {
+          await supabaseAdmin.from("cart_items").delete().eq("session_id", guestSession);
+        }
+        return { ok: true as const };
+      }
+
       // Visitante que acabou de entrar na conta: o carrinho passa a ser do
       // usuário — remove a cópia antiga da sessão anônima para não gerar um
       // segundo "carrinho abandonado" do mesmo cliente.
@@ -155,6 +166,10 @@ export const saveCartContact = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ContactInput.parse(input))
   .handler(async ({ data }) => {
     try {
+      // Modo teste: não grava contato (não gera lead nem e-mail de recuperação).
+      const { isTestModeRequest } = await import("./testMode.server");
+      if (isTestModeRequest()) return { ok: true as const };
+
       const sessionId = resolveCartSessionId();
       const { error } = await supabaseAdmin.from("guest_cart_contacts").upsert(
         {

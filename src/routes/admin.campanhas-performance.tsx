@@ -74,6 +74,7 @@ function PerformancePage() {
               supabase
                 .from("orders")
                 .select("id, total, payment_status")
+                .eq("is_test", false)
                 .eq("utm_campaign", utm)
                 .range(fromIdx, toIdx),
             ).then((data) => ({ data })),

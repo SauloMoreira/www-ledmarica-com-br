@@ -852,6 +852,9 @@ export const createOrder = createServerFn({ method: "POST" })
         origin_context: data.tracking?.origin_context ?? null,
         referrer_url: data.tracking?.referrer_url ?? null,
         ad_attribution: (await buildAdAttribution(data.attribution)) as never,
+        // Pedido da equipe (modo teste ou conta admin): fica fora de relatórios,
+        // CRM e conversões de anúncios. Decidido só no servidor.
+        is_test: await (await import("./testMode.server")).isInternalTraffic(userId),
       } as never)
       .select("id, order_number")
       .single();

@@ -8,6 +8,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { PageSkeleton } from "@/components/layout/PageSkeleton";
 import { RequireAdminMfa } from "@/components/auth/RequireAdminMfa";
 import { AdminAlertsBell } from "./AdminAlertsBell";
+import { isTestModeClient, setTestMode } from "@/lib/testMode";
 import { AdminCommandPalette } from "./AdminCommandPalette";
 import { Button } from "@/components/ui/button";
 
@@ -64,6 +65,13 @@ export function AdminLayout({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
+  }, [isAdmin]);
+
+  // Quem abre o painel é da equipe: liga o "modo teste" neste navegador para
+  // que compras e carrinhos de teste não contaminem relatórios e anúncios.
+  // Desliga com ?modo=normal na loja.
+  useEffect(() => {
+    if (isAdmin === true && !isTestModeClient()) setTestMode(true);
   }, [isAdmin]);
 
   if (loading || isAdmin === null) {

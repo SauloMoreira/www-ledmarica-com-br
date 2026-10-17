@@ -278,7 +278,7 @@ export async function sendServerPurchaseConversions(
     const { data, error } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, order_number, user_id, total, paid_at, address_snapshot, ad_attribution, server_conversions, order_items(product_id, product_name, qty, unit_price)",
+        "id, order_number, user_id, total, paid_at, address_snapshot, ad_attribution, server_conversions, is_test, order_items(product_id, product_name, qty, unit_price)",
       )
       .eq("id", orderId)
       .single();
@@ -287,6 +287,8 @@ export async function sendServerPurchaseConversions(
       return null;
     }
     const order = data as unknown as OrderRow;
+    // Pedido de teste da equipe nunca é enviado ao Google/Meta.
+    if ((data as { is_test?: boolean | null }).is_test === true) return null;
     const previous = order.server_conversions ?? {};
 
     let profile: { email?: string | null; phone?: string | null; name?: string | null } | null =

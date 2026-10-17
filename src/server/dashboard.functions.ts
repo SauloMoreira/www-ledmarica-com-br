@@ -105,6 +105,7 @@ export const getAdminDashboard = createServerFn({ method: "POST" })
       supabaseAdmin
         .from("orders")
         .select("id, total, status, payment_status, created_at, paid_at, updated_at")
+        .eq("is_test", false)
         .gte("created_at", start)
         .lte("created_at", end)
         .order("created_at", { ascending: false })
