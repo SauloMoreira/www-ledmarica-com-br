@@ -230,6 +230,12 @@ export function activateMetaPixel(pixelId: string): boolean {
     consentState = "granted";
   }
   if (!initializedIds.has(id)) {
+    // Desliga a configuração automática do Meta (eventos de clique em botão
+    // "SubscribedButtonClick" e metadados da página). Mecanismo oficial:
+    // `fbq('set','autoConfig', false, <id>)` ANTES do `init` desse Pixel.
+    // Os eventos explícitos do site (PageView, ViewContent, Contact...) não
+    // são afetados.
+    fbq("set", "autoConfig", false, id);
     fbq("init", id);
     fbq("track", "PageView");
     initializedIds.add(id);
