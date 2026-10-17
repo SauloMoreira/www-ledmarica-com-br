@@ -2570,6 +2570,7 @@ export type Database = {
       orders: {
         Row: {
           ad_attribution: Json | null
+          is_test: boolean
           address_id: string | null
           address_snapshot: Json | null
           admin_notes: string | null
@@ -2673,6 +2674,7 @@ export type Database = {
         }
         Insert: {
           ad_attribution?: Json | null
+          is_test?: boolean
           address_id?: string | null
           address_snapshot?: Json | null
           admin_notes?: string | null
@@ -2776,6 +2778,7 @@ export type Database = {
         }
         Update: {
           ad_attribution?: Json | null
+          is_test?: boolean
           address_id?: string | null
           address_snapshot?: Json | null
           admin_notes?: string | null

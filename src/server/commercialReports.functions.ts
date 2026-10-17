@@ -136,6 +136,7 @@ async function fetchPaidOrders(
       )
       .gte("created_at", range.from.toISOString())
       .lte("created_at", range.to.toISOString())
+      .eq("is_test", false)
       .in("payment_status", PAID)
       .order("created_at", { ascending: false })
       .range(fromIdx, toIdx);

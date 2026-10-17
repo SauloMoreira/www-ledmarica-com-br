@@ -298,7 +298,7 @@ export const Route = createFileRoute("/api/public/mercadopago/webhook")({
         // 5) Localizar pedido
         const { data: order, error: orderErr } = await supabaseAdmin
           .from("orders")
-          .select("id, order_number, payment_status, status, mp_payment_id, user_id, coupon_code, discount, admin_notes")
+          .select("id, order_number, payment_status, status, mp_payment_id, user_id, coupon_code, discount, admin_notes, is_test")
           .eq("external_reference", externalRef)
           .single();
         if (orderErr || !order) {
@@ -430,7 +430,9 @@ export const Route = createFileRoute("/api/public/mercadopago/webhook")({
         // Sincronizar lead/CRM — idempotente. AWAIT obrigatório:
         // no runtime Worker (Cloudflare), Promises não-aguardadas são abortadas
         // assim que a Response é devolvida — sem await, o lead nunca é criado.
-        if (willBePaid) {
+        // Pedido de teste da equipe: não vira lead nem conversão de anúncio.
+        const isTestOrder = (order as { is_test?: boolean | null }).is_test === true;
+        if (willBePaid && !isTestOrder) {
           try {
             const { syncApprovedOrderToLead } = await import("@/server/leadSync.server");
             await syncApprovedOrderToLead(order.id);
@@ -442,7 +444,7 @@ export const Route = createFileRoute("/api/public/mercadopago/webhook")({
         // Conversão de compra pelo servidor (Meta API de Conversões + GA4).
         // Só na transição para aprovado (o retorno antecipado acima evita
         // reenvio). Idempotente e nunca lança. AWAIT obrigatório (Worker).
-        if (willBePaid) {
+        if (willBePaid && !isTestOrder) {
           try {
             const { sendServerPurchaseConversions } = await import("@/server/adConversions.server");
             await sendServerPurchaseConversions(order.id);

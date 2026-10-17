@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getGtag, markGoogleTagsReady, updateConsentMode } from "@/lib/tracking";
 import { isValidIntegrationId, type IntegrationProvider } from "@/lib/integrationIds";
 import { activateMetaPixel, revokeMetaPixelConsent } from "@/lib/metaPixel";
+import { applyTestModeFromUrl } from "@/lib/testMode";
 
 // Provedores do Google suportam Consent Mode v2: a tag pode (e deve) ser
 // carregada sempre, em toda visita — é o próprio Google quem decide, via
@@ -130,8 +131,17 @@ function loadProvider(row: IntegrationRow) {
 export function ConditionalScripts() {
   const { consented, preferences } = useCookieStore();
   const [integrations, setIntegrations] = useState<IntegrationRow[] | null>(null);
+  // null = ainda não lido (SSR/primeiro render): nenhuma tag carrega antes.
+  const [testMode, setTestModeState] = useState<boolean | null>(null);
 
   useEffect(() => {
+    setTestModeState(applyTestModeFromUrl());
+  }, []);
+
+  useEffect(() => {
+    // Modo teste (equipe da loja): nenhuma tag de marketing é carregada, para
+    // não contar visitas, carrinhos e compras de teste no GA4/Ads/Meta.
+    if (testMode !== false) return;
     let cancelled = false;
     (async () => {
       try {
@@ -149,7 +159,7 @@ export function ConditionalScripts() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [testMode]);
 
   // Tags do Google: carregam sempre, independente de consentimento — o
   // Consent Mode v2 (default "denied" definido no <head>) já garante que
@@ -196,5 +206,17 @@ export function ConditionalScripts() {
     updateConsentMode({ analytics: preferences.analytics, marketing: preferences.marketing });
   }, [consented, preferences.analytics, preferences.marketing]);
 
-  return null;
+  if (!testMode) return null;
+  return (
+    <div
+      role="status"
+      className="fixed bottom-3 left-3 z-[60] flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 shadow-md"
+    >
+      <span aria-hidden className="h-2 w-2 rounded-full bg-amber-500" />
+      Modo teste: fora dos relatórios e anúncios
+      <a href="?modo=normal" className="underline underline-offset-2 hover:text-amber-700">
+        Desligar
+      </a>
+    </div>
+  );
 }

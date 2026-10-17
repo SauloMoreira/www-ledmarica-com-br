@@ -33,6 +33,7 @@ import {
   type TrackedLine,
 } from "@/lib/tracking";
 import type { MetaDispatchStatus } from "@/lib/metaPixel";
+import { isTestModeClient } from "@/lib/testMode";
 
 export type MetaPurchaseState =
   "prepared" | "pending" | "queued" | "dispatched" | "not_consented" | "failed";
@@ -132,6 +133,8 @@ export async function trackConfirmedPurchase(
     meta: "skipped",
   };
   if (typeof window === "undefined") return result;
+  // Navegador da equipe em modo teste: nunca envia compra ao Google/Meta.
+  if (isTestModeClient()) return result;
   if (!isPaymentApproved(order.paymentStatus)) return result;
   if (inFlight.has(order.id)) return result;
   inFlight.add(order.id);
