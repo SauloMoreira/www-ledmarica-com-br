@@ -78,6 +78,7 @@ import {
   normalizeLeadStatus,
   type LeadStatus,
 } from "@/lib/constants/leadStatus";
+import { formatDateBR } from "@/lib/dateBR";
 
 const STATUSES = LEAD_STATUSES;
 type Status = LeadStatus;
@@ -641,7 +642,7 @@ function LeadsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-xs">
-                      {new Date(l.created_at).toLocaleDateString("pt-BR")}
+                      {formatDateBR(l.created_at)}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Button

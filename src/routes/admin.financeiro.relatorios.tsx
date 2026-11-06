@@ -99,6 +99,7 @@ import {
   type AttributedOrderRow,
   type AttributionQuality,
 } from "@/server/campaignReports.functions";
+import { formatDateBR, formatDateTimeBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/financeiro/relatorios")({
   head: () =>
@@ -117,10 +118,10 @@ function pct(n: number) {
   return `${n.toFixed(1).replace(".", ",")}%`;
 }
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("pt-BR");
+  return formatDateBR(iso);
 }
 function fmtDateTime(iso: string) {
-  return new Date(iso).toLocaleString("pt-BR");
+  return formatDateTimeBR(iso);
 }
 
 const PRESETS: Array<{ id: ReportPreset; label: string }> = [

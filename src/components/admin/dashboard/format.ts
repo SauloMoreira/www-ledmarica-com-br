@@ -1,3 +1,4 @@
+import { formatDateTimeBR } from "@/lib/dateBR";
 /**
  * Helpers de formatação para o dashboard administrativo.
  */
@@ -16,17 +17,7 @@ export const fmtDayShort = (iso: string) => {
 };
 
 export const fmtDateTime = (iso: string) => {
-  try {
-    return new Date(iso).toLocaleString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
+  return formatDateTimeBR(iso);
 };
 
 /**

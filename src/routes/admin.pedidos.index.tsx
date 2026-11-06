@@ -26,6 +26,7 @@ import {
   type DataTableColumn,
 } from "@/components/admin/datatable";
 import { useTableState } from "@/hooks/useTableState";
+import { formatDateBR } from "@/lib/dateBR";
 
 const SORTABLE_COLUMNS = ["created_at", "total", "status"] as const;
 
@@ -164,7 +165,7 @@ function PedidosAdmin() {
       hideOnMobile: true,
       cell: (o) => (
         <span className="text-xs">
-          {new Date(o.created_at).toLocaleDateString("pt-BR")}
+          {formatDateBR(o.created_at)}
         </span>
       ),
     },

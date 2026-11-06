@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { StoreLayout } from "@/components/layout/StoreLayout";
 import { buildSeo } from "@/lib/seo";
+import { formatDateBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/privacidade")({
   head: () =>
@@ -86,7 +87,7 @@ function PrivacyPolicyPage() {
           Política de Privacidade
         </h1>
         <p className="text-sm text-muted-foreground mb-8">
-          Última atualização: {new Date().toLocaleDateString("pt-BR")} · Em conformidade com a LGPD
+          Última atualização: {formatDateBR(new Date())} · Em conformidade com a LGPD
           (Lei 13.709/2018)
         </p>
 

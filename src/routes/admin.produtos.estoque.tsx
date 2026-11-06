@@ -50,6 +50,7 @@ import {
   type DataTableColumn,
 } from "@/components/admin/datatable";
 import { useTableState } from "@/hooks/useTableState";
+import { formatDateBR } from "@/lib/dateBR";
 
 type Filter =
   | "all"
@@ -106,7 +107,7 @@ function statusBadge(status: StockStatus) {
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("pt-BR");
+  return formatDateBR(iso);
 }
 
 function StockPage() {

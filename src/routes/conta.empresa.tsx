@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { buildSeo } from "@/lib/seo";
 import { formatCNPJ } from "@/lib/cnpj";
 import { getMyCompany } from "@/server/companies.functions";
+import { formatDateBR } from "@/lib/dateBR";
 
 type Company = {
   id: string;
@@ -87,7 +88,7 @@ function MinhaEmpresaPage() {
         {company.approved_at && (
           <Row
             label="Aprovada em"
-            value={new Date(company.approved_at).toLocaleDateString("pt-BR")}
+            value={formatDateBR(company.approved_at)}
           />
         )}
       </div>

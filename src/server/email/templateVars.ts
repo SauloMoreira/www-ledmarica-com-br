@@ -8,6 +8,7 @@
 // chaves internas ou snapshot bruto. Endereço completo NÃO é exposto.
 
 import type { EmailMessageType } from "./templates";
+import { formatDateBR } from "@/lib/dateBR";
 
 export interface VariableDescriptor {
   key: string;
@@ -93,16 +94,6 @@ function firstName(full: string | null | undefined): string {
   return String(full).trim().split(/\s+/)[0] || "";
 }
 
-function formatDateBR(value: string | Date | null | undefined): string {
-  if (!value) return "—";
-  try {
-    const d = typeof value === "string" ? new Date(value) : value;
-    if (isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString("pt-BR");
-  } catch {
-    return "—";
-  }
-}
 
 export interface OrderForVars {
   id: string;

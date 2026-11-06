@@ -14,6 +14,7 @@ import {
   type MpOverview,
   type MpPaymentRow,
 } from "@/server/mercadoPagoFinance.functions";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/financeiro/mercadopago")({
   head: () =>
@@ -220,7 +221,7 @@ function MpFinancePage() {
                     <td className="p-2 text-right">{r.net != null ? brl(r.net) : "—"}</td>
                     <td className="p-2">{sourceBadge(r.source)}</td>
                     <td className="p-2 text-xs text-muted-foreground">
-                      {r.webhookAt ? new Date(r.webhookAt).toLocaleString("pt-BR") : "—"}
+                      {r.webhookAt ? formatDateTimeBR(r.webhookAt) : "—"}
                       {r.webhookError && <div className="text-destructive">{r.webhookError}</div>}
                     </td>
                     <td className="p-2 text-right">

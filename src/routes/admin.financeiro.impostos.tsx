@@ -56,6 +56,7 @@ import {
   type FiscalProductRow,
   type FiscalListFilter,
 } from "@/server/fiscal.functions";
+import { todayISODateBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/financeiro/impostos")({
   component: ImpostosPage,
@@ -134,7 +135,7 @@ function ImpostosPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `pendencias-fiscais-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `pendencias-fiscais-${todayISODateBR()}.csv`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(`CSV gerado com ${res.count} linhas`);

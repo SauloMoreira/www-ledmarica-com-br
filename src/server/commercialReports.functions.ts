@@ -3,6 +3,7 @@ import { fetchAllRows } from "@/lib/fetchAllRows";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { neutralizeCsvFormula } from "@/lib/csvSafe";
+import { addDaysBR, endOfDayBR, endOfMonthBR, formatDateBR, formatDateTimeBR, isoDateBR, parseDateInputBR, startOfDayBR, startOfMonthBR } from "@/lib/dateBR";
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -35,49 +36,38 @@ export type CommercialFilters = z.infer<typeof FiltersSchema>;
 
 const PAID = ["approved", "paid"];
 
-function startOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-function endOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
-}
+const startOfDay = startOfDayBR;
+const endOfDay = endOfDayBR;
 function resolveRange(f: CommercialFilters): { from: Date; to: Date } {
   const now = new Date();
   switch (f.preset) {
     case "today":
       return { from: startOfDay(now), to: endOfDay(now) };
     case "yesterday": {
-      const y = new Date(now);
-      y.setDate(now.getDate() - 1);
+      const y = addDaysBR(now, -1);
       return { from: startOfDay(y), to: endOfDay(y) };
     }
     case "last_7_days": {
-      const x = new Date(now);
-      x.setDate(now.getDate() - 6);
+      const x = addDaysBR(now, -6);
       return { from: startOfDay(x), to: endOfDay(now) };
     }
     case "last_30_days": {
-      const x = new Date(now);
-      x.setDate(now.getDate() - 29);
+      const x = addDaysBR(now, -29);
       return { from: startOfDay(x), to: endOfDay(now) };
     }
     case "this_month":
       return {
-        from: startOfDay(new Date(now.getFullYear(), now.getMonth(), 1)),
+        from: startOfDay(startOfMonthBR(now)),
         to: endOfDay(now),
       };
     case "last_month": {
-      const f1 = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const t1 = new Date(now.getFullYear(), now.getMonth(), 0);
+      const f1 = startOfMonthBR(now, -1);
+      const t1 = endOfMonthBR(now, -1);
       return { from: startOfDay(f1), to: endOfDay(t1) };
     }
     case "custom": {
-      const from = f.start ? new Date(f.start) : startOfDay(now);
-      const to = f.end ? new Date(f.end) : endOfDay(now);
+      const from = f.start ? parseDateInputBR(f.start) : startOfDay(now);
+      const to = f.end ? parseDateInputBR(f.end) : endOfDay(now);
       return { from: startOfDay(from), to: endOfDay(to) };
     }
   }
@@ -1021,7 +1011,7 @@ function fmtPct(n: number) {
 }
 function fmtDateTimeCsv(iso: string | null) {
   if (!iso) return "";
-  return new Date(iso).toLocaleString("pt-BR");
+  return formatDateTimeBR(iso);
 }
 function buildCsv(headers: string[], rows: string[][]): string {
   const lines = [headers.join(";")];
@@ -1068,9 +1058,7 @@ export const exportB2bCompaniesCsv = createServerFn({ method: "POST" })
     ]);
     const range = resolveRange(data);
     return {
-      filename: `b2b_empresas_${range.from.toISOString().slice(0, 10)}_${range.to
-        .toISOString()
-        .slice(0, 10)}.csv`,
+      filename: `b2b_empresas_${isoDateBR(range.from)}_${isoDateBR(range.to)}.csv`,
       content: buildCsv(headers, rows),
     };
   });
@@ -1108,9 +1096,7 @@ export const exportB2bProductsCsv = createServerFn({ method: "POST" })
     ]);
     const range = resolveRange(data);
     return {
-      filename: `b2b_produtos_${range.from.toISOString().slice(0, 10)}_${range.to
-        .toISOString()
-        .slice(0, 10)}.csv`,
+      filename: `b2b_produtos_${isoDateBR(range.from)}_${isoDateBR(range.to)}.csv`,
       content: buildCsv(headers, rows),
     };
   });
@@ -1135,7 +1121,7 @@ export const exportCouponsCsv = createServerFn({ method: "POST" })
     const rows = r.coupons.map((c) => [
       c.code,
       c.active ? "Ativo" : "Inativo",
-      c.expires_at ? new Date(c.expires_at).toLocaleDateString("pt-BR") : "",
+      c.expires_at ? formatDateBR(c.expires_at) : "",
       c.expired ? "Sim" : "Não",
       String(c.uses),
       fmtMoney(c.revenue),
@@ -1146,9 +1132,7 @@ export const exportCouponsCsv = createServerFn({ method: "POST" })
     ]);
     const range = resolveRange(data);
     return {
-      filename: `cupons_${range.from.toISOString().slice(0, 10)}_${range.to
-        .toISOString()
-        .slice(0, 10)}.csv`,
+      filename: `cupons_${isoDateBR(range.from)}_${isoDateBR(range.to)}.csv`,
       content: buildCsv(headers, rows),
     };
   });
@@ -1194,9 +1178,7 @@ export const exportDiscountsByOrderCsv = createServerFn({ method: "POST" })
     ]);
     const range = resolveRange(data);
     return {
-      filename: `descontos_pedidos_${range.from.toISOString().slice(0, 10)}_${range.to
-        .toISOString()
-        .slice(0, 10)}.csv`,
+      filename: `descontos_pedidos_${isoDateBR(range.from)}_${isoDateBR(range.to)}.csv`,
       content: buildCsv(headers, rows),
     };
   });
@@ -1232,9 +1214,7 @@ export const exportShippingByOrderCsv = createServerFn({ method: "POST" })
         o.status,
       ]);
     return {
-      filename: `frete_pedidos_${range.from.toISOString().slice(0, 10)}_${range.to
-        .toISOString()
-        .slice(0, 10)}.csv`,
+      filename: `frete_pedidos_${isoDateBR(range.from)}_${isoDateBR(range.to)}.csv`,
       content: buildCsv(headers, rows),
     };
   });
@@ -1264,9 +1244,7 @@ export const exportShippingByDistrictCsv = createServerFn({ method: "POST" })
     ]);
     const range = resolveRange(data);
     return {
-      filename: `frete_bairros_${range.from.toISOString().slice(0, 10)}_${range.to
-        .toISOString()
-        .slice(0, 10)}.csv`,
+      filename: `frete_bairros_${isoDateBR(range.from)}_${isoDateBR(range.to)}.csv`,
       content: buildCsv(headers, rows),
     };
   });

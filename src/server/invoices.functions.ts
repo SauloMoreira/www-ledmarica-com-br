@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { sanitizeSearchTerm } from "@/lib/postgrestFilter";
+import { startOfMonthBR } from "@/lib/dateBR";
 
 export type InvoiceStatus =
   | "nao_necessaria"
@@ -190,9 +191,7 @@ export const getInvoiceSummary = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const stale24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-    const startMonth = new Date();
-    startMonth.setDate(1);
-    startMonth.setHours(0, 0, 0, 0);
+    const startMonth = startOfMonthBR(new Date());
     const startMonthISO = startMonth.toISOString();
 
     async function count(filter: (q: any) => any): Promise<number> {

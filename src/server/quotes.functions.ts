@@ -13,6 +13,7 @@ import {
 } from "@/lib/quotes";
 import { logAdminAction } from "./security/auditLog";
 import { lookupCnpj } from "./cnpjLookup";
+import { currentYearBR } from "@/lib/dateBR";
 
 type QuoteRow = Database["public"]["Tables"]["quotes"]["Row"];
 type QuoteItemRow = Database["public"]["Tables"]["quote_items"]["Row"];
@@ -274,7 +275,7 @@ export const createQuote = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => quoteBodySchema.parse(d))
   .handler(async ({ data, context }) => {
     const sb = context.supabase;
-    const year = new Date().getFullYear();
+    const year = currentYearBR();
     const { data: number, error: ne } = await sb.rpc("next_quote_number", { _year: year });
     if (ne || !number) throw new Error("Não foi possível gerar o número do orçamento");
     const seq = Number(String(number).split("-").pop());
@@ -337,7 +338,7 @@ export const duplicateQuote = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const sb = context.supabase;
     const src = await loadQuote(sb, data.id);
-    const year = new Date().getFullYear();
+    const year = currentYearBR();
     const { data: number, error: ne } = await sb.rpc("next_quote_number", { _year: year });
     if (ne || !number) throw new Error("Não foi possível gerar o número do orçamento");
     const seq = Number(String(number).split("-").pop());

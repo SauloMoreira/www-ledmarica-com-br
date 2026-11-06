@@ -29,6 +29,7 @@ import { redirectToExternalCheckout } from "@/lib/externalCheckout";
 import { takePendingConversionUserData } from "@/lib/tracking";
 import { isPaymentApproved, trackConfirmedPurchase } from "@/lib/purchaseTracking";
 import { buildSeo } from "@/lib/seo";
+import { formatDateBR, formatDateTimeBR } from "@/lib/dateBR";
 
 const SearchSchema = z.object({
   token: z.string().min(16).max(128).optional(),
@@ -356,7 +357,7 @@ function OrderTrackingPage() {
             </p>
             <h1 className="font-display font-bold text-3xl tracking-tight">#{order.orderNumber}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {order.createdAt && new Date(order.createdAt).toLocaleString("pt-BR")} ·{" "}
+              {order.createdAt && formatDateTimeBR(order.createdAt)} ·{" "}
               {orderStatusLabel(order.status)}
             </p>
           </div>
@@ -608,7 +609,7 @@ function OrderTrackingPage() {
                     <p>
                       Previsão:{" "}
                       <span className="text-foreground">
-                        {new Date(order.estimatedDelivery).toLocaleDateString("pt-BR")}
+                        {formatDateBR(order.estimatedDelivery)}
                       </span>
                     </p>
                   )}
@@ -663,7 +664,7 @@ function OrderTrackingPage() {
               <p className="text-muted-foreground">
                 Aprovado em:{" "}
                 <span className="text-foreground">
-                  {new Date(order.paidAt).toLocaleString("pt-BR")}
+                  {formatDateTimeBR(order.paidAt)}
                 </span>
               </p>
             )}

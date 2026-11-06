@@ -30,6 +30,7 @@ import {
   getAdminAuditFilterOptions,
   exportAdminAuditCsv,
 } from "@/server/security.functions";
+import { formatDateTimeBR, todayISODateBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/seguranca/auditoria")({
   component: AdminAuditLogPage,
@@ -61,13 +62,7 @@ const RESOURCE_LABELS: Record<string, string> = {
 };
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTimeBR(iso);
 }
 
 function resourceLabel(t: string | null | undefined) {
@@ -142,7 +137,7 @@ function AdminAuditLogPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `auditoria-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `auditoria-${todayISODateBR()}.csv`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(`${res.count} registros exportados`);

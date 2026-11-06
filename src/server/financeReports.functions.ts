@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { neutralizeCsvFormula } from "@/lib/csvSafe";
+import { addDaysBR, endOfDayBR, endOfMonthBR, formatDateTimeBR, isoDateBR, parseDateInputBR, startOfDayBR, startOfMonthBR } from "@/lib/dateBR";
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -108,17 +109,9 @@ const PAID = ["approved", "paid"];
 const PENDING = ["pending", "in_process", "preference_created"];
 const CANCELLED = ["rejected", "failed", "cancelled"];
 
-function startOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
+const startOfDay = startOfDayBR;
 
-function endOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
-}
+const endOfDay = endOfDayBR;
 
 function resolveRange(filters: ReportFilters): { from: Date; to: Date } {
   const now = new Date();
@@ -126,33 +119,30 @@ function resolveRange(filters: ReportFilters): { from: Date; to: Date } {
     case "today":
       return { from: startOfDay(now), to: endOfDay(now) };
     case "yesterday": {
-      const y = new Date(now);
-      y.setDate(now.getDate() - 1);
+      const y = addDaysBR(now, -1);
       return { from: startOfDay(y), to: endOfDay(y) };
     }
     case "last_7_days": {
-      const f = new Date(now);
-      f.setDate(now.getDate() - 6);
+      const f = addDaysBR(now, -6);
       return { from: startOfDay(f), to: endOfDay(now) };
     }
     case "last_30_days": {
-      const f = new Date(now);
-      f.setDate(now.getDate() - 29);
+      const f = addDaysBR(now, -29);
       return { from: startOfDay(f), to: endOfDay(now) };
     }
     case "this_month":
       return {
-        from: startOfDay(new Date(now.getFullYear(), now.getMonth(), 1)),
+        from: startOfDay(startOfMonthBR(now)),
         to: endOfDay(now),
       };
     case "last_month": {
-      const f = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const t = new Date(now.getFullYear(), now.getMonth(), 0);
+      const f = startOfMonthBR(now, -1);
+      const t = endOfMonthBR(now, -1);
       return { from: startOfDay(f), to: endOfDay(t) };
     }
     case "custom": {
-      const from = filters.start ? new Date(filters.start) : startOfDay(now);
-      const to = filters.end ? new Date(filters.end) : endOfDay(now);
+      const from = filters.start ? parseDateInputBR(filters.start) : startOfDay(now);
+      const to = filters.end ? parseDateInputBR(filters.end) : endOfDay(now);
       return { from: startOfDay(from), to: endOfDay(to) };
     }
   }
@@ -615,7 +605,7 @@ export const exportSalesReportCsv = createServerFn({ method: "POST" })
       const net = netOf(o);
       lines.push(
         [
-          new Date(o.created_at as string).toLocaleString("pt-BR"),
+          formatDateTimeBR(o.created_at as string),
           `#${o.order_number}`,
           customerName,
           o.company_name
@@ -639,9 +629,7 @@ export const exportSalesReportCsv = createServerFn({ method: "POST" })
       );
     }
 
-    const filename = `vendas_${range.from.toISOString().slice(0, 10)}_${range.to
-      .toISOString()
-      .slice(0, 10)}.csv`;
+    const filename = `vendas_${isoDateBR(range.from)}_${isoDateBR(range.to)}.csv`;
 
     return { filename, content: "\ufeff" + lines.join("\n") };
   });

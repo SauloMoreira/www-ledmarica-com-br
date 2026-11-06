@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { MessageCircle, Instagram, Facebook } from "lucide-react";
 import { STORE_NAME, STORE_WHATSAPP } from "@/lib/domain";
 import logoFooter from "@/assets/logo-footer.webp";
+import { currentYearBR } from "@/lib/dateBR";
 
 export function Footer() {
   const openCookiePreferences = () => {
@@ -207,7 +208,7 @@ export function Footer() {
 
         <div className="border-t border-white/10 mt-14 pt-6 flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-slate-400">
           <div>
-            © {new Date().getFullYear()} <span className="text-slate-200">{STORE_NAME}</span> · Maricá / RJ
+            © {currentYearBR()} <span className="text-slate-200">{STORE_NAME}</span> · Maricá / RJ
           </div>
           <div>
             Desenvolvido por <span className="font-semibold text-slate-100">SC Moreira Tech</span>

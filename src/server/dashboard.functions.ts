@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { fetchAllRows } from "@/lib/fetchAllRows";
+import { isoDateBR } from "@/lib/dateBR";
 
 /**
  * Server function de agregações para o dashboard administrativo.
@@ -68,15 +69,13 @@ export type DashboardData = {
 };
 
 function toDayKey(iso: string): string {
-  return iso.slice(0, 10);
+  return isoDateBR(new Date(iso));
 }
 
 function buildDayBuckets(startISO: string, endISO: string): string[] {
-  const start = new Date(startISO);
-  const end = new Date(endISO);
   const days: string[] = [];
-  const cur = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
-  const last = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
+  const cur = new Date(`${isoDateBR(new Date(startISO))}T00:00:00Z`);
+  const last = new Date(`${isoDateBR(new Date(endISO))}T00:00:00Z`);
   while (cur <= last) {
     days.push(cur.toISOString().slice(0, 10));
     cur.setUTCDate(cur.getUTCDate() + 1);

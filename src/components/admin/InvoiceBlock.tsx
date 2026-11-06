@@ -32,6 +32,7 @@ import {
   InvoiceDeliveryPanel,
   toDeliveryState,
 } from "@/components/admin/invoices/InvoiceDeliveryPanel";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 const STATUS_BADGE: Record<InvoiceStatus, string> = {
   nao_necessaria: "bg-muted text-muted-foreground",
@@ -46,7 +47,7 @@ type DetailType = Awaited<ReturnType<typeof getInvoiceDetail>>;
 function fmt(d: string | null | undefined) {
   if (!d) return "—";
   try {
-    return new Date(d).toLocaleString("pt-BR");
+    return formatDateTimeBR(d);
   } catch {
     return "—";
   }

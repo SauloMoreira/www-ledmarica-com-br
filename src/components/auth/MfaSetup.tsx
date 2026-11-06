@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatDateBR } from "@/lib/dateBR";
 
 type Factor = { id: string; friendly_name?: string | null; status: string; factor_type: string };
 
@@ -33,7 +34,7 @@ export function MfaSetup() {
     try {
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
-        friendlyName: `App ${new Date().toLocaleDateString("pt-BR")}`,
+        friendlyName: `App ${formatDateBR(new Date())}`,
       });
       if (error) throw error;
       setQr({
