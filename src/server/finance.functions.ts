@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { ilikePattern, sanitizeSearchTerm } from "@/lib/postgrestFilter";
+import { addDaysBR, endOfDayBR, endOfMonthBR, parseDateInputBR, startOfDayBR, startOfMonthBR } from "@/lib/dateBR";
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -160,38 +161,35 @@ const RangeInput = z.object({
 
 function resolveRange(preset: string, from?: string, to?: string): { from: string; to: string } {
   const now = new Date();
-  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const endOfDay = (d: Date) =>
-    new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+  const startOfDay = startOfDayBR;
+  const endOfDay = endOfDayBR;
   let f = startOfDay(now);
   let t = endOfDay(now);
   switch (preset) {
     case "today":
       break;
     case "yesterday": {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 1);
+      const d = addDaysBR(now, -1);
       f = startOfDay(d);
       t = endOfDay(d);
       break;
     }
     case "last_7_days": {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 6);
+      const d = addDaysBR(now, -6);
       f = startOfDay(d);
       break;
     }
     case "this_month":
-      f = new Date(now.getFullYear(), now.getMonth(), 1);
+      f = startOfMonthBR(now);
       break;
     case "last_month": {
-      f = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      t = endOfDay(new Date(now.getFullYear(), now.getMonth(), 0));
+      f = startOfMonthBR(now, -1);
+      t = endOfMonthBR(now, -1);
       break;
     }
     case "custom":
-      if (from) f = new Date(from);
-      if (to) t = new Date(to);
+      if (from) f = /^\d{4}-\d{2}-\d{2}$/.test(from) ? startOfDayBR(parseDateInputBR(from)) : new Date(from);
+      if (to) t = /^\d{4}-\d{2}-\d{2}$/.test(to) ? endOfDayBR(parseDateInputBR(to)) : new Date(to);
       break;
   }
   return { from: f.toISOString(), to: t.toISOString() };

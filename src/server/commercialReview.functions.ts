@@ -8,7 +8,7 @@ import {
   type CommercialStatus,
 } from "@/lib/commercialReview";
 import { neutralizeCsvFormula } from "@/lib/csvSafe";
-import { formatDateBR } from "@/lib/dateBR";
+import { formatDateBR, todayISODateBR } from "@/lib/dateBR";
 
 /**
  * Revisão Comercial — Onda 1 + Onda 2.
@@ -668,7 +668,7 @@ export const exportCommercialReviewCsv = createServerFn({ method: "GET" })
       );
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayISODateBR();
     return {
       filename: `revisao-comercial-${today}.csv`,
       csv: "\uFEFF" + lines.join("\n"),

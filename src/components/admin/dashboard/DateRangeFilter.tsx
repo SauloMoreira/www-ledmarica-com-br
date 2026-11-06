@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Calendar } from "lucide-react";
+import { addDaysBR, endOfDayBR, endOfMonthBR, isoDateBR, parseDateInputBR, startOfDayBR, startOfMonthBR } from "@/lib/dateBR";
 
 export type DashboardPeriod = "today" | "last7" | "last30" | "thisMonth" | "lastMonth" | "custom";
 
@@ -14,16 +15,8 @@ const PRESETS: { value: DashboardPeriod; label: string }[] = [
   { value: "custom", label: "Personalizado" },
 ];
 
-function startOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-function endOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
-}
+const startOfDay = startOfDayBR;
+const endOfDay = endOfDayBR;
 
 export function computeRange(period: DashboardPeriod, customStart?: string, customEnd?: string) {
   const now = new Date();
@@ -35,30 +28,26 @@ export function computeRange(period: DashboardPeriod, customStart?: string, cust
       start = startOfDay(now);
       break;
     case "last7": {
-      const s = new Date(now);
-      s.setDate(s.getDate() - 6);
+      const s = addDaysBR(now, -6);
       start = startOfDay(s);
       break;
     }
     case "last30": {
-      const s = new Date(now);
-      s.setDate(s.getDate() - 29);
+      const s = addDaysBR(now, -29);
       start = startOfDay(s);
       break;
     }
     case "thisMonth":
-      start = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1));
+      start = startOfMonthBR(now);
       break;
     case "lastMonth": {
-      const s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const e = new Date(now.getFullYear(), now.getMonth(), 0);
-      start = startOfDay(s);
-      end = endOfDay(e);
+      start = startOfMonthBR(now, -1);
+      end = endOfMonthBR(now, -1);
       break;
     }
     case "custom":
-      start = customStart ? startOfDay(new Date(customStart)) : startOfDay(now);
-      end = customEnd ? endOfDay(new Date(customEnd)) : endOfDay(now);
+      start = customStart ? startOfDay(parseDateInputBR(customStart)) : startOfDay(now);
+      end = customEnd ? endOfDay(parseDateInputBR(customEnd)) : endOfDay(now);
       break;
   }
   return { start: start.toISOString(), end: end.toISOString(), period };
@@ -70,8 +59,8 @@ interface Props {
 }
 
 export function DateRangeFilter({ value, onChange }: Props) {
-  const [customStart, setCustomStart] = useState(value.start.slice(0, 10));
-  const [customEnd, setCustomEnd] = useState(value.end.slice(0, 10));
+  const [customStart, setCustomStart] = useState(isoDateBR(new Date(value.start)));
+  const [customEnd, setCustomEnd] = useState(isoDateBR(new Date(value.end)));
 
   const showCustom = value.period === "custom";
 

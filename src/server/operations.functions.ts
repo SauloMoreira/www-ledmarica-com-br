@@ -7,6 +7,7 @@ import {
 } from "@/lib/integrationIds";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
+import { startOfDayBR } from "@/lib/dateBR";
 
 /**
  * Agrega todos os contadores e alertas usados pelo
@@ -58,9 +59,7 @@ export type OperationsData = {
 };
 
 function startOfTodayISO(): string {
-  const now = new Date();
-  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return d.toISOString();
+  return startOfDayBR(new Date()).toISOString();
 }
 
 function hoursAgoISO(h: number): string {
