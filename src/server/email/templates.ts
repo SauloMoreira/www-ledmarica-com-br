@@ -1,3 +1,4 @@
+import { currentYearBR } from "@/lib/dateBR";
 // Templates HTML transacionais — sem dependências externas.
 // Sempre escapa entrada do usuário; valores monetários em BRL.
 
@@ -438,7 +439,7 @@ export function buildOrderEmailTemplate(p: OrderEmailParams): {
         ${unsubscribeLine}
       </td></tr>
       <tr><td style="padding:18px 28px;background:#fafafa;border-top:1px solid #eee;font-size:11px;color:#999;text-align:center;">
-        © ${new Date().getFullYear()} ${esc(p.storeName)}. ${footerNote}
+        © ${currentYearBR()} ${esc(p.storeName)}. ${footerNote}
       </td></tr>
     </table>
   </td></tr>
