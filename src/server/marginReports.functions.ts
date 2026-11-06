@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { neutralizeCsvFormula } from "@/lib/csvSafe";
-import { addDaysBR, endOfDayBR, endOfMonthBR, formatDateTimeBR, parseDateInputBR, startOfDayBR, startOfMonthBR } from "@/lib/dateBR";
+import { addDaysBR, endOfDayBR, endOfMonthBR, formatDateTimeBR, isoDateBR, parseDateInputBR, startOfDayBR, startOfMonthBR } from "@/lib/dateBR";
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -735,9 +735,7 @@ export const exportMarginByOrderCsv = createServerFn({ method: "POST" })
       );
     }
 
-    const filename = `margem_pedidos_${range.from.toISOString().slice(0, 10)}_${range.to
-      .toISOString()
-      .slice(0, 10)}.csv`;
+    const filename = `margem_pedidos_${isoDateBR(range.from)}_${isoDateBR(range.to)}.csv`;
     return { filename, content: "\ufeff" + lines.join("\n") };
   });
 
@@ -892,8 +890,6 @@ export const exportProductsReportCsv = createServerFn({ method: "POST" })
       );
     }
 
-    const filename = `produtos_${result.range.from.toISOString().slice(0, 10)}_${result.range.to
-      .toISOString()
-      .slice(0, 10)}.csv`;
+    const filename = `produtos_${isoDateBR(result.range.from)}_${isoDateBR(result.range.to)}.csv`;
     return { filename, content: "\ufeff" + lines.join("\n") };
   });

@@ -3,7 +3,7 @@ import { fetchAllRows } from "@/lib/fetchAllRows";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { neutralizeCsvFormula } from "@/lib/csvSafe";
-import { addDaysBR, endOfDayBR, endOfMonthBR, formatDateBR, formatDateTimeBR, parseDateInputBR, startOfDayBR, startOfMonthBR } from "@/lib/dateBR";
+import { addDaysBR, endOfDayBR, endOfMonthBR, formatDateBR, formatDateTimeBR, isoDateBR, parseDateInputBR, startOfDayBR, startOfMonthBR } from "@/lib/dateBR";
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -1058,9 +1058,7 @@ export const exportB2bCompaniesCsv = createServerFn({ method: "POST" })
     ]);
     const range = resolveRange(data);
     return {
-      filename: `b2b_empresas_${range.from.toISOString().slice(0, 10)}_${range.to
-        .toISOString()
-        .slice(0, 10)}.csv`,
+      filename: `b2b_empresas_${isoDateBR(range.from)}_${isoDateBR(range.to)}.csv`,
       content: buildCsv(headers, rows),
     };
   });
@@ -1098,9 +1096,7 @@ export const exportB2bProductsCsv = createServerFn({ method: "POST" })
     ]);
     const range = resolveRange(data);
     return {
-      filename: `b2b_produtos_${range.from.toISOString().slice(0, 10)}_${range.to
-        .toISOString()
-        .slice(0, 10)}.csv`,
+      filename: `b2b_produtos_${isoDateBR(range.from)}_${isoDateBR(range.to)}.csv`,
       content: buildCsv(headers, rows),
     };
   });
@@ -1136,9 +1132,7 @@ export const exportCouponsCsv = createServerFn({ method: "POST" })
     ]);
     const range = resolveRange(data);
     return {
-      filename: `cupons_${range.from.toISOString().slice(0, 10)}_${range.to
-        .toISOString()
-        .slice(0, 10)}.csv`,
+      filename: `cupons_${isoDateBR(range.from)}_${isoDateBR(range.to)}.csv`,
       content: buildCsv(headers, rows),
     };
   });
@@ -1184,9 +1178,7 @@ export const exportDiscountsByOrderCsv = createServerFn({ method: "POST" })
     ]);
     const range = resolveRange(data);
     return {
-      filename: `descontos_pedidos_${range.from.toISOString().slice(0, 10)}_${range.to
-        .toISOString()
-        .slice(0, 10)}.csv`,
+      filename: `descontos_pedidos_${isoDateBR(range.from)}_${isoDateBR(range.to)}.csv`,
       content: buildCsv(headers, rows),
     };
   });
@@ -1222,9 +1214,7 @@ export const exportShippingByOrderCsv = createServerFn({ method: "POST" })
         o.status,
       ]);
     return {
-      filename: `frete_pedidos_${range.from.toISOString().slice(0, 10)}_${range.to
-        .toISOString()
-        .slice(0, 10)}.csv`,
+      filename: `frete_pedidos_${isoDateBR(range.from)}_${isoDateBR(range.to)}.csv`,
       content: buildCsv(headers, rows),
     };
   });
@@ -1254,9 +1244,7 @@ export const exportShippingByDistrictCsv = createServerFn({ method: "POST" })
     ]);
     const range = resolveRange(data);
     return {
-      filename: `frete_bairros_${range.from.toISOString().slice(0, 10)}_${range.to
-        .toISOString()
-        .slice(0, 10)}.csv`,
+      filename: `frete_bairros_${isoDateBR(range.from)}_${isoDateBR(range.to)}.csv`,
       content: buildCsv(headers, rows),
     };
   });

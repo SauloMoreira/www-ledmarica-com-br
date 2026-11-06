@@ -3,6 +3,7 @@ import { fetchAllRows } from "@/lib/fetchAllRows";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { neutralizeCsvFormula } from "@/lib/csvSafe";
+import { todayISODateBR } from "@/lib/dateBR";
 
 /**
  * Onda Estoque Operacional 1A — funções de servidor.
@@ -365,7 +366,7 @@ export const exportStockCsv = createServerFn({ method: "GET" })
         ].join(","),
       )
       .join("\n");
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = todayISODateBR();
     return {
       filename: `estoque-${stamp}.csv`,
       content: `${header}\n${body}\n`,

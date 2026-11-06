@@ -26,7 +26,7 @@ import {
   listAdminAuditLog,
   exportAdminAuditCsv,
 } from "@/server/security.functions";
-import { formatDateTimeBR } from "@/lib/dateBR";
+import { formatDateTimeBR, todayISODateBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/seguranca")({
   component: AdminSecurityPage,
@@ -59,7 +59,7 @@ function AdminSecurityPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `auditoria-admin-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `auditoria-admin-${todayISODateBR()}.csv`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(`${res.count} registros exportados`);
