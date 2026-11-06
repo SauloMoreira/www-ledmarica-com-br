@@ -73,7 +73,7 @@ import {
   type QuoteProductOption,
   type QuoteWithItems,
 } from "@/server/quotes.functions";
-import { formatDateBR } from "@/lib/dateBR";
+import { formatDateBR, formatTimeBR } from "@/lib/dateBR";
 
 type ItemDraft = {
   key: string;
@@ -492,7 +492,7 @@ export function QuoteEditor({ initial }: { initial: QuoteWithItems | null }) {
     : dirty
       ? "Alterações não salvas"
       : savedAt
-        ? "Salvo"
+        ? `Salvo às ${formatTimeBR(savedAt)}`
         : "Novo orçamento";
 
   return (
