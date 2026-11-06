@@ -20,7 +20,7 @@ e versionamento [SemVer](https://semver.org/lang/pt-BR/).
   `formatDateBR`, `formatDateTimeBR`, `formatTimeBR`, `formatDateLongBR`,
   `currentYearBR`, `todayISODateBR` + helpers de início/fim de dia e mês.
   Entradas vazias/inválidas exibem "—".
-- 55 formatações de data sem fuso substituídas em telas admin, loja, e-mails e
+- 53 formatações de data sem fuso substituídas em telas admin, loja, e-mails e
   relatórios CSV (antes o SSR em UTC exibia 3h adiantado).
 - Filtros de período (dashboard, financeiro, margem, comercial, campanhas,
   Mercado Pago/NF, painel operacional, notas do mês) agora calculam início/fim
