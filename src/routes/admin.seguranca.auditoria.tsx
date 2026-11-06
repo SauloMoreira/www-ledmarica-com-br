@@ -30,6 +30,7 @@ import {
   getAdminAuditFilterOptions,
   exportAdminAuditCsv,
 } from "@/server/security.functions";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/seguranca/auditoria")({
   component: AdminAuditLogPage,
@@ -61,13 +62,7 @@ const RESOURCE_LABELS: Record<string, string> = {
 };
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTimeBR(iso);
 }
 
 function resourceLabel(t: string | null | undefined) {

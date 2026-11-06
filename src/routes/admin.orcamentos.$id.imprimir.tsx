@@ -6,6 +6,7 @@ import logo from "@/assets/logo-hero.png";
 import { formatCNPJ } from "@/lib/cnpj";
 import { formatMoney, formatPct, formatQty } from "@/lib/quotes";
 import { getQuoteForPrint } from "@/server/quotes.functions";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 type PrintData = Awaited<ReturnType<typeof getQuoteForPrint>>;
 
@@ -86,8 +87,6 @@ function PrintInner() {
     : [];
   const contact = contactParts.length ? contactParts.join(" · ") : FALLBACK.contact;
   const hours = issuer?.business_hours || FALLBACK.hours;
-  const fmtDate = (iso: string) =>
-    new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   const savings = q.items_discount_total + q.commercial_discount_amount;
   const v = (s: string | null | undefined) => (s && s.trim() ? s : "—");
 
@@ -117,8 +116,8 @@ function PrintInner() {
             <p className="qdoc-kicker">ORÇAMENTO · PESSOA JURÍDICA</p>
             <p className="qdoc-number">{q.number}</p>
             <dl className="qdoc-meta">
-              <div><dt>Emissão</dt><dd>{fmtDate(q.issued_at)}</dd></div>
-              <div><dt>Validade</dt><dd>{q.validity_hours} horas</dd></div>
+              <div><dt>Emissão</dt><dd>{formatDateTimeBR(q.issued_at)}</dd></div>
+              <div><dt>Validade</dt><dd>{q.validity_hours} horas · até {formatDateTimeBR(q.expires_at)}</dd></div>
               <div><dt>Vendedor</dt><dd>{v(q.seller_name)}</dd></div>
             </dl>
           </div>

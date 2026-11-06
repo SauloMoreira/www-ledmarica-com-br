@@ -94,16 +94,6 @@ function firstName(full: string | null | undefined): string {
   return String(full).trim().split(/\s+/)[0] || "";
 }
 
-function formatDateBR(value: string | Date | null | undefined): string {
-  if (!value) return "—";
-  try {
-    const d = typeof value === "string" ? new Date(value) : value;
-    if (isNaN(d.getTime())) return "—";
-    return formatDateBR(d);
-  } catch {
-    return "—";
-  }
-}
 
 export interface OrderForVars {
   id: string;

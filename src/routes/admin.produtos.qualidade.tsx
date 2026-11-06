@@ -32,6 +32,7 @@ import {
   type DataTableColumn,
 } from "@/components/admin/datatable";
 import { useTableState } from "@/hooks/useTableState";
+import { formatTimeBR } from "@/lib/dateBR";
 
 type Filter =
   | "all"
@@ -317,10 +318,7 @@ function ProductQualityPage() {
           {dataUpdatedAt > 0 && (
             <span className="text-[11px] text-muted-foreground whitespace-nowrap">
               Atualizado às{" "}
-              {new Date(dataUpdatedAt).toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {formatTimeBR(dataUpdatedAt)}
             </span>
           )}
         </div>

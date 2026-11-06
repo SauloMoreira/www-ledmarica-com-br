@@ -29,6 +29,7 @@ import {
 } from "@/lib/whatsappTemplates";
 import { logLeadContact, sendLeadEmail, setLeadFollowUp } from "@/server/leadContact.functions";
 import { cn } from "@/lib/utils";
+import { addDaysBR, endOfDayBR, formatDateTimeBR, toDateTimeLocalBR, zonedPartsBR, zonedTimeToUtcBR } from "@/lib/dateBR";
 
 const SITE = "https://www.ledmarica.com.br";
 const STORE_WHATSAPP_LABEL = "21 98212-6467";
@@ -78,15 +79,12 @@ const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", curren
 type FollowUpChoice = "keep" | "none" | "tomorrow" | "3d" | "7d" | "custom";
 
 function atTen(daysAhead: number): Date {
-  const d = new Date();
-  d.setDate(d.getDate() + daysAhead);
-  d.setHours(10, 0, 0, 0);
-  return d;
+  const p = zonedPartsBR(addDaysBR(new Date(), daysAhead));
+  return zonedTimeToUtcBR(p.year, p.month, p.day, 10);
 }
 
 function toLocalInput(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return toDateTimeLocalBR(d);
 }
 
 function resolveFollowUp(
@@ -105,7 +103,10 @@ function resolveFollowUp(
     case "7d":
       return { at: atTen(7).toISOString() };
     case "custom": {
-      const d = custom ? new Date(custom) : null;
+      const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(custom);
+      const d = m
+        ? zonedTimeToUtcBR(Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4]), Number(m[5]))
+        : null;
       return d && !Number.isNaN(d.getTime()) ? { at: d.toISOString() } : undefined;
     }
   }
@@ -113,18 +114,12 @@ function resolveFollowUp(
 
 function formatWhen(iso: string | null | undefined): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTimeBR(iso);
 }
 
 export function isFollowUpDue(iso: string | null | undefined): boolean {
   if (!iso) return false;
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
+  const end = endOfDayBR(new Date());
   return new Date(iso).getTime() <= end.getTime();
 }
 

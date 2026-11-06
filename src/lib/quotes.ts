@@ -161,15 +161,7 @@ export function parseBRNumber(raw: string): number {
   return Number(normalized);
 }
 
-export function formatDateTimeBR(iso: string | Date): string {
-  return new Date(iso).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+export { formatDateTimeBR } from "./dateBR";
 
 export function hoursUntil(iso: string, now: Date = new Date()): number {
   return Math.ceil((new Date(iso).getTime() - now.getTime()) / 3_600_000);

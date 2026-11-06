@@ -22,6 +22,7 @@ import {
 } from "@/components/admin/datatable";
 import { useTableState } from "@/hooks/useTableState";
 import { listEmailTemplates } from "@/server/emailTemplates.functions";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 const searchSchema = z.object({
   page: fallback(z.number(), 1).default(1),
@@ -49,13 +50,7 @@ type Row = {
 };
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTimeBR(iso);
 }
 
 function EmailTemplatesListPage() {
