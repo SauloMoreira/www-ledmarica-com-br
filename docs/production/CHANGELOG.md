@@ -8,6 +8,34 @@ e versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.2.1] — 2026-11-06
+
+**Tipo:** correção (datas e horas no fuso de São Paulo)
+**ChangeControl:** CC-2026-016
+**Classificação:** Média (afeta filtros de período de relatórios e numeração de orçamentos; sem migration)
+**Aplicação:** código em preview; banco inalterado (datas continuam gravadas em ISO/UTC).
+
+### Corrigido
+- Nova fonte única `src/lib/dateBR.ts` (`America/Sao_Paulo`, `pt-BR`, `h23`):
+  `formatDateBR`, `formatDateTimeBR`, `formatTimeBR`, `formatDateLongBR`,
+  `currentYearBR`, `todayISODateBR` + helpers de início/fim de dia e mês.
+  Entradas vazias/inválidas exibem "—".
+- 55 formatações de data sem fuso substituídas em telas admin, loja, e-mails e
+  relatórios CSV (antes o SSR em UTC exibia 3h adiantado).
+- Filtros de período (dashboard, financeiro, margem, comercial, campanhas,
+  Mercado Pago/NF, painel operacional, notas do mês) agora calculam início/fim
+  do dia e do mês em São Paulo; buckets diários do dashboard idem.
+- Nomes de arquivos exportados usam a data de São Paulo (26 pontos).
+- Orçamentos: ano da numeração LM-AAAA-NNNN via `currentYearBR()`; impressão
+  mostra "Validade: N horas · até dd/mm/aaaa hh:mm"; editor mostra "Salvo às hh:mm".
+- Ano do rodapé do site e dos e-mails no fuso de São Paulo.
+
+### Verificado
+- `src/lib/dateBR.test.ts` (virada de ano 31/12 23:30, UTC→SP, inválido) e
+  checagem de tipos sem erros.
+
+---
+
 ## [1.2.0] — 2026-11-06
 
 **Tipo:** nova funcionalidade (módulo de Orçamentos PJ no admin)
