@@ -186,6 +186,7 @@ const groups: Group[] = [
         icon: Building2,
         counterId: "pending-companies",
       },
+      { to: "/admin/orcamentos", label: "Orçamentos", icon: FileText },
       { to: "/admin/configuracoes-b2b", label: "Configurações B2B", icon: Briefcase },
       { to: "/atacado", label: "Vitrine atacado (loja)", icon: Store },
       { to: "/compra-rapida", label: "Compra rápida (loja)", icon: PackagePlus },

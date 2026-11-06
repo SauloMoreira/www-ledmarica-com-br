@@ -76,6 +76,8 @@ import { Route as AdminFinanceiroRelatoriosRouteImport } from './routes/admin.fi
 import { Route as AdminFinanceiroResumoRouteImport } from './routes/admin.financeiro.resumo'
 import { Route as AdminInstitutionalPagesIndexRouteImport } from './routes/admin.institutional-pages.index'
 import { Route as AdminInstitutionalPagesIdRouteImport } from './routes/admin.institutional-pages.$id'
+import { Route as AdminOrcamentosIndexRouteImport } from './routes/admin.orcamentos.index'
+import { Route as AdminOrcamentosNovoRouteImport } from './routes/admin.orcamentos.novo'
 import { Route as AdminPedidosIndexRouteImport } from './routes/admin.pedidos.index'
 import { Route as AdminPedidosOrderIdRouteImport } from './routes/admin.pedidos.$orderId'
 import { Route as AdminProdutosIndexRouteImport } from './routes/admin.produtos.index'
@@ -94,6 +96,8 @@ import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
 import { Route as PedidoIdConfirmacaoRouteImport } from './routes/pedido.$id.confirmacao'
 import { Route as AdminComunicacaoEmailsIndexRouteImport } from './routes/admin.comunicacao.emails.index'
 import { Route as AdminComunicacaoEmailsTypeRouteImport } from './routes/admin.comunicacao.emails.$type'
+import { Route as AdminOrcamentosIdIndexRouteImport } from './routes/admin.orcamentos.$id.index'
+import { Route as AdminOrcamentosIdImprimirRouteImport } from './routes/admin.orcamentos.$id.imprimir'
 import { Route as ApiPublicEmailUnsubscribeRouteImport } from './routes/api/public/email/unsubscribe'
 import { Route as ApiPublicInternalCronDispatchRouteImport } from './routes/api/public/internal/cron-dispatch'
 import { Route as ApiPublicMercadopagoWebhookRouteImport } from './routes/api/public/mercadopago.webhook'
@@ -441,6 +445,16 @@ const AdminInstitutionalPagesIdRoute =
     path: '/admin/institutional-pages/$id',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AdminOrcamentosIndexRoute = AdminOrcamentosIndexRouteImport.update({
+  id: '/admin/orcamentos/',
+  path: '/admin/orcamentos/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminOrcamentosNovoRoute = AdminOrcamentosNovoRouteImport.update({
+  id: '/admin/orcamentos/novo',
+  path: '/admin/orcamentos/novo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminPedidosIndexRoute = AdminPedidosIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -536,6 +550,17 @@ const AdminComunicacaoEmailsTypeRoute =
     path: '/admin/comunicacao/emails/$type',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AdminOrcamentosIdIndexRoute = AdminOrcamentosIdIndexRouteImport.update({
+  id: '/admin/orcamentos/$id/',
+  path: '/admin/orcamentos/$id/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminOrcamentosIdImprimirRoute =
+  AdminOrcamentosIdImprimirRouteImport.update({
+    id: '/admin/orcamentos/$id/imprimir',
+    path: '/admin/orcamentos/$id/imprimir',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicEmailUnsubscribeRoute =
   ApiPublicEmailUnsubscribeRouteImport.update({
     id: '/api/public/email/unsubscribe',
@@ -622,6 +647,7 @@ export interface FileRoutesByFullPath {
   '/admin/financeiro/relatorios': typeof AdminFinanceiroRelatoriosRoute
   '/admin/financeiro/resumo': typeof AdminFinanceiroResumoRoute
   '/admin/institutional-pages/$id': typeof AdminInstitutionalPagesIdRoute
+  '/admin/orcamentos/novo': typeof AdminOrcamentosNovoRoute
   '/admin/pedidos/$orderId': typeof AdminPedidosOrderIdRoute
   '/admin/produtos/$id': typeof AdminProdutosIdRoute
   '/admin/produtos/atributos-rotulos': typeof AdminProdutosAtributosRotulosRoute
@@ -637,13 +663,16 @@ export interface FileRoutesByFullPath {
   '/api/public/health': typeof ApiPublicHealthRoute
   '/pedido/$id/confirmacao': typeof PedidoIdConfirmacaoRoute
   '/admin/institutional-pages/': typeof AdminInstitutionalPagesIndexRoute
+  '/admin/orcamentos/': typeof AdminOrcamentosIndexRoute
   '/admin/pedidos/': typeof AdminPedidosIndexRoute
   '/admin/produtos/': typeof AdminProdutosIndexRoute
   '/admin/comunicacao/emails/$type': typeof AdminComunicacaoEmailsTypeRoute
+  '/admin/orcamentos/$id/imprimir': typeof AdminOrcamentosIdImprimirRoute
   '/api/public/email/unsubscribe': typeof ApiPublicEmailUnsubscribeRoute
   '/api/public/internal/cron-dispatch': typeof ApiPublicInternalCronDispatchRoute
   '/api/public/mercadopago/webhook': typeof ApiPublicMercadopagoWebhookRoute
   '/admin/comunicacao/emails/': typeof AdminComunicacaoEmailsIndexRoute
+  '/admin/orcamentos/$id/': typeof AdminOrcamentosIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -710,6 +739,7 @@ export interface FileRoutesByTo {
   '/admin/financeiro/relatorios': typeof AdminFinanceiroRelatoriosRoute
   '/admin/financeiro/resumo': typeof AdminFinanceiroResumoRoute
   '/admin/institutional-pages/$id': typeof AdminInstitutionalPagesIdRoute
+  '/admin/orcamentos/novo': typeof AdminOrcamentosNovoRoute
   '/admin/pedidos/$orderId': typeof AdminPedidosOrderIdRoute
   '/admin/produtos/$id': typeof AdminProdutosIdRoute
   '/admin/produtos/atributos-rotulos': typeof AdminProdutosAtributosRotulosRoute
@@ -725,13 +755,16 @@ export interface FileRoutesByTo {
   '/api/public/health': typeof ApiPublicHealthRoute
   '/pedido/$id/confirmacao': typeof PedidoIdConfirmacaoRoute
   '/admin/institutional-pages': typeof AdminInstitutionalPagesIndexRoute
+  '/admin/orcamentos': typeof AdminOrcamentosIndexRoute
   '/admin/pedidos': typeof AdminPedidosIndexRoute
   '/admin/produtos': typeof AdminProdutosIndexRoute
   '/admin/comunicacao/emails/$type': typeof AdminComunicacaoEmailsTypeRoute
+  '/admin/orcamentos/$id/imprimir': typeof AdminOrcamentosIdImprimirRoute
   '/api/public/email/unsubscribe': typeof ApiPublicEmailUnsubscribeRoute
   '/api/public/internal/cron-dispatch': typeof ApiPublicInternalCronDispatchRoute
   '/api/public/mercadopago/webhook': typeof ApiPublicMercadopagoWebhookRoute
   '/admin/comunicacao/emails': typeof AdminComunicacaoEmailsIndexRoute
+  '/admin/orcamentos/$id': typeof AdminOrcamentosIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -801,6 +834,7 @@ export interface FileRoutesById {
   '/admin/financeiro/relatorios': typeof AdminFinanceiroRelatoriosRoute
   '/admin/financeiro/resumo': typeof AdminFinanceiroResumoRoute
   '/admin/institutional-pages/$id': typeof AdminInstitutionalPagesIdRoute
+  '/admin/orcamentos/novo': typeof AdminOrcamentosNovoRoute
   '/admin/pedidos/$orderId': typeof AdminPedidosOrderIdRoute
   '/admin/produtos/$id': typeof AdminProdutosIdRoute
   '/admin/produtos/atributos-rotulos': typeof AdminProdutosAtributosRotulosRoute
@@ -816,13 +850,16 @@ export interface FileRoutesById {
   '/api/public/health': typeof ApiPublicHealthRoute
   '/pedido/$id/confirmacao': typeof PedidoIdConfirmacaoRoute
   '/admin/institutional-pages/': typeof AdminInstitutionalPagesIndexRoute
+  '/admin/orcamentos/': typeof AdminOrcamentosIndexRoute
   '/admin/pedidos/': typeof AdminPedidosIndexRoute
   '/admin/produtos/': typeof AdminProdutosIndexRoute
   '/admin/comunicacao/emails/$type': typeof AdminComunicacaoEmailsTypeRoute
+  '/admin/orcamentos/$id/imprimir': typeof AdminOrcamentosIdImprimirRoute
   '/api/public/email/unsubscribe': typeof ApiPublicEmailUnsubscribeRoute
   '/api/public/internal/cron-dispatch': typeof ApiPublicInternalCronDispatchRoute
   '/api/public/mercadopago/webhook': typeof ApiPublicMercadopagoWebhookRoute
   '/admin/comunicacao/emails/': typeof AdminComunicacaoEmailsIndexRoute
+  '/admin/orcamentos/$id/': typeof AdminOrcamentosIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -893,6 +930,7 @@ export interface FileRouteTypes {
     | '/admin/financeiro/relatorios'
     | '/admin/financeiro/resumo'
     | '/admin/institutional-pages/$id'
+    | '/admin/orcamentos/novo'
     | '/admin/pedidos/$orderId'
     | '/admin/produtos/$id'
     | '/admin/produtos/atributos-rotulos'
@@ -908,13 +946,16 @@ export interface FileRouteTypes {
     | '/api/public/health'
     | '/pedido/$id/confirmacao'
     | '/admin/institutional-pages/'
+    | '/admin/orcamentos/'
     | '/admin/pedidos/'
     | '/admin/produtos/'
     | '/admin/comunicacao/emails/$type'
+    | '/admin/orcamentos/$id/imprimir'
     | '/api/public/email/unsubscribe'
     | '/api/public/internal/cron-dispatch'
     | '/api/public/mercadopago/webhook'
     | '/admin/comunicacao/emails/'
+    | '/admin/orcamentos/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -981,6 +1022,7 @@ export interface FileRouteTypes {
     | '/admin/financeiro/relatorios'
     | '/admin/financeiro/resumo'
     | '/admin/institutional-pages/$id'
+    | '/admin/orcamentos/novo'
     | '/admin/pedidos/$orderId'
     | '/admin/produtos/$id'
     | '/admin/produtos/atributos-rotulos'
@@ -996,13 +1038,16 @@ export interface FileRouteTypes {
     | '/api/public/health'
     | '/pedido/$id/confirmacao'
     | '/admin/institutional-pages'
+    | '/admin/orcamentos'
     | '/admin/pedidos'
     | '/admin/produtos'
     | '/admin/comunicacao/emails/$type'
+    | '/admin/orcamentos/$id/imprimir'
     | '/api/public/email/unsubscribe'
     | '/api/public/internal/cron-dispatch'
     | '/api/public/mercadopago/webhook'
     | '/admin/comunicacao/emails'
+    | '/admin/orcamentos/$id'
   id:
     | '__root__'
     | '/'
@@ -1071,6 +1116,7 @@ export interface FileRouteTypes {
     | '/admin/financeiro/relatorios'
     | '/admin/financeiro/resumo'
     | '/admin/institutional-pages/$id'
+    | '/admin/orcamentos/novo'
     | '/admin/pedidos/$orderId'
     | '/admin/produtos/$id'
     | '/admin/produtos/atributos-rotulos'
@@ -1086,13 +1132,16 @@ export interface FileRouteTypes {
     | '/api/public/health'
     | '/pedido/$id/confirmacao'
     | '/admin/institutional-pages/'
+    | '/admin/orcamentos/'
     | '/admin/pedidos/'
     | '/admin/produtos/'
     | '/admin/comunicacao/emails/$type'
+    | '/admin/orcamentos/$id/imprimir'
     | '/api/public/email/unsubscribe'
     | '/api/public/internal/cron-dispatch'
     | '/api/public/mercadopago/webhook'
     | '/admin/comunicacao/emails/'
+    | '/admin/orcamentos/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1154,6 +1203,7 @@ export interface RootRouteChildren {
   AdminFinanceiroRelatoriosRoute: typeof AdminFinanceiroRelatoriosRoute
   AdminFinanceiroResumoRoute: typeof AdminFinanceiroResumoRoute
   AdminInstitutionalPagesIdRoute: typeof AdminInstitutionalPagesIdRoute
+  AdminOrcamentosNovoRoute: typeof AdminOrcamentosNovoRoute
   AdminProdutosIdRoute: typeof AdminProdutosIdRoute
   AdminProdutosAtributosRotulosRoute: typeof AdminProdutosAtributosRotulosRoute
   AdminProdutosCombosRoute: typeof AdminProdutosCombosRoute
@@ -1167,12 +1217,15 @@ export interface RootRouteChildren {
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
   PedidoIdConfirmacaoRoute: typeof PedidoIdConfirmacaoRoute
   AdminInstitutionalPagesIndexRoute: typeof AdminInstitutionalPagesIndexRoute
+  AdminOrcamentosIndexRoute: typeof AdminOrcamentosIndexRoute
   AdminProdutosIndexRoute: typeof AdminProdutosIndexRoute
   AdminComunicacaoEmailsTypeRoute: typeof AdminComunicacaoEmailsTypeRoute
+  AdminOrcamentosIdImprimirRoute: typeof AdminOrcamentosIdImprimirRoute
   ApiPublicEmailUnsubscribeRoute: typeof ApiPublicEmailUnsubscribeRoute
   ApiPublicInternalCronDispatchRoute: typeof ApiPublicInternalCronDispatchRoute
   ApiPublicMercadopagoWebhookRoute: typeof ApiPublicMercadopagoWebhookRoute
   AdminComunicacaoEmailsIndexRoute: typeof AdminComunicacaoEmailsIndexRoute
+  AdminOrcamentosIdIndexRoute: typeof AdminOrcamentosIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1646,6 +1699,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminInstitutionalPagesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/orcamentos/': {
+      id: '/admin/orcamentos/'
+      path: '/admin/orcamentos'
+      fullPath: '/admin/orcamentos/'
+      preLoaderRoute: typeof AdminOrcamentosIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/orcamentos/novo': {
+      id: '/admin/orcamentos/novo'
+      path: '/admin/orcamentos/novo'
+      fullPath: '/admin/orcamentos/novo'
+      preLoaderRoute: typeof AdminOrcamentosNovoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/pedidos/': {
       id: '/admin/pedidos/'
       path: '/'
@@ -1770,6 +1837,20 @@ declare module '@tanstack/react-router' {
       path: '/admin/comunicacao/emails/$type'
       fullPath: '/admin/comunicacao/emails/$type'
       preLoaderRoute: typeof AdminComunicacaoEmailsTypeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/orcamentos/$id/': {
+      id: '/admin/orcamentos/$id/'
+      path: '/admin/orcamentos/$id'
+      fullPath: '/admin/orcamentos/$id/'
+      preLoaderRoute: typeof AdminOrcamentosIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/orcamentos/$id/imprimir': {
+      id: '/admin/orcamentos/$id/imprimir'
+      path: '/admin/orcamentos/$id/imprimir'
+      fullPath: '/admin/orcamentos/$id/imprimir'
+      preLoaderRoute: typeof AdminOrcamentosIdImprimirRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/email/unsubscribe': {
@@ -1915,6 +1996,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminFinanceiroRelatoriosRoute: AdminFinanceiroRelatoriosRoute,
   AdminFinanceiroResumoRoute: AdminFinanceiroResumoRoute,
   AdminInstitutionalPagesIdRoute: AdminInstitutionalPagesIdRoute,
+  AdminOrcamentosNovoRoute: AdminOrcamentosNovoRoute,
   AdminProdutosIdRoute: AdminProdutosIdRoute,
   AdminProdutosAtributosRotulosRoute: AdminProdutosAtributosRotulosRoute,
   AdminProdutosCombosRoute: AdminProdutosCombosRoute,
@@ -1928,12 +2010,15 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHealthRoute: ApiPublicHealthRoute,
   PedidoIdConfirmacaoRoute: PedidoIdConfirmacaoRoute,
   AdminInstitutionalPagesIndexRoute: AdminInstitutionalPagesIndexRoute,
+  AdminOrcamentosIndexRoute: AdminOrcamentosIndexRoute,
   AdminProdutosIndexRoute: AdminProdutosIndexRoute,
   AdminComunicacaoEmailsTypeRoute: AdminComunicacaoEmailsTypeRoute,
+  AdminOrcamentosIdImprimirRoute: AdminOrcamentosIdImprimirRoute,
   ApiPublicEmailUnsubscribeRoute: ApiPublicEmailUnsubscribeRoute,
   ApiPublicInternalCronDispatchRoute: ApiPublicInternalCronDispatchRoute,
   ApiPublicMercadopagoWebhookRoute: ApiPublicMercadopagoWebhookRoute,
   AdminComunicacaoEmailsIndexRoute: AdminComunicacaoEmailsIndexRoute,
+  AdminOrcamentosIdIndexRoute: AdminOrcamentosIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

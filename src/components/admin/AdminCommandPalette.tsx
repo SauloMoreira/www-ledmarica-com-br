@@ -52,6 +52,8 @@ const QUICK_LINKS: Array<{ label: string; to: string; icon: any }> = [
   { label: "Novo produto", to: "/admin/produtos", icon: Plus },
   { label: "Pedidos", to: "/admin/pedidos", icon: ShoppingBag },
   { label: "Empresas B2B", to: "/admin/empresas", icon: Building2 },
+  { label: "Orçamentos PJ", to: "/admin/orcamentos", icon: FileText },
+  { label: "Novo orçamento PJ", to: "/admin/orcamentos/novo", icon: Plus },
   { label: "Leads (CRM)", to: "/admin/leads", icon: Sparkles },
   { label: "Cupons", to: "/admin/cupons", icon: Ticket },
   { label: "Campanhas", to: "/admin/campanhas", icon: Megaphone },

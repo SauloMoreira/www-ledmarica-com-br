@@ -2570,7 +2570,6 @@ export type Database = {
       orders: {
         Row: {
           ad_attribution: Json | null
-          is_test: boolean
           address_id: string | null
           address_snapshot: Json | null
           admin_notes: string | null
@@ -2616,6 +2615,7 @@ export type Database = {
           invoice_url: string | null
           invoice_xml_path: string | null
           invoice_xml_url: string | null
+          is_test: boolean
           local_delivery_district: string | null
           local_delivery_eta: string | null
           local_delivery_zone_id: string | null
@@ -2674,7 +2674,6 @@ export type Database = {
         }
         Insert: {
           ad_attribution?: Json | null
-          is_test?: boolean
           address_id?: string | null
           address_snapshot?: Json | null
           admin_notes?: string | null
@@ -2720,6 +2719,7 @@ export type Database = {
           invoice_url?: string | null
           invoice_xml_path?: string | null
           invoice_xml_url?: string | null
+          is_test?: boolean
           local_delivery_district?: string | null
           local_delivery_eta?: string | null
           local_delivery_zone_id?: string | null
@@ -2778,7 +2778,6 @@ export type Database = {
         }
         Update: {
           ad_attribution?: Json | null
-          is_test?: boolean
           address_id?: string | null
           address_snapshot?: Json | null
           admin_notes?: string | null
@@ -2824,6 +2823,7 @@ export type Database = {
           invoice_url?: string | null
           invoice_xml_path?: string | null
           invoice_xml_url?: string | null
+          is_test?: boolean
           local_delivery_district?: string | null
           local_delivery_eta?: string | null
           local_delivery_zone_id?: string | null
@@ -3717,6 +3717,210 @@ export type Database = {
         }
         Relationships: []
       }
+      quote_counters: {
+        Row: {
+          last_seq: number
+          year: number
+        }
+        Insert: {
+          last_seq?: number
+          year: number
+        }
+        Update: {
+          last_seq?: number
+          year?: number
+        }
+        Relationships: []
+      }
+      quote_items: {
+        Row: {
+          created_at: string
+          discount_pct: number
+          id: string
+          line_total: number
+          name: string
+          ncm: string | null
+          position: number
+          product_id: string | null
+          quantity: number
+          quote_id: string
+          sku: string | null
+          specs: string | null
+          unit: string
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          discount_pct?: number
+          id?: string
+          line_total?: number
+          name: string
+          ncm?: string | null
+          position?: number
+          product_id?: string | null
+          quantity: number
+          quote_id: string
+          sku?: string | null
+          specs?: string | null
+          unit?: string
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          discount_pct?: number
+          id?: string
+          line_total?: number
+          name?: string
+          ncm?: string | null
+          position?: number
+          product_id?: string | null
+          quantity?: number
+          quote_id?: string
+          sku?: string | null
+          specs?: string | null
+          unit?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotes: {
+        Row: {
+          client_address: string | null
+          client_cnpj: string
+          client_contact_name: string | null
+          client_email: string | null
+          client_legal_name: string
+          client_phone: string | null
+          client_reference: string | null
+          client_state_registration: string | null
+          client_trade_name: string | null
+          commercial_discount_amount: number
+          commercial_discount_pct: number
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          freight_amount: number
+          id: string
+          internal_notes: string | null
+          issued_at: string
+          items_discount_total: number
+          negotiation_id: string | null
+          number: string
+          pix_discount_pct: number
+          seller_name: string | null
+          seq: number
+          status: string
+          subtotal_gross: number
+          terms: Json
+          total: number
+          total_pix: number
+          updated_at: string
+          validity_hours: number
+          year: number
+        }
+        Insert: {
+          client_address?: string | null
+          client_cnpj: string
+          client_contact_name?: string | null
+          client_email?: string | null
+          client_legal_name: string
+          client_phone?: string | null
+          client_reference?: string | null
+          client_state_registration?: string | null
+          client_trade_name?: string | null
+          commercial_discount_amount?: number
+          commercial_discount_pct?: number
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          freight_amount?: number
+          id?: string
+          internal_notes?: string | null
+          issued_at?: string
+          items_discount_total?: number
+          negotiation_id?: string | null
+          number: string
+          pix_discount_pct?: number
+          seller_name?: string | null
+          seq: number
+          status?: string
+          subtotal_gross?: number
+          terms?: Json
+          total?: number
+          total_pix?: number
+          updated_at?: string
+          validity_hours?: number
+          year: number
+        }
+        Update: {
+          client_address?: string | null
+          client_cnpj?: string
+          client_contact_name?: string | null
+          client_email?: string | null
+          client_legal_name?: string
+          client_phone?: string | null
+          client_reference?: string | null
+          client_state_registration?: string | null
+          client_trade_name?: string | null
+          commercial_discount_amount?: number
+          commercial_discount_pct?: number
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          freight_amount?: number
+          id?: string
+          internal_notes?: string | null
+          issued_at?: string
+          items_discount_total?: number
+          negotiation_id?: string | null
+          number?: string
+          pix_discount_pct?: number
+          seller_name?: string | null
+          seq?: number
+          status?: string
+          subtotal_gross?: number
+          terms?: Json
+          total?: number
+          total_pix?: number
+          updated_at?: string
+          validity_hours?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_negotiation_id_fkey"
+            columns: ["negotiation_id"]
+            isOneToOne: false
+            referencedRelation: "b2b_negotiations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_limit_events: {
         Row: {
           action: string
@@ -4231,6 +4435,7 @@ export type Database = {
           zone_id: string
         }[]
       }
+      next_quote_number: { Args: { _year: number }; Returns: string }
       normalize_zone_name: { Args: { _text: string }; Returns: string }
       recalculate_lead_score: { Args: { _lead_id: string }; Returns: undefined }
       resolve_codes_bulk: {

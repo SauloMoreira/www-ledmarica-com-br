@@ -8,6 +8,29 @@ e versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.2.0] — 2026-11-06
+
+**Tipo:** nova funcionalidade (módulo de Orçamentos PJ no admin)
+**ChangeControl:** CC-2026-015
+**Classificação:** Média (migration aditiva + RLS admin-only; não toca checkout, MP, estoque)
+**Aplicação:** migration `create_quotes_module` aplicada; código em preview.
+
+### Adicionado
+- Tabelas `quotes`, `quote_items`, `quote_counters` (RLS: só `is_admin(auth.uid())`)
+  e função `next_quote_number(_year)` (numeração atômica LM-AAAA-NNNN, reinicia por ano).
+  `expires_at` calculado por trigger (`issued_at + validity_hours`).
+- `src/server/quotes.functions.ts`: listar, obter, criar, atualizar, duplicar,
+  alterar status e excluir (só rascunho), todos com `requireAdmin` (AAL2) + zod.
+  Totais sempre recalculados no servidor (`src/lib/quotes.ts`). Auditoria de
+  criação, status, duplicação e exclusão. Status "expirado" derivado na leitura.
+- Telas `/admin/orcamentos`, `/admin/orcamentos/novo`, `/admin/orcamentos/$id`
+  (editor com autosave, alerta interno de margem/custo/qtd. mínima, condições
+  comerciais editáveis, cópia de mensagem WhatsApp) e documento A4
+  `/admin/orcamentos/$id/imprimir` (sem observações internas, custos ou margens).
+- Item "Orçamentos" no menu B2B e na paleta de comandos.
+
+---
+
 ## [1.1.1] — 2026-10-15
 
 **Tipo:** correção (link de telefone na vitrine pública)
