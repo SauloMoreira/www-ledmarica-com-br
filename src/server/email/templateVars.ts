@@ -8,6 +8,7 @@
 // chaves internas ou snapshot bruto. Endereço completo NÃO é exposto.
 
 import type { EmailMessageType } from "./templates";
+import { formatDateBR } from "@/lib/dateBR";
 
 export interface VariableDescriptor {
   key: string;
@@ -98,7 +99,7 @@ function formatDateBR(value: string | Date | null | undefined): string {
   try {
     const d = typeof value === "string" ? new Date(value) : value;
     if (isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString("pt-BR");
+    return formatDateBR(d);
   } catch {
     return "—";
   }

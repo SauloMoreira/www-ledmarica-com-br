@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Star, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { formatDateBR } from "@/lib/dateBR";
 
 interface ProductReviewsProps {
   productId: string;
@@ -182,7 +183,7 @@ function ReviewCard({
         <Stars value={review.rating} />
         <span className="text-sm font-medium">{review.profiles?.name ?? "Cliente"}</span>
         <span className="text-xs text-muted-foreground">
-          {new Date(review.created_at).toLocaleDateString("pt-BR")}
+          {formatDateBR(review.created_at)}
         </span>
       </div>
       {review.title && <p className="font-semibold text-sm mb-1">{review.title}</p>}

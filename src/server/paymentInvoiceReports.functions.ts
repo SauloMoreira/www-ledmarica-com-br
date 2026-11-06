@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { neutralizeCsvFormula } from "@/lib/csvSafe";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -486,7 +487,7 @@ export const exportMpPaymentsCsv = createServerFn({ method: "POST" })
       const { net } = netAmountOf(o);
       lines.push(
         [
-          new Date(o.created_at as string).toLocaleString("pt-BR"),
+          formatDateTimeBR(o.created_at as string),
           `#${o.order_number}`,
           customerOf(o),
           (o.order_type as string) === "b2b" ? "B2B" : "B2C",
@@ -499,7 +500,7 @@ export const exportMpPaymentsCsv = createServerFn({ method: "POST" })
           src,
           fmtMoney(net),
           o.mp_last_webhook_at
-            ? new Date(o.mp_last_webhook_at as string).toLocaleString("pt-BR")
+            ? formatDateTimeBR(o.mp_last_webhook_at as string)
             : "",
           (o.mp_webhook_status as string | null) ?? "",
           (o.mp_webhook_error as string | null) ?? "",
@@ -802,7 +803,7 @@ export const exportInvoicesCsv = createServerFn({ method: "POST" })
       const hours = paidAt ? Math.floor((Date.now() - paidAt) / 3600000) : null;
       lines.push(
         [
-          new Date(o.created_at as string).toLocaleString("pt-BR"),
+          formatDateTimeBR(o.created_at as string),
           `#${o.order_number}`,
           customerOf(o),
           (o.order_type as string) === "b2b" ? "B2B" : "B2C",
@@ -814,7 +815,7 @@ export const exportInvoicesCsv = createServerFn({ method: "POST" })
           (o.invoice_series as string | null) ?? "",
           (o.invoice_access_key as string | null) ?? "",
           o.invoice_issued_at
-            ? new Date(o.invoice_issued_at as string).toLocaleString("pt-BR")
+            ? formatDateTimeBR(o.invoice_issued_at as string)
             : "",
           (o.invoice_danfe_url as string | null) ?? "",
           (o.invoice_xml_url as string | null) ?? "",

@@ -30,6 +30,7 @@ import {
   resendOrderEmail,
 } from "@/server/orderAdmin.functions";
 import { InvoiceBlock } from "@/components/admin/InvoiceBlock";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/pedidos/$orderId")({
   component: OrderDetailPage,
@@ -94,7 +95,7 @@ function OrderDetailPage() {
   const fmt = (n: number | string | null | undefined) =>
     Number(n ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-  const fmtDate = (d: string | null | undefined) => (d ? new Date(d).toLocaleString("pt-BR") : "—");
+  const fmtDate = (d: string | null | undefined) => (d ? formatDateTimeBR(d) : "—");
 
   const order = data?.ok ? data.order : null;
   const items = data?.ok ? data.items : [];

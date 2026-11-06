@@ -42,6 +42,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { renderTemplate, buildWhatsappUrl, type WhatsappTemplate } from "@/lib/whatsappTemplates";
 import { toast } from "sonner";
 import { LOSS_REASONS, lossReasonLabel, type LossReason } from "@/lib/lossReasons";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/carrinhos-abandonados")({
   component: AbandonedCartsPage,
@@ -55,7 +56,7 @@ function brl(n: number | null | undefined) {
 function fmtDate(d: string | null | undefined) {
   if (!d) return "—";
   try {
-    return new Date(d).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+    return formatDateTimeBR(d);
   } catch {
     return "—";
   }

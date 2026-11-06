@@ -28,6 +28,7 @@ import {
   adminListContactMessages,
   adminUpdateContactMessageStatus,
 } from "@/server/institutional.functions";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 const searchSchema = z.object({
   page: fallback(z.number(), 1).default(1),
@@ -126,7 +127,7 @@ function AdminContactMessages() {
       sortable: true,
       cell: (m) => (
         <span className="text-muted-foreground text-xs">
-          {new Date(m.created_at).toLocaleString("pt-BR")}
+          {formatDateTimeBR(m.created_at)}
         </span>
       ),
     },
@@ -250,7 +251,7 @@ function AdminContactMessages() {
                   )}
                   <div>
                     <div className="text-xs text-muted-foreground">Recebida</div>
-                    <div>{new Date(selected.created_at).toLocaleString("pt-BR")}</div>
+                    <div>{formatDateTimeBR(selected.created_at)}</div>
                   </div>
                 </div>
                 <div>

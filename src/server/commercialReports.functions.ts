@@ -3,6 +3,7 @@ import { fetchAllRows } from "@/lib/fetchAllRows";
 import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { neutralizeCsvFormula } from "@/lib/csvSafe";
+import { formatDateBR, formatDateTimeBR } from "@/lib/dateBR";
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -1021,7 +1022,7 @@ function fmtPct(n: number) {
 }
 function fmtDateTimeCsv(iso: string | null) {
   if (!iso) return "";
-  return new Date(iso).toLocaleString("pt-BR");
+  return formatDateTimeBR(iso);
 }
 function buildCsv(headers: string[], rows: string[][]): string {
   const lines = [headers.join(";")];
@@ -1135,7 +1136,7 @@ export const exportCouponsCsv = createServerFn({ method: "POST" })
     const rows = r.coupons.map((c) => [
       c.code,
       c.active ? "Ativo" : "Inativo",
-      c.expires_at ? new Date(c.expires_at).toLocaleDateString("pt-BR") : "",
+      c.expires_at ? formatDateBR(c.expires_at) : "",
       c.expired ? "Sim" : "Não",
       String(c.uses),
       fmtMoney(c.revenue),

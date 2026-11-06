@@ -12,6 +12,7 @@ import {
   adminDeleteInstitutionalPage,
   adminSaveInstitutionalPage,
 } from "@/server/institutional.functions";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/institutional-pages/")({
   component: AdminPagesList,
@@ -121,7 +122,7 @@ function AdminPagesList() {
                   <td className="p-3 text-center">{p.show_in_footer ? "✓" : "—"}</td>
                   <td className="p-3 text-center">{p.sort_order}</td>
                   <td className="p-3 text-muted-foreground text-xs">
-                    {new Date(p.updated_at).toLocaleString("pt-BR")}
+                    {formatDateTimeBR(p.updated_at)}
                   </td>
                   <td className="p-3">
                     <div className="flex items-center justify-end gap-1">

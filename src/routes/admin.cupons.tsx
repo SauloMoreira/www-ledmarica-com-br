@@ -39,6 +39,7 @@ import {
   conditionBadge,
 } from "@/lib/couponConditions";
 import { toast } from "sonner";
+import { formatDateBR } from "@/lib/dateBR";
 
 const searchSchema = z.object({
   page: fallback(z.number(), 1).default(1),
@@ -309,7 +310,7 @@ function CuponsPage() {
       hideOnMobile: true,
       cell: (c) => (
         <span className="text-xs">
-          {c.expires_at ? new Date(c.expires_at).toLocaleDateString("pt-BR") : "—"}
+          {c.expires_at ? formatDateBR(c.expires_at) : "—"}
         </span>
       ),
     },

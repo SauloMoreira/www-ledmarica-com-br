@@ -48,6 +48,7 @@ import {
   type CommercialReviewRow,
 } from "@/server/commercialReview.functions";
 import { STATUS_LABEL, STATUS_TONE, type CommercialStatus } from "@/lib/commercialReview";
+import { formatDateBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/produtos/revisao-comercial")({
   validateSearch: zodValidator(
@@ -97,7 +98,7 @@ function fmtPct(v: number | null | undefined): string {
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleDateString("pt-BR");
+    return formatDateBR(iso);
   } catch {
     return "—";
   }

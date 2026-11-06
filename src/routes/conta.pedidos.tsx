@@ -9,6 +9,7 @@ import { listMyOrders } from "@/server/checkout.functions";
 import { orderStatusLabel } from "@/lib/orderStatus";
 
 import { buildSeo } from "@/lib/seo";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/conta/pedidos")({
   head: () => buildSeo({ title: "Meus pedidos", url: "/conta/pedidos", noindex: true }),
@@ -151,7 +152,7 @@ function MyOrders() {
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {o.created_at && new Date(o.created_at).toLocaleString("pt-BR")}
+                      {o.created_at && formatDateTimeBR(o.created_at)}
                       {delivery && <> · {delivery}</>}
                     </p>
                   </div>

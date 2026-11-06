@@ -22,6 +22,7 @@ import {
   type DataTableColumn,
 } from "@/components/admin/datatable";
 import { useTableState } from "@/hooks/useTableState";
+import { formatDateBR } from "@/lib/dateBR";
 
 type Company = {
   id: string;
@@ -183,7 +184,7 @@ function AdminEmpresasPage() {
       hideOnMobile: true,
       cell: (c) => (
         <span className="text-xs text-muted-foreground">
-          {new Date(c.created_at).toLocaleDateString("pt-BR")}
+          {formatDateBR(c.created_at)}
         </span>
       ),
     },

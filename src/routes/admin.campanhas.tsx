@@ -41,6 +41,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { toast } from "sonner";
+import { formatDateBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/campanhas")({ component: CampanhasPage });
 
@@ -639,10 +640,10 @@ function CampanhasPage() {
                         </span>
                       )}
                       {c.starts_at && (
-                        <span>Início: {new Date(c.starts_at).toLocaleDateString("pt-BR")}</span>
+                        <span>Início: {formatDateBR(c.starts_at)}</span>
                       )}
                       {c.ends_at && (
-                        <span>Fim: {new Date(c.ends_at).toLocaleDateString("pt-BR")}</span>
+                        <span>Fim: {formatDateBR(c.ends_at)}</span>
                       )}
                       {c.coupon_id && (
                         <span>

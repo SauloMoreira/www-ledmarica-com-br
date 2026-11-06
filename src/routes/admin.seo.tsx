@@ -40,6 +40,7 @@ import {
   type SeoIssue,
   type SeoProductRow,
 } from "@/server/seoInsights.functions";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/seo")({
   component: SeoPage,
@@ -780,7 +781,7 @@ function SeoPage() {
 
         <p className="text-xs text-muted-foreground text-center">
           Análise baseada em campos cadastrados — não realiza crawling externo. Atualizada em{" "}
-          {new Date(data.generatedAt).toLocaleString("pt-BR")}.
+          {formatDateTimeBR(data.generatedAt)}.
         </p>
       </div>
     </AdminLayout>

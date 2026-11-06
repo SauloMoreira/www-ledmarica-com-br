@@ -51,6 +51,7 @@ import {
   InvoiceDeliveryPanel,
   toDeliveryState,
 } from "@/components/admin/invoices/InvoiceDeliveryPanel";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/financeiro/notas-fiscais")({
   component: NotasFiscaisPage,
@@ -62,7 +63,7 @@ function fmtBRL(n: number | string | null | undefined) {
   return Number(n ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 function fmtDate(d: string | null | undefined) {
-  return d ? new Date(d).toLocaleString("pt-BR") : "—";
+  return d ? formatDateTimeBR(d) : "—";
 }
 function hoursSince(d: string | null | undefined) {
   if (!d) return null;

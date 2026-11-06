@@ -46,6 +46,7 @@ import {
   type DataTableColumn,
 } from "@/components/admin/datatable";
 import { useTableState } from "@/hooks/useTableState";
+import { formatDateBR, formatDateTimeBR } from "@/lib/dateBR";
 
 type FilterValue =
   | "all"
@@ -217,7 +218,7 @@ function AdminUsuariosPage() {
       hideOnMobile: true,
       cell: (u) => (
         <span className="text-xs text-muted-foreground">
-          {u.created_at ? new Date(u.created_at).toLocaleDateString("pt-BR") : "—"}
+          {u.created_at ? formatDateBR(u.created_at) : "—"}
         </span>
       ),
     },
@@ -649,7 +650,7 @@ function UserDrawer({
                   label="Cadastro"
                   value={
                     data.profile.created_at
-                      ? new Date(data.profile.created_at).toLocaleString("pt-BR")
+                      ? formatDateTimeBR(data.profile.created_at)
                       : "—"
                   }
                 />
@@ -723,7 +724,7 @@ function UserDrawer({
                       <span className="text-foreground">#{o.order_number}</span>
                       <span className="text-xs text-muted-foreground">
                         {o.created_at
-                          ? new Date(o.created_at).toLocaleDateString("pt-BR")
+                          ? formatDateBR(o.created_at)
                           : ""}
                       </span>
                       <span className="text-xs">{o.status}</span>
@@ -776,7 +777,7 @@ function UserDrawer({
                       <div className="text-foreground/90">{l.action}</div>
                       <div className="text-muted-foreground">
                         {l.created_at
-                          ? new Date(l.created_at).toLocaleString("pt-BR")
+                          ? formatDateTimeBR(l.created_at)
                           : ""}{" "}
                         — {l.admin_email ?? "sistema"}
                       </div>

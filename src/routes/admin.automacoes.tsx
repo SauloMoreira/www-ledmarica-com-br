@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/automacoes")({
   component: AutomacoesPage,
@@ -417,7 +418,7 @@ function AutomacoesPage() {
                     {h.status}
                   </Badge>
                   <span className="text-muted-foreground">
-                    {new Date(h.created_at).toLocaleString("pt-BR")}
+                    {formatDateTimeBR(h.created_at)}
                   </span>
                 </div>
                 <div className="mt-1 text-muted-foreground">

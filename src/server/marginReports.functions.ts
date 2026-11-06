@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/integrations/supabase/admin-middleware";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { neutralizeCsvFormula } from "@/lib/csvSafe";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -725,7 +726,7 @@ export const exportMarginByOrderCsv = createServerFn({ method: "POST" })
 
       lines.push(
         [
-          new Date(o.created_at).toLocaleString("pt-BR"),
+          formatDateTimeBR(o.created_at),
           `#${o.order_number}`,
           name,
           o.order_type === "b2b" ? "B2B" : "B2C",

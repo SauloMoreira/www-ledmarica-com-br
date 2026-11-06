@@ -23,6 +23,7 @@ import {
   sendInvoiceEmail,
   uploadInvoiceFile,
 } from "@/server/invoiceFiles.functions";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 type Kind = "pdf" | "xml";
 
@@ -59,7 +60,7 @@ export type InvoiceDeliveryState = {
 
 function fmtDateTime(d: string) {
   try {
-    return new Date(d).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+    return formatDateTimeBR(d);
   } catch {
     return d;
   }

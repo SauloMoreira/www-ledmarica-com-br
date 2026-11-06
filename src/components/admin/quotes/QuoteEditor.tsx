@@ -73,6 +73,7 @@ import {
   type QuoteProductOption,
   type QuoteWithItems,
 } from "@/server/quotes.functions";
+import { formatDateBR } from "@/lib/dateBR";
 
 type ItemDraft = {
   key: string;
@@ -1060,7 +1061,7 @@ function ClientSection({ client, onChange }: { client: Client; onChange: (c: Cli
               <SelectItem value="none">Nenhuma</SelectItem>
               {negs.map((n) => (
                 <SelectItem key={n.id} value={n.id}>
-                  {n.company_name ?? "Sem nome"} · {n.cnpj ? formatCNPJ(n.cnpj) : "—"} · {new Date(n.created_at).toLocaleDateString("pt-BR")}
+                  {n.company_name ?? "Sem nome"} · {n.cnpj ? formatCNPJ(n.cnpj) : "—"} · {formatDateBR(n.created_at)}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -8,6 +8,7 @@ import {
   type CommercialStatus,
 } from "@/lib/commercialReview";
 import { neutralizeCsvFormula } from "@/lib/csvSafe";
+import { formatDateBR } from "@/lib/dateBR";
 
 /**
  * Revisão Comercial — Onda 1 + Onda 2.
@@ -584,7 +585,7 @@ function fmtDate(iso: string | null): string {
   if (!iso) return "";
   try {
     const d = new Date(iso);
-    return d.toLocaleDateString("pt-BR");
+    return formatDateBR(d);
   } catch {
     return "";
   }

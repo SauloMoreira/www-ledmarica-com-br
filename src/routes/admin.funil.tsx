@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Loader2, Phone, ArrowRight, Flame, Thermometer, Snowflake } from "lucide-react";
 import { toast } from "sonner";
+import { formatDateBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/funil")({
   component: FunilKanbanPage,
@@ -226,7 +227,7 @@ function FunilKanbanPage() {
                           ) : null}
                           <div className="mt-2 flex items-center justify-between gap-1">
                             <span className="text-[10px] text-muted-foreground">
-                              {new Date(l.created_at).toLocaleDateString("pt-BR")}
+                              {formatDateBR(l.created_at)}
                             </span>
                             <select
                               value={status}

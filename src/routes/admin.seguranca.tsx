@@ -26,6 +26,7 @@ import {
   listAdminAuditLog,
   exportAdminAuditCsv,
 } from "@/server/security.functions";
+import { formatDateTimeBR } from "@/lib/dateBR";
 
 export const Route = createFileRoute("/admin/seguranca")({
   component: AdminSecurityPage,
@@ -447,7 +448,7 @@ function SeverityPill({ s }: { s: string }) {
 
 function fmt(d: string) {
   try {
-    return new Date(d).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+    return formatDateTimeBR(d);
   } catch {
     return d;
   }
