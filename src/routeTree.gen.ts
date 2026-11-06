@@ -97,6 +97,7 @@ import { Route as PedidoIdConfirmacaoRouteImport } from './routes/pedido.$id.con
 import { Route as AdminComunicacaoEmailsIndexRouteImport } from './routes/admin.comunicacao.emails.index'
 import { Route as AdminComunicacaoEmailsTypeRouteImport } from './routes/admin.comunicacao.emails.$type'
 import { Route as AdminOrcamentosIdIndexRouteImport } from './routes/admin.orcamentos.$id.index'
+import { Route as AdminOrcamentosIdImprimirRouteImport } from './routes/admin.orcamentos.$id.imprimir'
 import { Route as ApiPublicEmailUnsubscribeRouteImport } from './routes/api/public/email/unsubscribe'
 import { Route as ApiPublicInternalCronDispatchRouteImport } from './routes/api/public/internal/cron-dispatch'
 import { Route as ApiPublicMercadopagoWebhookRouteImport } from './routes/api/public/mercadopago.webhook'
@@ -554,6 +555,12 @@ const AdminOrcamentosIdIndexRoute = AdminOrcamentosIdIndexRouteImport.update({
   path: '/admin/orcamentos/$id/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminOrcamentosIdImprimirRoute =
+  AdminOrcamentosIdImprimirRouteImport.update({
+    id: '/admin/orcamentos/$id/imprimir',
+    path: '/admin/orcamentos/$id/imprimir',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicEmailUnsubscribeRoute =
   ApiPublicEmailUnsubscribeRouteImport.update({
     id: '/api/public/email/unsubscribe',
@@ -660,6 +667,7 @@ export interface FileRoutesByFullPath {
   '/admin/pedidos/': typeof AdminPedidosIndexRoute
   '/admin/produtos/': typeof AdminProdutosIndexRoute
   '/admin/comunicacao/emails/$type': typeof AdminComunicacaoEmailsTypeRoute
+  '/admin/orcamentos/$id/imprimir': typeof AdminOrcamentosIdImprimirRoute
   '/api/public/email/unsubscribe': typeof ApiPublicEmailUnsubscribeRoute
   '/api/public/internal/cron-dispatch': typeof ApiPublicInternalCronDispatchRoute
   '/api/public/mercadopago/webhook': typeof ApiPublicMercadopagoWebhookRoute
@@ -751,6 +759,7 @@ export interface FileRoutesByTo {
   '/admin/pedidos': typeof AdminPedidosIndexRoute
   '/admin/produtos': typeof AdminProdutosIndexRoute
   '/admin/comunicacao/emails/$type': typeof AdminComunicacaoEmailsTypeRoute
+  '/admin/orcamentos/$id/imprimir': typeof AdminOrcamentosIdImprimirRoute
   '/api/public/email/unsubscribe': typeof ApiPublicEmailUnsubscribeRoute
   '/api/public/internal/cron-dispatch': typeof ApiPublicInternalCronDispatchRoute
   '/api/public/mercadopago/webhook': typeof ApiPublicMercadopagoWebhookRoute
@@ -845,6 +854,7 @@ export interface FileRoutesById {
   '/admin/pedidos/': typeof AdminPedidosIndexRoute
   '/admin/produtos/': typeof AdminProdutosIndexRoute
   '/admin/comunicacao/emails/$type': typeof AdminComunicacaoEmailsTypeRoute
+  '/admin/orcamentos/$id/imprimir': typeof AdminOrcamentosIdImprimirRoute
   '/api/public/email/unsubscribe': typeof ApiPublicEmailUnsubscribeRoute
   '/api/public/internal/cron-dispatch': typeof ApiPublicInternalCronDispatchRoute
   '/api/public/mercadopago/webhook': typeof ApiPublicMercadopagoWebhookRoute
@@ -940,6 +950,7 @@ export interface FileRouteTypes {
     | '/admin/pedidos/'
     | '/admin/produtos/'
     | '/admin/comunicacao/emails/$type'
+    | '/admin/orcamentos/$id/imprimir'
     | '/api/public/email/unsubscribe'
     | '/api/public/internal/cron-dispatch'
     | '/api/public/mercadopago/webhook'
@@ -1031,6 +1042,7 @@ export interface FileRouteTypes {
     | '/admin/pedidos'
     | '/admin/produtos'
     | '/admin/comunicacao/emails/$type'
+    | '/admin/orcamentos/$id/imprimir'
     | '/api/public/email/unsubscribe'
     | '/api/public/internal/cron-dispatch'
     | '/api/public/mercadopago/webhook'
@@ -1124,6 +1136,7 @@ export interface FileRouteTypes {
     | '/admin/pedidos/'
     | '/admin/produtos/'
     | '/admin/comunicacao/emails/$type'
+    | '/admin/orcamentos/$id/imprimir'
     | '/api/public/email/unsubscribe'
     | '/api/public/internal/cron-dispatch'
     | '/api/public/mercadopago/webhook'
@@ -1207,6 +1220,7 @@ export interface RootRouteChildren {
   AdminOrcamentosIndexRoute: typeof AdminOrcamentosIndexRoute
   AdminProdutosIndexRoute: typeof AdminProdutosIndexRoute
   AdminComunicacaoEmailsTypeRoute: typeof AdminComunicacaoEmailsTypeRoute
+  AdminOrcamentosIdImprimirRoute: typeof AdminOrcamentosIdImprimirRoute
   ApiPublicEmailUnsubscribeRoute: typeof ApiPublicEmailUnsubscribeRoute
   ApiPublicInternalCronDispatchRoute: typeof ApiPublicInternalCronDispatchRoute
   ApiPublicMercadopagoWebhookRoute: typeof ApiPublicMercadopagoWebhookRoute
@@ -1832,6 +1846,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOrcamentosIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/orcamentos/$id/imprimir': {
+      id: '/admin/orcamentos/$id/imprimir'
+      path: '/admin/orcamentos/$id/imprimir'
+      fullPath: '/admin/orcamentos/$id/imprimir'
+      preLoaderRoute: typeof AdminOrcamentosIdImprimirRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/email/unsubscribe': {
       id: '/api/public/email/unsubscribe'
       path: '/api/public/email/unsubscribe'
@@ -1992,6 +2013,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminOrcamentosIndexRoute: AdminOrcamentosIndexRoute,
   AdminProdutosIndexRoute: AdminProdutosIndexRoute,
   AdminComunicacaoEmailsTypeRoute: AdminComunicacaoEmailsTypeRoute,
+  AdminOrcamentosIdImprimirRoute: AdminOrcamentosIdImprimirRoute,
   ApiPublicEmailUnsubscribeRoute: ApiPublicEmailUnsubscribeRoute,
   ApiPublicInternalCronDispatchRoute: ApiPublicInternalCronDispatchRoute,
   ApiPublicMercadopagoWebhookRoute: ApiPublicMercadopagoWebhookRoute,
