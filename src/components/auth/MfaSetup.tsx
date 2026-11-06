@@ -34,7 +34,7 @@ export function MfaSetup() {
     try {
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
-        friendlyName: `App ${formatDateBR()}`,
+        friendlyName: `App ${formatDateBR(new Date())}`,
       });
       if (error) throw error;
       setQr({

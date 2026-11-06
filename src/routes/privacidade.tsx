@@ -87,7 +87,7 @@ function PrivacyPolicyPage() {
           Política de Privacidade
         </h1>
         <p className="text-sm text-muted-foreground mb-8">
-          Última atualização: {formatDateBR()} · Em conformidade com a LGPD
+          Última atualização: {formatDateBR(new Date())} · Em conformidade com a LGPD
           (Lei 13.709/2018)
         </p>
 
